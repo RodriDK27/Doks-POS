@@ -4,7 +4,24 @@ import { ValidationPipe } from '@nestjs/common';
 import { FileLoggerService } from './common/logger/file-logger.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
+function validateEnv() {
+  const required = ['DATABASE_URL', 'JWT_SECRET'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    console.error('\x1b[31m[CONFIG ERROR] Error crítico de inicio de servidor:\x1b[0m');
+    console.error('\x1b[31mFaltan configurar las siguientes variables de entorno requeridas en el archivo .env:\x1b[0m');
+    missing.forEach((variable) => {
+      console.error(`\x1b[33m  - ${variable}\x1b[0m`);
+    });
+    console.error('\x1b[31mEl servidor se detendrá por seguridad.\x1b[0m\n');
+    process.exit(1);
+  }
+}
+
 async function bootstrap() {
+  // Validar variables de entorno de forma estricta antes de levantar el servidor
+  validateEnv();
+
   // Instanciar el logger de archivo y consola
   const logger = new FileLoggerService();
 

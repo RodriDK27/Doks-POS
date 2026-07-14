@@ -16,7 +16,8 @@ import {
   Lock, 
   BadgeAlert,
   Coins,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -117,6 +118,27 @@ export default function RegisterPage() {
       fetchCajaData();
     }
   }, [role]);
+
+  const handleDownloadPdf = async (registerId: string) => {
+    try {
+      toast.info('Generando reporte PDF...');
+      const response = await api.get(`/reports/register/${registerId}/pdf`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `corte_caja_${registerId.substring(0, 8)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Reporte descargado correctamente.');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('No se pudo descargar el reporte de caja.');
+    }
+  };
 
   const calculatedSum = Object.entries(billCounts).reduce(
     (acc, [value, qty]) => acc + parseFloat(value) * (qty || 0),
@@ -504,6 +526,7 @@ export default function RegisterPage() {
                   <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Esperado</TableHead>
                   <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Contado</TableHead>
                   <TableHead className="text-right text-xs font-bold text-slate-500 w-20">Diferencia</TableHead>
+                  <TableHead className="text-right text-xs font-bold text-slate-500 w-16">PDF</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y">
@@ -536,6 +559,15 @@ export default function RegisterPage() {
                         diff === 0 ? 'text-emerald-500' : diff < 0 ? 'text-rose-500' : 'text-amber-500'
                       }`}>
                         {diff > 0 ? '+' : ''}${diff.toFixed(0)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <button
+                          onClick={() => handleDownloadPdf(c.id)}
+                          title="Descargar reporte en PDF"
+                          className="p-1.5 hover:bg-slate-100 rounded-lg text-indigo-600 transition-colors inline-flex items-center"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </button>
                       </TableCell>
                     </TableRow>
                   );

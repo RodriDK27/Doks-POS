@@ -9,9 +9,13 @@ import { SalesModule } from './modules/sales/sales.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { PurchasesModule } from './modules/purchases/purchases.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BackupModule } from './modules/backup/backup.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(), // Habilitar programación cron en NestJS
     PrismaModule,
     ProductsModule,
     CustomersModule,
@@ -20,6 +24,8 @@ import { AuthModule } from './modules/auth/auth.module';
     SuppliersModule,
     PurchasesModule,
     AuthModule,
+    BackupModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
