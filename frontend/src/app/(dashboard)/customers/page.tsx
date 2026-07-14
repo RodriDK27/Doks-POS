@@ -33,6 +33,8 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 
+import { CustomSelect } from '@/components/CustomSelect';
+
 interface CreditTransaction {
   id: string;
   amount: number;
@@ -312,15 +314,16 @@ export default function CustomersPage() {
           </div>
 
           {/* FILTRO DEUDA */}
-          <select
-            className="h-11 border border-slate-200 rounded-xl px-3 bg-white text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+          <CustomSelect
+            className="w-56"
             value={filterDebt}
-            onChange={(e) => setFilterDebt(e.target.value as any)}
-          >
-            <option value="ALL">Ver todos los Clientes</option>
-            <option value="DEBTORS">Con Deuda Pendiente</option>
-            <option value="CLEAN">Cuentas al Corriente</option>
-          </select>
+            onChange={(val) => setFilterDebt(val as any)}
+            options={[
+              { value: 'ALL', label: 'Ver todos los Clientes' },
+              { value: 'DEBTORS', label: 'Con Deuda Pendiente' },
+              { value: 'CLEAN', label: 'Cuentas al Corriente' },
+            ]}
+          />
         </div>
 
         <Button 

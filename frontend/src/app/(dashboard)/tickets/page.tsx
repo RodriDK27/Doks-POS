@@ -28,6 +28,7 @@ import {
   DialogFooter 
 } from '@/components/ui/dialog';
 import Link from 'next/link';
+import { CustomSelect } from '@/components/CustomSelect';
 
 interface SaleItem {
   id: string;
@@ -174,16 +175,17 @@ export default function TicketsPage() {
           />
         </div>
 
-        <select
-          className="h-11 border border-slate-200 rounded-xl px-3 bg-white text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+        <CustomSelect
+          className="w-44"
           value={selectedDateFilter}
-          onChange={(e) => setSelectedDateFilter(e.target.value as any)}
-        >
-          <option value="ALL">Todas las Ventas</option>
-          <option value="TODAY">Solo Hoy</option>
-          <option value="YESTERDAY">Ayer</option>
-          <option value="WEEK">Últimos 7 Días</option>
-        </select>
+          onChange={(val) => setSelectedDateFilter(val as any)}
+          options={[
+            { value: 'ALL', label: 'Todas las Ventas' },
+            { value: 'TODAY', label: 'Solo Hoy' },
+            { value: 'YESTERDAY', label: 'Ayer' },
+            { value: 'WEEK', label: 'Últimos 7 Días' },
+          ]}
+        />
       </div>
 
       {/* TABLA DE HISTORIAL (RESPONSIVA) */}

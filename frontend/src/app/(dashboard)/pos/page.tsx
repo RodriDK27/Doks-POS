@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { CustomSelect } from '@/components/CustomSelect';
 import { 
   Dialog, 
   DialogContent, 
@@ -583,18 +584,19 @@ export default function POSPage() {
                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
                   <User className="h-3.5 w-3.5" /> Cliente (Fiado/Abono)
                 </label>
-                <select
-                  className="w-full h-10 border border-slate-200 rounded-lg px-2.5 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700"
+                <CustomSelect
+                  className="h-10 rounded-lg text-xs"
                   value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                >
-                  <option value="">-- Público General --</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.currentDebt > 0 ? `(Deuda: $${c.currentDebt.toFixed(0)})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedCustomerId}
+                  placeholder="-- Público General --"
+                  options={[
+                    { value: '', label: '-- Público General --' },
+                    ...customers.map((c) => ({
+                      value: c.id,
+                      label: `${c.name} ${c.currentDebt > 0 ? `(Deuda: $${c.currentDebt.toFixed(0)})` : ''}`
+                    }))
+                  ]}
+                />
               </div>
 
               <div className="space-y-1">

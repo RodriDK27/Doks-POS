@@ -40,6 +40,7 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { CustomSelect } from '@/components/CustomSelect';
 
 interface Product {
   id: string;
@@ -495,26 +496,27 @@ export default function InventoryPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-2 sm:flex">
-                <select
-                  className="h-11 border border-slate-200 rounded-xl px-3 bg-white text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                <CustomSelect
+                  className="w-40"
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                >
-                  <option value="">-- Categorías --</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  onChange={setSelectedCategory}
+                  placeholder="-- Categorías --"
+                  options={[
+                    { value: '', label: '-- Categorías --' },
+                    ...categories.map((c) => ({ value: c, label: c })),
+                  ]}
+                />
 
-                <select
-                  className="h-11 border border-slate-200 rounded-xl px-3 bg-white text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                <CustomSelect
+                  className="w-40"
                   value={stockFilter}
-                  onChange={(e) => setStockFilter(e.target.value as any)}
-                >
-                  <option value="ALL">Todo el Stock</option>
-                  <option value="CRITICAL">Stock Bajo</option>
-                  <option value="OUT_OF_STOCK">Agotados</option>
-                </select>
+                  onChange={(val) => setStockFilter(val as any)}
+                  options={[
+                    { value: 'ALL', label: 'Todo el Stock' },
+                    { value: 'CRITICAL', label: 'Stock Bajo' },
+                    { value: 'OUT_OF_STOCK', label: 'Agotados' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -822,24 +824,22 @@ export default function InventoryPage() {
               
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold text-slate-500 uppercase">Seleccionar Producto</label>
-                <select
-                  className="w-full h-10 border border-slate-200 rounded-lg px-2.5 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700"
+                <CustomSelect
                   value={newPurchaseItem.productId}
-                  onChange={(e) => {
-                    const prodId = e.target.value;
-                    const prod = products.find(p => p.id === prodId);
+                  onChange={(val) => {
+                    const prod = products.find(p => p.id === val);
                     setNewPurchaseItem({
-                      productId: prodId,
+                      productId: val,
                       costPrice: prod ? prod.purchasePrice : 0,
                       quantity: 1
                     });
                   }}
-                >
-                  <option value="">-- Producto --</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</option>
-                  ))}
-                </select>
+                  placeholder="-- Producto --"
+                  options={[
+                    { value: '', label: '-- Producto --' },
+                    ...products.map(p => ({ value: p.id, label: `${p.name} (Stock: ${p.stock.toFixed(0)})` }))
+                  ]}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
