@@ -12,12 +12,21 @@ import {
   Package, 
   Users, 
   DollarSign,
-  Lock 
+  Lock,
+  KeyRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'sonner';
 import GlobalLockScreen from '@/components/GlobalLockScreen';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter 
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 interface ActiveRegister {
   openedBy: string;
@@ -35,6 +44,39 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const { role, logout } = useAuthStore();
+
+  const [isChangePinOpen, setIsChangePinOpen] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmNewPin, setConfirmNewPin] = useState('');
+  const [pinLoading, setPinLoading] = useState(false);
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPin.length !== 4 || currentPin.length !== 4) {
+      toast.error('Los PINs deben tener exactamente 4 dígitos.');
+      return;
+    }
+    if (newPin !== confirmNewPin) {
+      toast.error('El nuevo PIN y su confirmación no coinciden.');
+      return;
+    }
+
+    try {
+      setPinLoading(true);
+      await api.patch('/auth/change-pin', { currentPin, newPin });
+      toast.success('PIN modificado con éxito. Inicia sesión de nuevo.');
+      setIsChangePinOpen(false);
+      setCurrentPin('');
+      setNewPin('');
+      setConfirmNewPin('');
+      logout();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Error al cambiar el PIN.');
+    } finally {
+      setPinLoading(false);
+    }
+  };
 
   const checkActiveRegister = async () => {
     try {
@@ -87,16 +129,25 @@ export default function DashboardLayout({
         {/* Estatus Caja chica y Rol de seguridad */}
         <div className="flex items-center gap-2">
           {role === 'ADMIN' && (
-            <button
-              onClick={() => {
-                logout();
-                toast.info('Acceso de Administrador bloqueado.');
-              }}
-              className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all"
-              title="Bloquear acceso de administrador"
-            >
-              <Lock className="h-3 w-3" /> Bloquear
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setIsChangePinOpen(true)}
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all"
+                title="Cambiar PIN de seguridad"
+              >
+                <KeyRound className="h-3 w-3 text-slate-600" /> PIN
+              </button>
+              <button
+                onClick={() => {
+                  logout();
+                  toast.info('Acceso de Administrador bloqueado.');
+                }}
+                className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all"
+                title="Bloquear acceso de administrador"
+              >
+                <Lock className="h-3 w-3" /> Bloquear
+              </button>
+            </div>
           )}
  
           {!loading && (
@@ -153,6 +204,71 @@ export default function DashboardLayout({
           );
         })}
       </nav>
+
+      {/* DIÁLOGO CAMBIO DE PIN */}
+      <Dialog open={isChangePinOpen} onOpenChange={setIsChangePinOpen}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle className="font-black text-slate-800 text-lg">Cambiar PIN de Acceso</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleChangePin} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">PIN Actual (4 dígitos)</label>
+              <Input
+                type="password"
+                maxLength={4}
+                required
+                disabled={pinLoading}
+                className="focus-visible:ring-indigo-500 font-bold text-center text-lg h-11"
+                value={currentPin}
+                onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nuevo PIN (4 dígitos)</label>
+              <Input
+                type="password"
+                maxLength={4}
+                required
+                disabled={pinLoading}
+                className="focus-visible:ring-indigo-500 font-bold text-center text-lg h-11"
+                value={newPin}
+                onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Confirmar Nuevo PIN</label>
+              <Input
+                type="password"
+                maxLength={4}
+                required
+                disabled={pinLoading}
+                className="focus-visible:ring-indigo-500 font-bold text-center text-lg h-11"
+                value={confirmNewPin}
+                onChange={(e) => setConfirmNewPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" className="text-xs" disabled={pinLoading} onClick={() => setIsChangePinOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                type="submit" 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                disabled={pinLoading || currentPin.length !== 4 || newPin.length !== 4 || confirmNewPin.length !== 4}
+              >
+                Guardar PIN
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

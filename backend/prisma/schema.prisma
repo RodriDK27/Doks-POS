@@ -171,3 +171,13 @@ model PurchaseItem {
   @@index([purchaseId])
   @@index([productId])
 }
+
+/// Representa un usuario o empleado del sistema con acceso por PIN
+model User {
+  id        String   @id @default(uuid())
+  name      String   // Nombre completo del cajero/administrador
+  pin       String   // PIN encriptado con bcryptjs
+  role      String   // Rol de acceso: "ADMIN" o "CAJERO"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
