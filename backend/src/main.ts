@@ -69,6 +69,17 @@ async function bootstrap() {
   // Configurar prefijo global para las rutas de la API
   app.setGlobalPrefix('api');
 
+  // Configurar Swagger para documentación interactiva de la API
+  const { DocumentBuilder, SwaggerModule } = require('@nestjs/swagger');
+  const config = new DocumentBuilder()
+    .setTitle("Dok's POS API")
+    .setDescription('Especificación técnica interactiva de los endpoints del backend para Dok\'s POS.')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
   // Registrar el filtro de excepciones global para formatear errores y evitar fugas
   app.useGlobalFilters(new HttpExceptionFilter());
 
