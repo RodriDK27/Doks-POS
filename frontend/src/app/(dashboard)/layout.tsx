@@ -146,7 +146,7 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans pb-16 md:pb-0 md:pt-0">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans pb-0 md:pt-0">
       
       {/* HEADER SUPERIOR MÓVIL / TABLET */}
       <header className="h-14 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-5 sticky top-0 z-50 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
@@ -222,7 +222,7 @@ export default function DashboardLayout({
       </header>
 
       {/* CONTENEDOR DE PÁGINAS (OCUPA TODO EL ANCHO SIN SIDEBAR) */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-transparent relative z-10">
+      <main className="flex-1 overflow-y-auto p-4 pb-28 md:p-6 md:pb-28 bg-transparent relative z-10">
         {children}
       </main>
 
