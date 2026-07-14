@@ -3,6 +3,37 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { FileLoggerService } from './common/logger/file-logger.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import * as fs from 'fs';
+import * as path from 'path';
+
+function loadEnv() {
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf8');
+    content.split(/\r?\n/).forEach((line) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine || trimmedLine.startsWith('#')) return;
+      
+      const parts = trimmedLine.split('=');
+      if (parts.length >= 2) {
+        const key = parts[0].trim();
+        let value = parts.slice(1).join('=').trim();
+        
+        // Limpiar comillas
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1).trim();
+        }
+        
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    });
+  }
+}
 
 function validateEnv() {
   const required = ['DATABASE_URL', 'JWT_SECRET'];
@@ -19,6 +50,9 @@ function validateEnv() {
 }
 
 async function bootstrap() {
+  // Cargar variables de entorno del archivo .env local
+  loadEnv();
+
   // Validar variables de entorno de forma estricta antes de levantar el servidor
   validateEnv();
 
