@@ -4,6 +4,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useCartStore, CartItem } from '@/store/useCartStore';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { useOfflineStore } from '@/store/useOfflineStore';
+import dbHelper from '@/lib/indexedDb';
+import { useAuthStore } from '@/store/useAuthStore';
 import { 
   Search, 
   Trash2, 
@@ -51,6 +54,8 @@ interface Customer {
 }
 
 export default function POSPage() {
+  const { role } = useAuthStore();
+  const { isOnline, updateSyncQueueCount } = useOfflineStore();
   const { 
     cartItems, 
     discount, 
@@ -95,8 +100,21 @@ export default function POSPage() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Cargar Catálogo Completo
+  // Cargar Catálogo Completo (con soporte offline)
   const loadCatalog = async () => {
+    if (!isOnline && dbHelper) {
+      try {
+        const localProds = await dbHelper.getProducts();
+        setCatalogProducts(localProds);
+        const localCats = Array.from(new Set(localProds.map(p => p.category).filter((c): c is string => !!c)));
+        setCategories(localCats);
+        toast.info('Cargado catálogo local desde memoria (Sin conexión).');
+      } catch (err) {
+        console.error('Error al cargar catálogo local:', err);
+      }
+      return;
+    }
+
     try {
       const [prodRes, catRes, custRes] = await Promise.all([
         api.get('/products'),
@@ -106,6 +124,10 @@ export default function POSPage() {
       setCatalogProducts(prodRes.data);
       setCategories(catRes.data);
       setCustomers(custRes.data);
+
+      if (dbHelper) {
+        await dbHelper.saveProducts(prodRes.data);
+      }
     } catch (error) {
       console.error('Error loading POS catalog:', error);
       toast.error('No se pudo cargar el catálogo táctil.');
@@ -113,8 +135,10 @@ export default function POSPage() {
   };
 
   useEffect(() => {
-    loadCatalog();
-  }, []);
+    if (role !== 'NONE') {
+      loadCatalog();
+    }
+  }, [role]);
 
   const handleTouchAdd = (product: Product) => {
     if (product.stock <= 0) {
@@ -203,6 +227,34 @@ export default function POSPage() {
       })),
     };
 
+    if (!isOnline) {
+      try {
+        if (!dbHelper) throw new Error('IndexedDB no disponible');
+        
+        await dbHelper.queueSale(payload);
+        await updateSyncQueueCount();
+        
+        // Simular descuento de stock localmente
+        const updatedProducts = catalogProducts.map(p => {
+          const cartItem = cartItems.find(item => item.id === p.id);
+          if (cartItem) {
+            return { ...p, stock: Math.max(0, p.stock - cartItem.quantity) };
+          }
+          return p;
+        });
+        setCatalogProducts(updatedProducts);
+        await dbHelper.saveProducts(updatedProducts);
+
+        toast.success('Venta guardada localmente. Se sincronizará al recuperar la conexión.', { duration: 8000 });
+        clearCart();
+        setSelectedCustomerId('');
+        setIsPayModalOpen(false);
+      } catch (err) {
+        toast.error('Error al guardar la venta de forma local.');
+      }
+      return;
+    }
+
     try {
       const response = await api.post('/sales', payload);
       const createdSale = response.data;
@@ -216,8 +268,8 @@ export default function POSPage() {
       clearCart();
       setSelectedCustomerId('');
       setIsPayModalOpen(false);
-      loadCatalog(); // Refrescar stock
-      setPosTab('CATALOG'); // Volver a catálogo para la siguiente venta
+      // Recargar catálogo para actualizar el stock local
+      loadCatalog();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Error al procesar la venta.');
     }

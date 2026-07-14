@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/useAuthStore';
 import { 
   DollarSign, 
   ShoppingCart, 
@@ -80,6 +81,7 @@ interface FeedEvent {
 }
 
 export default function DashboardPage() {
+  const { role } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [debtors, setDebtors] = useState<DebtorCustomer[]>([]);
@@ -174,8 +176,12 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    if (role !== 'NONE') {
+      fetchDashboardData();
+    }
+  }, [role]);
 
+  useEffect(() => {
     const updateClock = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' }) + ' • ' + now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));

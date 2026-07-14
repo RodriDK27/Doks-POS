@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'sonner';
 import GlobalLockScreen from '@/components/GlobalLockScreen';
+import { useOfflineStore } from '@/store/useOfflineStore';
 import { 
   Dialog, 
   DialogContent, 
@@ -50,6 +51,29 @@ export default function DashboardLayout({
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
+
+  const { setIsOnline, updateSyncQueueCount, syncQueueCount, isOnline } = useOfflineStore();
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success('Conexión a internet restablecida.');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning('Sin conexión a internet. Operando en modo local.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    updateSyncQueueCount();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +152,17 @@ export default function DashboardLayout({
 
         {/* Estatus Caja chica y Rol de seguridad */}
         <div className="flex items-center gap-2">
+          {!isOnline && (
+            <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">
+              Offline
+            </div>
+          )}
+          {syncQueueCount > 0 && (
+            <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping"></span>
+              Pendientes: {syncQueueCount}
+            </div>
+          )}
           {role === 'ADMIN' && (
             <div className="flex items-center gap-1.5">
               <button

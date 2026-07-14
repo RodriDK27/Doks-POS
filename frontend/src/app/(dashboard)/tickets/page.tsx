@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/useAuthStore';
 import { 
   ArrowLeft, 
   Search, 
@@ -50,6 +51,7 @@ interface Sale {
 }
 
 export default function TicketsPage() {
+  const { role } = useAuthStore();
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,8 +75,10 @@ export default function TicketsPage() {
   };
 
   useEffect(() => {
-    fetchSales();
-  }, []);
+    if (role !== 'NONE') {
+      fetchSales();
+    }
+  }, [role]);
 
   const handlePrint = () => {
     window.print();

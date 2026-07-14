@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/useAuthStore';
 import { 
   DollarSign, 
   Clock, 
@@ -53,6 +54,7 @@ interface CashRegister {
 }
 
 export default function RegisterPage() {
+  const { role } = useAuthStore();
   const [activeRegister, setActiveRegister] = useState<CashRegister | null>(null);
   const [history, setHistory] = useState<CashRegister[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,8 +113,10 @@ export default function RegisterPage() {
   };
 
   useEffect(() => {
-    fetchCajaData();
-  }, []);
+    if (role !== 'NONE') {
+      fetchCajaData();
+    }
+  }, [role]);
 
   const calculatedSum = Object.entries(billCounts).reduce(
     (acc, [value, qty]) => acc + parseFloat(value) * (qty || 0),
