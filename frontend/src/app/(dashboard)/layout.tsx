@@ -13,13 +13,16 @@ import {
   Users, 
   DollarSign,
   Lock,
-  KeyRound
+  KeyRound,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'sonner';
 import GlobalLockScreen from '@/components/GlobalLockScreen';
 import { useOfflineStore } from '@/store/useOfflineStore';
+import { useTheme } from 'next-themes';
 import { 
   Dialog, 
   DialogContent, 
@@ -51,6 +54,8 @@ export default function DashboardLayout({
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
+
+  const { theme, setTheme } = useTheme();
 
   const { setIsOnline, updateSyncQueueCount, syncQueueCount, isOnline } = useOfflineStore();
 
@@ -163,6 +168,13 @@ export default function DashboardLayout({
               Pendientes: {syncQueueCount}
             </div>
           )}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            title="Cambiar Tema (Claro / Oscuro)"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors inline-flex items-center"
+          >
+            {theme === 'dark' ? <Sun className="h-3.5 w-3.5 text-amber-500" /> : <Moon className="h-3.5 w-3.5 text-slate-650" />}
+          </button>
           {role === 'ADMIN' && (
             <div className="flex items-center gap-1.5">
               <button

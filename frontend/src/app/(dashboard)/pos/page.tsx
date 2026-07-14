@@ -53,6 +53,53 @@ interface Customer {
   creditLimit: number;
 }
 
+const getCategoryColor = (category: string | null) => {
+  const cat = (category || 'OTROS').toUpperCase();
+  if (cat.includes('BEBIDAS')) {
+    return {
+      bg: 'bg-blue-50/40 dark:bg-blue-950/10',
+      border: 'border-blue-100 dark:border-blue-900/30 hover:border-blue-500',
+      text: 'text-blue-700 dark:text-blue-300',
+      accent: 'text-blue-600 dark:text-blue-400',
+      badge: 'bg-blue-100/50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+    };
+  }
+  if (cat.includes('ABARROTES') || cat.includes('ALIMENTOS')) {
+    return {
+      bg: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+      border: 'border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-500',
+      text: 'text-emerald-700 dark:text-emerald-300',
+      accent: 'text-emerald-600 dark:text-emerald-400',
+      badge: 'bg-emerald-100/50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+    };
+  }
+  if (cat.includes('LIMPIEZA')) {
+    return {
+      bg: 'bg-purple-50/40 dark:bg-purple-950/10',
+      border: 'border-purple-100 dark:border-purple-900/30 hover:border-purple-500',
+      text: 'text-purple-700 dark:text-purple-300',
+      accent: 'text-purple-600 dark:text-purple-400',
+      badge: 'bg-purple-100/50 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+    };
+  }
+  if (cat.includes('DULCES') || cat.includes('SABRITAS') || cat.includes('BOTANAS')) {
+    return {
+      bg: 'bg-amber-50/40 dark:bg-amber-950/10',
+      border: 'border-amber-100 dark:border-amber-900/30 hover:border-amber-500',
+      text: 'text-amber-700 dark:text-amber-300',
+      accent: 'text-amber-600 dark:text-amber-400',
+      badge: 'bg-amber-100/50 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+    };
+  }
+  return {
+    bg: 'bg-slate-50/40 dark:bg-slate-800/10',
+    border: 'border-slate-100 dark:border-slate-700/30 hover:border-slate-400',
+    text: 'text-slate-700 dark:text-slate-300',
+    accent: 'text-indigo-600 dark:text-indigo-400',
+    badge: 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400'
+  };
+};
+
 export default function POSPage() {
   const { role } = useAuthStore();
   const { isOnline, updateSyncQueueCount } = useOfflineStore();
@@ -389,26 +436,34 @@ export default function POSPage() {
           <div className="flex-1 overflow-y-auto p-4">
             {filteredCatalog.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {filteredCatalog.map((prod) => (
-                  <button
-                    key={prod.id}
-                    type="button"
-                    className="h-20 p-3 border border-slate-100 bg-slate-50/30 hover:border-indigo-600/40 rounded-xl hover:bg-indigo-50/10 transition-all text-left flex flex-col justify-between active:scale-95"
-                    onClick={() => handleTouchAdd(prod)}
-                  >
-                    <span className="font-bold text-xs text-slate-700 block truncate w-full" title={prod.name}>
-                      {prod.name}
-                    </span>
-                    <div className="flex justify-between items-baseline w-full mt-1.5">
-                      <span className="font-extrabold text-xs text-indigo-600">
-                        ${prod.sellPrice.toFixed(2)}
-                      </span>
-                      <span className="text-[9px] text-slate-400 font-semibold">
-                        Disp: {prod.stock.toFixed(0)}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                {filteredCatalog.map((prod) => {
+                  const themeColors = getCategoryColor(prod.category);
+                  return (
+                    <button
+                      key={prod.id}
+                      type="button"
+                      className={`h-24 p-3.5 border ${themeColors.border} ${themeColors.bg} hover:shadow-[0_8px_20px_rgba(99,102,241,0.06)] rounded-2xl hover:-translate-y-0.5 transition-all text-left flex flex-col justify-between active:scale-95 duration-200 cursor-pointer`}
+                      onClick={() => handleTouchAdd(prod)}
+                    >
+                      <div className="w-full">
+                        <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${themeColors.badge} mb-1.5 inline-block tracking-wider`}>
+                          {prod.category || 'Otros'}
+                        </span>
+                        <span className="font-bold text-xs text-slate-850 dark:text-slate-200 block truncate w-full" title={prod.name}>
+                          {prod.name}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-baseline w-full mt-1.5">
+                        <span className={`font-extrabold text-xs ${themeColors.accent}`}>
+                          ${prod.sellPrice.toFixed(2)}
+                        </span>
+                        <span className={`text-[9px] font-bold ${prod.stock <= 5 ? 'text-rose-500 animate-pulse' : 'text-slate-400 dark:text-slate-500'}`}>
+                          Disp: {prod.stock.toFixed(0)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-20 text-slate-400 text-xs">
