@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ----------------------------------------------------
+// MODELOS DEL DOMINIO
+// ----------------------------------------------------
+
+/// Representa un producto en el inventario
+model Product {
+  id             String     @id @default(uuid())
+  barcode        String?    @unique // Código de barras para lector
+  name           String     // Nombre del producto
+  description    String?    // Descripción opcional
+  purchasePrice  Float      // Precio de compra (costo)
+  sellPrice      Float      // Precio de venta al público
+  wholesalePrice Float?     // Precio opcional para ventas de mayoreo
+  stock          Float      // Existencia (Float para poder vender a granel: ej. 1.5 kg)
+  minStock       Float      @default(0) // Umbral mínimo para alertas de stock bajo
+  category       String?    // Categoría del producto (ej. Abarrotes, Lácteos, etc.)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+
+  @@index([barcode])
+  @@index([name])
+}
+
+/// Representa a un cliente del negocio (usado principalmente para el control de deudas/fiado)
+model Customer {
+  id                 String              @id @default(uuid())
+  name               String              // Nombre completo
+  phone              String?             // Teléfono de contacto
+  address            String?             // Dirección
+  creditLimit        Float               @default(0) // Límite máximo que se le puede fiar
+  currentDebt        Float               @default(0) // Deuda actual acumulada
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  sales              Sale[]
+  creditTransactions CreditTransaction[]
+
+  @@index([name])
+}
+
+/// Registra los movimientos de la línea de crédito de un cliente (abonos y deudas)
+model CreditTransaction {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  amount      Float    // Monto de la transacción (positivo para abonos, negativo para cargos/deudas)
+  type        String   // Tipo de movimiento: "DEUDA" (cuando se fía) o "ABONO" (cuando paga)
+  saleId      Int?     // Relación opcional con la venta que generó la deuda (ahora entero)
+  notes       String?  // Notas aclaratorias (ej. "Abono del fin de semana")
+  createdAt   DateTime @default(now())
+
+  @@index([customerId])
+}
+
+/// Representa una venta (encabezado)
+model Sale {
+  id            Int        @id @default(autoincrement()) // ID y Folio secuencial de ticket en SQLite
+  uuid          String     @unique @default(uuid()) // Referencia de ID único para sistemas externos/sincronización
+  total         Float      // Total de la venta
+  discount      Float      @default(0) // Descuento aplicado
+  paymentMethod String     // Método de pago: EFECTIVO, TARJETA, TRANSFERENCIA, FIADO
+  amountPaid    Float      // Cantidad con la que pagó el cliente (para calcular cambio)
+  change        Float      // Cambio entregado
+  customerId    String?    // Opcional: Cliente si es fiado o venta registrada
+  customer      Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  cashRegisterId String    // Caja en la que se realizó la venta
+  cashRegister  CashRegister @relation(fields: [cashRegisterId], references: [id])
+  createdAt     DateTime   @default(now())
+  items         SaleItem[]
+
+  @@index([customerId])
+  @@index([cashRegisterId])
+  @@index([createdAt])
+}
+
+/// Detalle de cada producto vendido en una transacción
+model SaleItem {
+  id             String   @id @default(uuid())
+  saleId         Int      // Llave foránea entera que apunta a Sale.id
+  sale           Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId      String?  // Opcional en caso de que se elimine el producto del catálogo principal
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName    String   // Nombre histórico del producto en el momento de la venta
+  price          Float    // Precio histórico al que se vendió
+  quantity       Float    // Cantidad vendida (Float para venta a granel)
+  total          Float    // Subtotal (precio * cantidad)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+/// Representa una sesión o turno de la caja registradora (Arqueo / Corte de caja)
+model CashRegister {
+  id             String            @id @default(uuid())
+  openedBy       String            // Nombre del cajero que abre la sesión
+  openedAt       DateTime          @default(now())
+  closedAt       DateTime?         // Nulo si la caja sigue abierta
+  initialBalance Float             // Dinero en caja al abrir (caja chica / fondo)
+  expectedBalance Float            // Balance calculado automáticamente (inicial + ventas en efectivo + ingresos - egresos)
+  actualBalance  Float?            // Efectivo real contado por el cajero al cerrar
+  status         String            @default("ABIERTO") // ABIERTO o CERRADO
+  notes          String?           // Observaciones (ej. "Faltaron $10 por cambio")
+  sales          Sale[]
+  transactions   CashTransaction[]
+}
+
+/// Registra entradas o salidas de efectivo manuales de la caja (ej. pagar a proveedor o retirar ganancias)
+model CashTransaction {
+  id             String       @id @default(uuid())
+  cashRegisterId String
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+  amount         Float        // Monto de la transacción (positivo para ingresos, negativo para egresos)
+  type           String       // Tipo: "INGRESO" (entrada) o "EGRESO" (salida/gasto)
+  description    String       // Razón del movimiento (ej. "Pago a repartidor de refrescos")
+  createdAt      DateTime     @default(now())
+
+  @@index([cashRegisterId])
+}
+
+/// Representa un proveedor de mercancías
+model Supplier {
+  id        String     @id @default(uuid())
+  name      String     @unique // Nombre único de la empresa (ej. Bimbo, Coca-Cola)
+  phone     String?
+  address   String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  purchases Purchase[]
+
+  @@index([name])
+}
+
+/// Registro de una compra de mercancía facturada a un proveedor
+model Purchase {
+  id             String         @id @default(uuid())
+  supplierId     String
+  supplier       Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  total          Float          // Monto total de la compra
+  notes          String?        // Observaciones (ej. "Factura #8821")
+  payFromRegister Boolean       @default(false) // Si se pagó con dinero de caja chica
+  cashRegisterId String?        // Caja de la que salió el dinero (si aplica)
+  createdAt      DateTime       @default(now())
+  items          PurchaseItem[]
+
+  @@index([supplierId])
+}
+
+/// Detalle del producto comprado en una orden de adquisición
+model PurchaseItem {
+  id            String   @id @default(uuid())
+  purchaseId    String
+  purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  costPrice     Float    // Costo de compra unitario
+  quantity      Float    // Cantidad ingresada
+  total         Float    // Subtotal de la compra (cantidad * costo)
+
+  @@index([purchaseId])
+  @@index([productId])
+}
