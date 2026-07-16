@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Customer } from '../types';
+import { CustomerFormValues } from '../components/CustomerFormDialog';
 
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // Filtros
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,12 +15,7 @@ export function useCustomers() {
   // Estado Formulario Cliente (Agregar/Editar)
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    address: '',
-    creditLimit: 0,
-  });
+
 
   // Estado Modal Abono Rápido
   const [isAbonoOpen, setIsAbonoOpen] = useState(false);
@@ -35,24 +31,19 @@ export function useCustomers() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/customers');
-      setCustomers(response.data);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
-        console.error('Error fetching customers:', error);
-        toast.error('No se pudo cargar la lista de clientes.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // SWR Query
+  const { data: swrCustomers, mutate: mutateCustomers, isLoading: loading } = useSWR<Customer[]>('/customers');
 
+  // Sync state
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    if (swrCustomers) {
+      setCustomers(swrCustomers);
+    }
+  }, [swrCustomers]);
+
+  const fetchCustomers = async () => {
+    mutateCustomers();
+  };
 
   // Métricas
   const totalCustomers = customers.length;
@@ -78,52 +69,29 @@ export function useCustomers() {
   // Abrir Agregar
   const handleOpenAdd = () => {
     setEditingCustomer(null);
-    setFormData({
-      name: '',
-      phone: '',
-      address: '',
-      creditLimit: 1000,
-    });
     setIsFormOpen(true);
   };
 
   // Abrir Editar
   const handleOpenEdit = (customer: Customer) => {
     setEditingCustomer(customer);
-    setFormData({
-      name: customer.name,
-      phone: customer.phone || '',
-      address: customer.address || '',
-      creditLimit: customer.creditLimit,
-    });
     setIsFormOpen(true);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.name.trim()) {
-      toast.error('El nombre del cliente es obligatorio.');
-      return;
-    }
-    if (formData.creditLimit < 0) {
-      toast.error('El límite de crédito no puede ser negativo.');
-      return;
-    }
-
+  const handleFormSubmit = async (values: CustomerFormValues) => {
     const payload = {
-      ...formData,
-      phone: formData.phone.trim() || null,
-      address: formData.address.trim() || null,
+      ...values,
+      phone: values.phone?.trim() || null,
+      address: values.address?.trim() || null,
     };
 
     try {
       if (editingCustomer) {
         await api.patch(`/customers/${editingCustomer.id}`, payload);
-        toast.success(`Cliente "${formData.name}" actualizado.`);
+        toast.success(`Cliente "${values.name}" actualizado.`);
       } else {
         await api.post('/customers', payload);
-        toast.success(`Cliente "${formData.name}" registrado.`);
+        toast.success(`Cliente "${values.name}" registrado.`);
       }
       setIsFormOpen(false);
       fetchCustomers();
@@ -211,8 +179,6 @@ export function useCustomers() {
     isFormOpen,
     setIsFormOpen,
     editingCustomer,
-    formData,
-    setFormData,
     isAbonoOpen,
     setIsAbonoOpen,
     selectedCustomer,

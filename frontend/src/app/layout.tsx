@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { SWRProvider } from "@/components/SWRProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,9 +34,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <ServiceWorkerRegister />
-          {children}
-          <Toaster position="top-right" richColors />
+          <SWRProvider>
+            <ServiceWorkerRegister />
+            {children}
+            <Toaster position="top-right" richColors />
+          </SWRProvider>
         </ThemeProvider>
       </body>
     </html>

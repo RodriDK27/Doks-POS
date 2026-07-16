@@ -24,7 +24,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import { useRegister } from './hooks/useRegister';
 import { ManualTransactionDialog } from './components/ManualTransactionDialog';
-import { CloseRegisterDialog } from './components/CloseRegisterDialog';
+import dynamic from 'next/dynamic';
+
+const CloseRegisterDialog = dynamic(() => import('./components/CloseRegisterDialog').then(mod => mod.CloseRegisterDialog), {
+  ssr: false,
+});
 
 export default function RegisterPage() {
   const {

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Product, Supplier, Purchase } from '../types';
+import { ProductFormValues } from '../components/ProductFormDialog';
 
 export function useInventory() {
   const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS'>('CATALOG');
@@ -9,7 +11,6 @@ export function useInventory() {
   // Catálogo Estados
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -18,15 +19,7 @@ export function useInventory() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
-  const [formData, setFormData] = useState({
-    name: '',
-    barcode: '',
-    category: '',
-    purchasePrice: 0,
-    sellPrice: 0,
-    stock: 0,
-    minStock: 5,
-  });
+
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -36,7 +29,6 @@ export function useInventory() {
   // ESTADOS DE PROVEEDORES Y COMPRAS
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [suppliersLoading, setSuppliersLoading] = useState(false);
 
   // Modal Proveedor
   const [isSupplierOpen, setIsSupplierOpen] = useState(false);
@@ -67,53 +59,37 @@ export function useInventory() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activePurchaseDetail, setActivePurchaseDetail] = useState<Purchase | null>(null);
 
+  // SWR Queries
+  const { data: swrProducts, mutate: mutateProducts, isLoading: loading } = useSWR<Product[]>('/products');
+  const { data: swrCategories } = useSWR<string[]>('/products/categories');
+  const { data: swrSuppliers, mutate: mutateSuppliers, isLoading: suppliersLoading } = useSWR<Supplier[]>(activeTab === 'SUPPLIERS' ? '/suppliers' : null);
+  const { data: swrPurchases, mutate: mutatePurchases } = useSWR<Purchase[]>(activeTab === 'SUPPLIERS' ? '/purchases' : null);
+
+  // Sync state helpers
+  useEffect(() => {
+    if (swrProducts) setProducts(swrProducts);
+  }, [swrProducts]);
+
+  useEffect(() => {
+    if (swrCategories) setCategories(swrCategories);
+  }, [swrCategories]);
+
+  useEffect(() => {
+    if (swrSuppliers) setSuppliers(swrSuppliers);
+  }, [swrSuppliers]);
+
+  useEffect(() => {
+    if (swrPurchases) setPurchases(swrPurchases);
+  }, [swrPurchases]);
+
   const fetchInventory = async () => {
-    try {
-      setLoading(true);
-      const [productsRes, categoriesRes] = await Promise.all([
-        api.get('/products'),
-        api.get('/products/categories')
-      ]);
-      setProducts(productsRes.data);
-      setCategories(categoriesRes.data);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
-        console.error('Error fetching inventory:', error);
-        toast.error('No se pudo cargar el inventario.');
-      }
-    } finally {
-      setLoading(false);
-    }
+    mutateProducts();
   };
 
   const fetchSuppliersData = async () => {
-    try {
-      setSuppliersLoading(true);
-      const [suppliersRes, purchasesRes] = await Promise.all([
-        api.get('/suppliers'),
-        api.get('/purchases')
-      ]);
-      setSuppliers(suppliersRes.data);
-      setPurchases(purchasesRes.data);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
-        console.error('Error fetching suppliers:', error);
-        toast.error('No se pudieron cargar los datos de proveedores.');
-      }
-    } finally {
-      setSuppliersLoading(false);
-    }
+    mutateSuppliers();
+    mutatePurchases();
   };
-
-  useEffect(() => {
-    fetchInventory();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'SUPPLIERS') {
-      fetchSuppliersData();
-    }
-  }, [activeTab]);
 
   // Métricas
   const totalProductsCount = products.length;
@@ -140,60 +116,30 @@ export function useInventory() {
 
   const handleOpenAdd = () => {
     setEditingProduct(null);
-    setFormData({
-      name: '',
-      barcode: '',
-      category: '',
-      purchasePrice: 0,
-      sellPrice: 0,
-      stock: 0,
-      minStock: 5,
-    });
     setIsFormOpen(true);
     setTimeout(() => barcodeInputRef.current?.focus(), 150);
   };
 
   const handleOpenEdit = (product: Product) => {
     setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      barcode: product.barcode || '',
-      category: product.category || '',
-      purchasePrice: product.purchasePrice,
-      sellPrice: product.sellPrice,
-      stock: product.stock,
-      minStock: product.minStock,
-    });
     setIsFormOpen(true);
     setTimeout(() => barcodeInputRef.current?.focus(), 150);
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.name.trim()) {
-      toast.error('El nombre del producto es obligatorio.');
-      return;
-    }
-
-    if (formData.sellPrice <= 0 || formData.purchasePrice < 0) {
-      toast.error('Los precios deben ser valores positivos.');
-      return;
-    }
-
+  const handleFormSubmit = async (values: ProductFormValues) => {
     const payload = {
-      ...formData,
-      barcode: formData.barcode.trim() || null,
-      category: formData.category.trim() || null,
+      ...values,
+      barcode: values.barcode?.trim() || null,
+      category: values.category?.trim() || null,
     };
 
     try {
       if (editingProduct) {
         await api.patch(`/products/${editingProduct.id}`, payload);
-        toast.success(`Producto "${formData.name}" actualizado.`);
+        toast.success(`Producto "${values.name}" actualizado.`);
       } else {
         await api.post('/products', payload);
-        toast.success(`Producto "${formData.name}" registrado.`);
+        toast.success(`Producto "${values.name}" registrado.`);
       }
       setIsFormOpen(false);
       fetchInventory();
@@ -319,10 +265,6 @@ export function useInventory() {
     }
   };
 
-  const calculatedMargin = formData.sellPrice > 0 
-    ? ((formData.sellPrice - formData.purchasePrice) / formData.sellPrice) * 100 
-    : 0;
-
   const totalInvoiceSum = addedPurchaseItems.reduce((acc, i) => acc + (i.costPrice * i.quantity), 0);
 
   return {
@@ -340,8 +282,6 @@ export function useInventory() {
     isFormOpen,
     setIsFormOpen,
     editingProduct,
-    formData,
-    setFormData,
     isDeleteOpen,
     setIsDeleteOpen,
     productToDelete,
@@ -382,7 +322,6 @@ export function useInventory() {
     handleAddPurchaseItem,
     handleRemovePurchaseItemIndex,
     handlePurchaseSubmit,
-    calculatedMargin,
     totalInvoiceSum,
   };
 }

@@ -28,8 +28,15 @@ import { useInventory } from './hooks/useInventory';
 import { InventoryMetrics } from './components/InventoryMetrics';
 import { ProductFormDialog } from './components/ProductFormDialog';
 import { SupplierFormDialog } from './components/SupplierFormDialog';
-import { PurchaseDialog } from './components/PurchaseDialog';
-import { PurchaseDetailsDialog } from './components/PurchaseDetailsDialog';
+import dynamic from 'next/dynamic';
+
+const PurchaseDialog = dynamic(() => import('./components/PurchaseDialog').then(mod => mod.PurchaseDialog), {
+  ssr: false,
+});
+
+const PurchaseDetailsDialog = dynamic(() => import('./components/PurchaseDetailsDialog').then(mod => mod.PurchaseDetailsDialog), {
+  ssr: false,
+});
 
 export default function InventoryPage() {
   const {
@@ -47,8 +54,6 @@ export default function InventoryPage() {
     isFormOpen,
     setIsFormOpen,
     editingProduct,
-    formData,
-    setFormData,
     isDeleteOpen,
     setIsDeleteOpen,
     productToDelete,
@@ -89,7 +94,6 @@ export default function InventoryPage() {
     handleAddPurchaseItem,
     handleRemovePurchaseItemIndex,
     handlePurchaseSubmit,
-    calculatedMargin,
     totalInvoiceSum,
   } = useInventory();
 
@@ -483,12 +487,9 @@ export default function InventoryPage() {
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           editingProduct={editingProduct}
-          formData={formData}
-          setFormData={setFormData}
           onSubmit={handleFormSubmit}
           categories={categories}
           barcodeInputRef={barcodeInputRef}
-          calculatedMargin={calculatedMargin}
         />
 
         {/* DIÁLOGO: ELIMINACIÓN PRODUCTO */}

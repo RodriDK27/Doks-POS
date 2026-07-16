@@ -36,8 +36,6 @@ export default function CustomersPage() {
     isFormOpen,
     setIsFormOpen,
     editingCustomer,
-    formData,
-    setFormData,
     isAbonoOpen,
     setIsAbonoOpen,
     selectedCustomer,
@@ -272,8 +270,6 @@ export default function CustomersPage() {
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           editingCustomer={editingCustomer}
-          formData={formData}
-          setFormData={setFormData}
           onSubmit={handleFormSubmit}
         />
 

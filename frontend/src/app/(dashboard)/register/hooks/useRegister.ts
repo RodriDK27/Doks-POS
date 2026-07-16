@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -8,7 +9,6 @@ export function useRegister() {
   const { role } = useAuthStore();
   const [activeRegister, setActiveRegister] = useState<CashRegister | null>(null);
   const [history, setHistory] = useState<CashRegister[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // Estados Formulario Apertura
   const [openForm, setOpenForm] = useState({
@@ -44,32 +44,30 @@ export function useRegister() {
     0.5: 0,
   });
 
-  const fetchCajaData = async () => {
-    try {
-      setLoading(true);
-      const [activeRes, historyRes] = await Promise.all([
-        api.get('/register/active'),
-        api.get('/register'),
-      ]);
-      setActiveRegister(activeRes.data);
-      
-      const cleanHistory = historyRes.data.filter((c: any) => c.status === 'CERRADO');
-      setHistory(cleanHistory);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
-        console.error('Error loading register data:', error);
-        toast.error('No se pudo cargar la información de caja.');
-      }
-    } finally {
-      setLoading(false);
+  // SWR queries
+  const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading } = useSWR<CashRegister | null>(role !== 'NONE' ? '/register/active' : null);
+  const { data: swrHistory, mutate: mutateHistory, isLoading: historyLoading } = useSWR<CashRegister[]>(role !== 'NONE' ? '/register' : null);
+
+  const loading = activeRegisterLoading || historyLoading;
+
+  // Sync state
+  useEffect(() => {
+    if (swrActiveRegister !== undefined) {
+      setActiveRegister(swrActiveRegister);
     }
-  };
+  }, [swrActiveRegister]);
 
   useEffect(() => {
-    if (role !== 'NONE') {
-      fetchCajaData();
+    if (swrHistory) {
+      const cleanHistory = swrHistory.filter((c: any) => c.status === 'CERRADO');
+      setHistory(cleanHistory);
     }
-  }, [role]);
+  }, [swrHistory]);
+
+  const fetchCajaData = async () => {
+    mutateActiveRegister();
+    mutateHistory();
+  };
 
   const handleDownloadPdf = async (registerId: string) => {
     try {

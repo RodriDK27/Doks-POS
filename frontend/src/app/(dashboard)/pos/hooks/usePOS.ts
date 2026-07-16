@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import useSWR from 'swr';
 import { useCartStore } from '@/store/useCartStore';
 import { useOfflineStore } from '@/store/useOfflineStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -56,47 +57,48 @@ export function usePOS() {
   const amountPaidInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Cargar Catálogo Completo (con soporte offline)
-  const loadCatalog = async () => {
+  // SWR queries con caché global
+  const { data: swrProducts, mutate: mutateProducts } = useSWR<Product[]>(role !== 'NONE' && isOnline ? '/products' : null);
+  const { data: swrCategories } = useSWR<string[]>(role !== 'NONE' && isOnline ? '/products/categories' : null);
+  const { data: swrCustomers } = useSWR<Customer[]>(role !== 'NONE' && isOnline ? '/customers' : null);
+
+  // Sincronizar catálogo en línea
+  useEffect(() => {
+    if (isOnline && swrProducts) {
+      setCatalogProducts(swrProducts);
+      if (dbHelper) {
+        dbHelper.saveProducts(swrProducts);
+      }
+    }
+  }, [swrProducts, isOnline]);
+
+  // Sincronizar categorías en línea
+  useEffect(() => {
+    if (isOnline && swrCategories) {
+      setCategories(swrCategories);
+    }
+  }, [swrCategories, isOnline]);
+
+  // Sincronizar clientes en línea
+  useEffect(() => {
+    if (isOnline && swrCustomers) {
+      setCustomers(swrCustomers);
+    }
+  }, [swrCustomers, isOnline]);
+
+  // Cargar desde IndexedDB si estamos sin conexión
+  useEffect(() => {
     if (!isOnline && dbHelper) {
-      try {
-        const localProds = await dbHelper.getProducts();
+      dbHelper.getProducts().then((localProds) => {
         setCatalogProducts(localProds);
         const localCats = Array.from(new Set(localProds.map(p => p.category).filter((c): c is string => !!c)));
         setCategories(localCats);
         toast.info('Cargado catálogo local desde memoria (Sin conexión).');
-      } catch (err) {
+      }).catch((err) => {
         console.error('Error al cargar catálogo local:', err);
-      }
-      return;
+      });
     }
-
-    try {
-      const [prodRes, catRes, custRes] = await Promise.all([
-        api.get('/products'),
-        api.get('/products/categories'),
-        api.get('/customers')
-      ]);
-      setCatalogProducts(prodRes.data);
-      setCategories(catRes.data);
-      setCustomers(custRes.data);
-
-      if (dbHelper) {
-        await dbHelper.saveProducts(prodRes.data);
-      }
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
-        console.error('Error loading POS catalog:', error);
-        toast.error('No se pudo cargar el catálogo táctil.');
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (role !== 'NONE') {
-      loadCatalog();
-    }
-  }, [role, isOnline]);
+  }, [isOnline]);
 
   const handleTouchAdd = (product: Product) => {
     if (product.stock <= 0) {
@@ -227,7 +229,7 @@ export function usePOS() {
       clearCart();
       setSelectedCustomerId('');
       // Recargar catálogo para actualizar el stock local
-      loadCatalog();
+      mutateProducts();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Error al procesar la venta.');
     }
