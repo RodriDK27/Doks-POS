@@ -69,14 +69,40 @@ export default function DashboardLayout({
       toast.warning('Sin conexión a internet. Operando en modo local.');
     };
 
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (
+        event.reason?.name === 'ChunkLoadError' ||
+        event.reason?.message?.includes('hmr-client') ||
+        event.reason?.message?.includes('Turbopack')
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    const handleWindowError = (event: ErrorEvent) => {
+      if (
+        event.message?.includes('Router action dispatched before initialization') ||
+        event.message?.includes('hmr-client') ||
+        event.error?.message?.includes('Router action dispatched before initialization')
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleWindowError);
 
     updateSyncQueueCount();
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('error', handleWindowError);
     };
   }, []);
 
@@ -111,8 +137,10 @@ export default function DashboardLayout({
     try {
       const response = await api.get('/register/active');
       setActiveRegister(response.data);
-    } catch (error) {
-      console.error('Error checking active register:', error);
+    } catch (error: any) {
+      if (error.response?.status !== 401) {
+        console.error('Error checking active register:', error);
+      }
     } finally {
       setLoading(false);
     }
