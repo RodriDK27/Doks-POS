@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Lock, Delete, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { parseAxiosError } from '@/lib/errorMapper';
 
 interface PinLockGuardProps {
   children: React.ReactNode;
@@ -20,7 +21,9 @@ export default function PinLockGuard({ children }: PinLockGuardProps) {
 
   // Evitar error de hidratación en NextJS debido al middleware persistido
   useEffect(() => {
-    setMounted(true);
+    Promise.resolve().then(() => {
+      setMounted(true);
+    });
   }, []);
 
   const handleKeyPress = (num: string) => {
@@ -37,7 +40,7 @@ export default function PinLockGuard({ children }: PinLockGuardProps) {
     setPin('');
   };
 
-  const verifyPinSubmit = async (pinValue: string) => {
+  const verifyPinSubmit = useCallback(async (pinValue: string) => {
     try {
       setLoading(true);
       const response = await api.post('/auth/verify-pin', { pin: pinValue });
@@ -51,19 +54,21 @@ export default function PinLockGuard({ children }: PinLockGuardProps) {
         toast.error('Acceso denegado. Se requiere PIN de administrador para ver esta pantalla.');
         setPin('');
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'PIN de seguridad incorrecto.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'PIN de seguridad incorrecto.'));
       setPin('');
     } finally {
       setLoading(false);
     }
-  };
+  }, [setRole]);
 
   useEffect(() => {
     if (pin.length === 4) {
-      verifyPinSubmit(pin);
+      Promise.resolve().then(() => {
+        verifyPinSubmit(pin);
+      });
     }
-  }, [pin]);
+  }, [pin, verifyPinSubmit]);
 
   if (!mounted) {
     return (

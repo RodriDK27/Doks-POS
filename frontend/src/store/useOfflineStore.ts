@@ -3,6 +3,21 @@ import dbHelper from '../lib/indexedDb';
 import api from '../lib/api';
 import { toast } from 'sonner';
 
+interface QueuedSale {
+  tempId: string;
+  discount: number;
+  paymentMethod: string;
+  amountPaid: number;
+  customerId?: string;
+  items: Array<{
+    productId?: string;
+    quantity: number;
+    genericName?: string;
+    genericPrice?: number;
+  }>;
+  createdAt?: string;
+}
+
 interface OfflineState {
   isOnline: boolean;
   setIsOnline: (online: boolean) => void;
@@ -23,7 +38,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
   updateSyncQueueCount: async () => {
     if (!dbHelper) return;
     try {
-      const sales = await dbHelper.getQueuedSales();
+      const sales = await dbHelper.getQueuedSales<QueuedSale>();
       set({ syncQueueCount: sales.length });
     } catch (err) {
       console.error('Error updating sync queue count:', err);
@@ -32,7 +47,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
   syncOfflineSales: async () => {
     if (!dbHelper) return;
     try {
-      const sales = await dbHelper.getQueuedSales();
+      const sales = await dbHelper.getQueuedSales<QueuedSale>();
       if (sales.length === 0) return;
 
       toast.info(`Sincronizando ${sales.length} venta(s) guardadas sin conexión...`);

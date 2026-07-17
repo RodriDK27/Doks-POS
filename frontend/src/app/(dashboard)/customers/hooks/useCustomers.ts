@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Customer } from '../types';
 import { CustomerFormValues } from '../components/CustomerFormDialog';
-
+import { parseAxiosError } from '@/lib/errorMapper';
 export function useCustomers() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
   
   // Filtros
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,12 +33,7 @@ export function useCustomers() {
   // SWR Query
   const { data: swrCustomers, mutate: mutateCustomers, isLoading: loading } = useSWR<Customer[]>('/customers');
 
-  // Sync state
-  useEffect(() => {
-    if (swrCustomers) {
-      setCustomers(swrCustomers);
-    }
-  }, [swrCustomers]);
+  const customers = swrCustomers ?? [];
 
   const fetchCustomers = async () => {
     mutateCustomers();
@@ -95,8 +89,8 @@ export function useCustomers() {
       }
       setIsFormOpen(false);
       fetchCustomers();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al guardar el cliente.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al guardar el cliente.'));
     }
   };
 
@@ -130,8 +124,8 @@ export function useCustomers() {
       setAbonoAmount(0);
       setAbonoNotes('');
       fetchCustomers();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al registrar abono.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al registrar abono.'));
     }
   };
 
@@ -142,7 +136,7 @@ export function useCustomers() {
       setHistoryCustomer(response.data);
       setIsHistoryOpen(true);
     } catch (error) {
-      toast.error('No se pudo cargar el historial del cliente.');
+      toast.error(parseAxiosError(error, 'No se pudo cargar el historial del cliente.'));
     }
   };
 
@@ -165,7 +159,7 @@ export function useCustomers() {
       setCustomerToDelete(null);
       fetchCustomers();
     } catch (error) {
-      toast.error('No se pudo eliminar el cliente.');
+      toast.error(parseAxiosError(error, 'No se pudo eliminar el cliente.'));
     }
   };
 

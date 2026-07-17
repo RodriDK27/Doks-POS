@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import { toast } from 'sonner';
-import { Lock, Delete, Store } from 'lucide-react';
+import { Delete, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { parseAxiosError } from '@/lib/errorMapper';
 
 export default function GlobalLockScreen() {
   const { setRole } = useAuthStore();
@@ -26,7 +27,7 @@ export default function GlobalLockScreen() {
     setPin('');
   };
 
-  const verifyPinSubmit = async (pinValue: string) => {
+  const verifyPinSubmit = useCallback(async (pinValue: string) => {
     try {
       setLoading(true);
       const response = await api.post('/auth/verify-pin', { pin: pinValue });
@@ -34,19 +35,21 @@ export default function GlobalLockScreen() {
 
       setRole(role, token);
       toast.success(`Bienvenido al sistema. Rol: ${role}`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'PIN de acceso incorrecto.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'PIN de acceso incorrecto.'));
       setPin('');
     } finally {
       setLoading(false);
     }
-  };
+  }, [setRole]);
 
   useEffect(() => {
     if (pin.length === 4) {
-      verifyPinSubmit(pin);
+      Promise.resolve().then(() => {
+        verifyPinSubmit(pin);
+      });
     }
-  }, [pin]);
+  }, [pin, verifyPinSubmit]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -57,7 +60,7 @@ export default function GlobalLockScreen() {
             <Store className="h-6 w-6" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-xl font-black text-slate-800 tracking-tight">Dok's POS</h1>
+            <h1 className="text-xl font-black text-slate-800 tracking-tight">{"Dok's POS"}</h1>
             <p className="text-xs text-slate-400 font-medium px-4">
               Introduce tu PIN personal de acceso para ingresar al sistema
             </p>

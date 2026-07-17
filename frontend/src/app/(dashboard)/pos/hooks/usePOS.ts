@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import { useCartStore } from '@/store/useCartStore';
 import { useOfflineStore } from '@/store/useOfflineStore';
@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import dbHelper from '@/lib/indexedDb';
+import { parseAxiosError } from '@/lib/errorMapper';
 import { Product, Customer } from '../types';
 
 export function usePOS() {
@@ -28,10 +29,9 @@ export function usePOS() {
   } = useCartStore();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+  const [localProducts, setLocalProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('TODOS');
-  const [categories, setCategories] = useState<string[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [localCategories, setLocalCategories] = useState<string[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   
   // CONTROL DE VISTA PESTAÑA PARA TABLET / MÓVIL (CATALOG vs CART vs PAYMENT)
@@ -51,7 +51,6 @@ export function usePOS() {
   // Estados de cobro
   const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'FIADO'>('EFECTIVO');
   const [amountPaid, setAmountPaid] = useState<number>(0);
-  const [changeAmount, setChangeAmount] = useState<number>(0);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const amountPaidInputRef = useRef<HTMLInputElement>(null);
@@ -62,39 +61,35 @@ export function usePOS() {
   const { data: swrCategories } = useSWR<string[]>(role !== 'NONE' && isOnline ? '/products/categories' : null);
   const { data: swrCustomers } = useSWR<Customer[]>(role !== 'NONE' && isOnline ? '/customers' : null);
 
-  // Sincronizar catálogo en línea
+  // Compute derived state
+  const catalogProducts = useMemo(() => {
+    return isOnline ? (swrProducts ?? []) : localProducts;
+  }, [isOnline, swrProducts, localProducts]);
+
+  const categories = useMemo(() => {
+    return isOnline ? (swrCategories ?? []) : localCategories;
+  }, [isOnline, swrCategories, localCategories]);
+
+  const customers = useMemo(() => {
+    return isOnline ? (swrCustomers ?? []) : [];
+  }, [isOnline, swrCustomers]);
+
+  // Guardar catálogo en IndexedDB al cambiar
   useEffect(() => {
-    if (isOnline && swrProducts) {
-      setCatalogProducts(swrProducts);
-      if (dbHelper) {
-        dbHelper.saveProducts(swrProducts);
-      }
+    if (isOnline && swrProducts && dbHelper) {
+      dbHelper.saveProducts(swrProducts);
     }
   }, [swrProducts, isOnline]);
-
-  // Sincronizar categorías en línea
-  useEffect(() => {
-    if (isOnline && swrCategories) {
-      setCategories(swrCategories);
-    }
-  }, [swrCategories, isOnline]);
-
-  // Sincronizar clientes en línea
-  useEffect(() => {
-    if (isOnline && swrCustomers) {
-      setCustomers(swrCustomers);
-    }
-  }, [swrCustomers, isOnline]);
 
   // Cargar desde IndexedDB si estamos sin conexión
   useEffect(() => {
     if (!isOnline && dbHelper) {
-      dbHelper.getProducts().then((localProds) => {
-        setCatalogProducts(localProds);
+      dbHelper.getProducts<Product>().then((localProds) => {
+        setLocalProducts(localProds);
         const localCats = Array.from(new Set(localProds.map(p => p.category).filter((c): c is string => !!c)));
-        setCategories(localCats);
+        setLocalCategories(localCats);
         toast.info('Cargado catálogo local desde memoria (Sin conexión).');
-      }).catch((err) => {
+      }).catch((err: unknown) => {
         console.error('Error al cargar catálogo local:', err);
       });
     }
@@ -142,27 +137,27 @@ export function usePOS() {
     return matchesSearch && matchesCategory;
   });
 
+  const total = getTotal();
+  const changeAmount = (paymentMethod === 'EFECTIVO' && amountPaid >= total) ? amountPaid - total : 0;
+
   useEffect(() => {
-    const total = getTotal();
-    if (paymentMethod !== 'EFECTIVO') {
-      setAmountPaid(total);
-      setChangeAmount(0);
-    } else {
-      if (amountPaid >= total) {
-        setChangeAmount(amountPaid - total);
-      } else {
-        setChangeAmount(0);
+    const totalVal = getTotal();
+    Promise.resolve().then(() => {
+      if (paymentMethod !== 'EFECTIVO') {
+        setAmountPaid(totalVal);
       }
-    }
-  }, [amountPaid, paymentMethod, cartItems, discount]);
+    });
+  }, [paymentMethod, cartItems, discount, getTotal]);
 
   useEffect(() => {
-    const total = getTotal();
-    setAmountPaid(total);
-  }, [cartItems, discount]);
+    const totalVal = getTotal();
+    Promise.resolve().then(() => {
+      setAmountPaid(totalVal);
+    });
+  }, [cartItems, discount, getTotal]);
 
-  const handleCheckout = async () => {
-    const total = getTotal();
+  const handleCheckout = useCallback(async () => {
+    const totalVal = getTotal();
     const customer = customers.find(c => c.id === selectedCustomerId);
 
     if (paymentMethod === 'FIADO') {
@@ -170,7 +165,7 @@ export function usePOS() {
         toast.error('Debe seleccionar un cliente registrado para poder fiar la venta.');
         return;
       }
-      if (customer && customer.creditLimit > 0 && (customer.currentDebt + total) > customer.creditLimit) {
+      if (customer && customer.creditLimit > 0 && (customer.currentDebt + totalVal) > customer.creditLimit) {
         toast.error(`El monto total excede el límite de crédito del cliente ($${customer.creditLimit}).`);
         return;
       }
@@ -179,7 +174,7 @@ export function usePOS() {
     const payload = {
       discount,
       paymentMethod,
-      amountPaid: paymentMethod === 'EFECTIVO' ? amountPaid : total,
+      amountPaid: paymentMethod === 'EFECTIVO' ? amountPaid : totalVal,
       customerId: selectedCustomerId || undefined,
       items: cartItems.map(item => ({
         productId: item.id.startsWith('generic-') ? undefined : item.id,
@@ -204,13 +199,13 @@ export function usePOS() {
           }
           return p;
         });
-        setCatalogProducts(updatedProducts);
+        setLocalProducts(updatedProducts);
         await dbHelper.saveProducts(updatedProducts);
 
         toast.success('Venta guardada localmente. Se sincronizará al recuperar la conexión.', { duration: 8005 });
         clearCart();
         setSelectedCustomerId('');
-      } catch (err) {
+      } catch {
         toast.error('Error al guardar la venta de forma local.');
       }
       return;
@@ -230,10 +225,23 @@ export function usePOS() {
       setSelectedCustomerId('');
       // Recargar catálogo para actualizar el stock local
       mutateProducts();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al procesar la venta.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al procesar la venta.'));
     }
-  };
+  }, [
+    getTotal,
+    customers,
+    selectedCustomerId,
+    paymentMethod,
+    discount,
+    amountPaid,
+    cartItems,
+    isOnline,
+    updateSyncQueueCount,
+    catalogProducts,
+    clearCart,
+    mutateProducts
+  ]);
 
   const handleSuspendCart = () => {
     suspendCart(suspendName.trim());
@@ -305,7 +313,7 @@ export function usePOS() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cartItems, paymentMethod, posTab, amountPaid, selectedCustomerId, canCheckout]);
+  }, [cartItems, paymentMethod, posTab, amountPaid, selectedCustomerId, canCheckout, handleCheckout, isGenericOpen, isShortcutsHelpOpen, isSuspendModalOpen, isSuspendedOpen]);
 
   // Autofoco automático al cambiar a la vista de pago
   useEffect(() => {

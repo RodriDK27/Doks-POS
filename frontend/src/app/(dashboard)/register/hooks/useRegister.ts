@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { CashRegister } from '../types';
-
+import { parseAxiosError } from '@/lib/errorMapper';
 export function useRegister() {
   const { role } = useAuthStore();
-  const [activeRegister, setActiveRegister] = useState<CashRegister | null>(null);
-  const [history, setHistory] = useState<CashRegister[]>([]);
+
 
   // Estados Formulario Apertura
   const [openForm, setOpenForm] = useState({
@@ -50,19 +49,8 @@ export function useRegister() {
 
   const loading = activeRegisterLoading || historyLoading;
 
-  // Sync state
-  useEffect(() => {
-    if (swrActiveRegister !== undefined) {
-      setActiveRegister(swrActiveRegister);
-    }
-  }, [swrActiveRegister]);
-
-  useEffect(() => {
-    if (swrHistory) {
-      const cleanHistory = swrHistory.filter((c: any) => c.status === 'CERRADO');
-      setHistory(cleanHistory);
-    }
-  }, [swrHistory]);
+  const activeRegister = swrActiveRegister ?? null;
+  const history = swrHistory ? swrHistory.filter((c) => c.status === 'CERRADO') : [];
 
   const fetchCajaData = async () => {
     mutateActiveRegister();
@@ -86,7 +74,7 @@ export function useRegister() {
       toast.success('Reporte descargado correctamente.');
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      toast.error('No se pudo descargar el reporte de caja.');
+      toast.error(parseAxiosError(error, 'No se pudo descargar el reporte de caja.'));
     }
   };
 
@@ -116,8 +104,8 @@ export function useRegister() {
       setOpenForm({ openedBy: '', initialBalance: 0 });
       fetchCajaData();
       setTimeout(() => window.location.reload(), 500);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al abrir caja.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al abrir caja.'));
     }
   };
 
@@ -142,8 +130,8 @@ export function useRegister() {
       setIsAdjOpen(false);
       setAdjForm({ type: 'EGRESO', amount: 0, description: '' });
       fetchCajaData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al guardar movimiento.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al guardar movimiento.'));
     }
   };
 
@@ -191,8 +179,8 @@ export function useRegister() {
 
       fetchCajaData();
       setTimeout(() => window.location.reload(), 1500);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al cerrar la caja.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al cerrar la caja.'));
     }
   };
 

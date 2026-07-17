@@ -8,8 +8,9 @@ class IndexedDBHelper {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
 
-      request.onupgradeneeded = (event: any) => {
-        const db = event.target.result;
+      request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+        const target = event.target as IDBOpenDBRequest;
+        const db = target.result;
         if (!db.objectStoreNames.contains('products')) {
           db.createObjectStore('products', { keyPath: 'id' });
         }
@@ -21,7 +22,7 @@ class IndexedDBHelper {
   }
 
   // --- Caché del catálogo de productos ---
-  async saveProducts(products: any[]): Promise<void> {
+  async saveProducts<T>(products: T[]): Promise<void> {
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('products', 'readwrite');
@@ -37,20 +38,20 @@ class IndexedDBHelper {
     });
   }
 
-  async getProducts(): Promise<any[]> {
+  async getProducts<T>(): Promise<T[]> {
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('products', 'readonly');
       const store = transaction.objectStore('products');
       const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => resolve(request.result as T[]);
       request.onerror = () => reject(request.error);
     });
   }
 
   // --- Cola de ventas offline ---
-  async queueSale(sale: any): Promise<void> {
+  async queueSale<T extends Record<string, unknown>>(sale: T): Promise<void> {
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('sales_queue', 'readwrite');
@@ -66,14 +67,14 @@ class IndexedDBHelper {
     });
   }
 
-  async getQueuedSales(): Promise<any[]> {
+  async getQueuedSales<T>(): Promise<T[]> {
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('sales_queue', 'readonly');
       const store = transaction.objectStore('sales_queue');
       const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => resolve(request.result as T[]);
       request.onerror = () => reject(request.error);
     });
   }

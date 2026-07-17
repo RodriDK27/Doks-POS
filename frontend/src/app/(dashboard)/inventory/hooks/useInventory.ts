@@ -1,16 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Product, Supplier, Purchase } from '../types';
 import { ProductFormValues } from '../components/ProductFormDialog';
-
+import { parseAxiosError } from '@/lib/errorMapper';
 export function useInventory() {
   const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS'>('CATALOG');
-  
-  // Catálogo Estados
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -25,10 +21,6 @@ export function useInventory() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
-
-  // ESTADOS DE PROVEEDORES Y COMPRAS
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
 
   // Modal Proveedor
   const [isSupplierOpen, setIsSupplierOpen] = useState(false);
@@ -65,22 +57,11 @@ export function useInventory() {
   const { data: swrSuppliers, mutate: mutateSuppliers, isLoading: suppliersLoading } = useSWR<Supplier[]>(activeTab === 'SUPPLIERS' ? '/suppliers' : null);
   const { data: swrPurchases, mutate: mutatePurchases } = useSWR<Purchase[]>(activeTab === 'SUPPLIERS' ? '/purchases' : null);
 
-  // Sync state helpers
-  useEffect(() => {
-    if (swrProducts) setProducts(swrProducts);
-  }, [swrProducts]);
-
-  useEffect(() => {
-    if (swrCategories) setCategories(swrCategories);
-  }, [swrCategories]);
-
-  useEffect(() => {
-    if (swrSuppliers) setSuppliers(swrSuppliers);
-  }, [swrSuppliers]);
-
-  useEffect(() => {
-    if (swrPurchases) setPurchases(swrPurchases);
-  }, [swrPurchases]);
+  // Derived dynamic variables
+  const products = swrProducts ?? [];
+  const categories = swrCategories ?? [];
+  const suppliers = swrSuppliers ?? [];
+  const purchases = swrPurchases ?? [];
 
   const fetchInventory = async () => {
     mutateProducts();
@@ -143,9 +124,8 @@ export function useInventory() {
       }
       setIsFormOpen(false);
       fetchInventory();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || 'Error al guardar el producto.';
-      toast.error(typeof errorMsg === 'object' ? errorMsg[0] : errorMsg);
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al guardar el producto.'));
     }
   };
 
@@ -163,7 +143,7 @@ export function useInventory() {
       setProductToDelete(null);
       fetchInventory();
     } catch (error) {
-      toast.error('No se pudo eliminar el producto.');
+      toast.error(parseAxiosError(error, 'No se pudo eliminar el producto.'));
     }
   };
 
@@ -181,8 +161,8 @@ export function useInventory() {
       setIsSupplierOpen(false);
       setSupplierForm({ name: '', phone: '', address: '' });
       fetchSuppliersData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al guardar proveedor.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al guardar proveedor.'));
     }
   };
 
@@ -260,8 +240,8 @@ export function useInventory() {
       setIsPurchaseOpen(false);
       fetchInventory();
       fetchSuppliersData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al guardar la compra.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al guardar la compra.'));
     }
   };
 

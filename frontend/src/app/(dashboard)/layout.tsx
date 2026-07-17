@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import axios from 'axios';
+import { parseAxiosError } from '@/lib/errorMapper';
 import { cn } from '@/lib/utils';
 import { 
   Store, 
@@ -35,6 +37,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 interface ActiveRegister {
   openedBy: string;
   expectedBalance: number;
@@ -62,7 +69,7 @@ export default function DashboardLayout({
 
   const { setIsOnline, updateSyncQueueCount, syncQueueCount, isOnline } = useOfflineStore();
 
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
   useEffect(() => {
@@ -99,7 +106,7 @@ export default function DashboardLayout({
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
     };
 
@@ -110,7 +117,9 @@ export default function DashboardLayout({
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstallable(false);
+      Promise.resolve().then(() => {
+        setIsInstallable(false);
+      });
     }
 
     updateSyncQueueCount();
@@ -122,7 +131,7 @@ export default function DashboardLayout({
       window.removeEventListener('error', handleWindowError);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, []);
+  }, [setIsOnline, updateSyncQueueCount]);
 
   const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,8 +153,8 @@ export default function DashboardLayout({
       setNewPin('');
       setConfirmNewPin('');
       logout();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al cambiar el PIN.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al cambiar el PIN.'));
     } finally {
       setPinLoading(false);
     }
@@ -164,8 +173,8 @@ export default function DashboardLayout({
     try {
       const response = await api.get('/register/active');
       setActiveRegister(response.data);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status !== 401) {
         console.error('Error checking active register:', error);
       }
     } finally {
@@ -174,10 +183,14 @@ export default function DashboardLayout({
   };
 
   useEffect(() => {
-    setMounted(true);
-    if (role !== 'NONE') {
-      checkActiveRegister();
-    }
+    Promise.resolve().then(() => {
+      setMounted(true);
+      if (role !== 'NONE') {
+        checkActiveRegister();
+      } else {
+        setActiveRegister(null);
+      }
+    });
   }, [pathname, role]);
 
   if (!mounted) {
@@ -207,7 +220,7 @@ export default function DashboardLayout({
       <header className="h-14 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-5 sticky top-0 z-50 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
         <div className="flex items-center gap-2">
           <Store className="h-5 w-5 text-indigo-600" />
-          <span className="font-black text-sm tracking-tight text-slate-800">Dok's POS</span>
+          <span className="font-black text-sm tracking-tight text-slate-800">{"Dok's POS"}</span>
         </div>
 
         {/* Estatus Caja chica y Rol de seguridad */}
