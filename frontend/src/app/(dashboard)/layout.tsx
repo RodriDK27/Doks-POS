@@ -15,7 +15,10 @@ import {
   Lock,
   KeyRound,
   Sun,
-  Moon
+  Moon,
+  Smartphone,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -59,6 +62,9 @@ export default function DashboardLayout({
 
   const { setIsOnline, updateSyncQueueCount, syncQueueCount, isOnline } = useOfflineStore();
 
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
@@ -91,10 +97,21 @@ export default function DashboardLayout({
       }
     };
 
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
     window.addEventListener('error', handleWindowError);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstallable(false);
+    }
 
     updateSyncQueueCount();
 
@@ -103,6 +120,7 @@ export default function DashboardLayout({
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
 
@@ -131,6 +149,15 @@ export default function DashboardLayout({
     } finally {
       setPinLoading(false);
     }
+  };
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User choice for PWA installation: ${outcome}`);
+    setDeferredPrompt(null);
+    setIsInstallable(false);
   };
 
   const checkActiveRegister = async () => {
@@ -185,13 +212,29 @@ export default function DashboardLayout({
 
         {/* Estatus Caja chica y Rol de seguridad */}
         <div className="flex items-center gap-2">
-          {!isOnline && (
-            <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">
-              Offline
+          {isInstallable && (
+            <button
+              onClick={handleInstallClick}
+              title="Instalar Aplicación (PWA)"
+              className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider transition-all animate-pulse shadow-sm shadow-indigo-600/10 cursor-pointer"
+            >
+              <Smartphone className="h-3 w-3 shrink-0" />
+              <span className="hidden sm:inline">Instalar App</span>
+            </button>
+          )}
+          {isOnline ? (
+            <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/25 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">
+              <Wifi className="h-3 w-3 text-emerald-500" />
+              <span className="hidden sm:inline">En línea</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 bg-rose-50 dark:bg-rose-950/25 text-rose-700 dark:text-rose-400 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
+              <WifiOff className="h-3 w-3 text-rose-500" />
+              <span>Offline</span>
             </div>
           )}
           {syncQueueCount > 0 && (
-            <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
+            <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/25 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping"></span>
               Pendientes: {syncQueueCount}
             </div>

@@ -19,6 +19,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Dok's POS - Punto de Venta",
   description: "Sistema moderno e intuitivo de punto de venta para abarrotes y misceláneas",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Doks POS",
+  },
+};
+
+export const viewport = {
+  themeColor: "#4f46e5",
 };
 
 export default function RootLayout({
