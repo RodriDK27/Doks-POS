@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import axios from 'axios';
+import { parseAxiosError } from '@/lib/errorMapper';
 
 export interface DashboardStats {
   earningsToday: number;
@@ -36,6 +38,22 @@ export interface ActiveRegister {
   initialBalance: number;
   expectedBalance: number;
   openedAt: string;
+  transactions?: Transaction[];
+}
+
+interface Transaction {
+  id: string;
+  type: 'INGRESO' | 'EGRESO';
+  amount: number;
+  description: string;
+  createdAt: string;
+}
+
+interface Sale {
+  id: number;
+  total: number;
+  paymentMethod: string;
+  createdAt: string;
 }
 
 export interface FeedEvent {
@@ -57,7 +75,7 @@ export function useDashboard() {
   const [activeRegister, setActiveRegister] = useState<ActiveRegister | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
 
   // Acciones rápidas
   const [selectedProduct, setSelectedProduct] = useState<LowStockProduct | null>(null);
@@ -70,8 +88,29 @@ export function useDashboard() {
   const [isAbonoOpen, setIsAbonoOpen] = useState(false);
 
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [salesGoal, setSalesGoal] = useState<number>(5000);
 
-  const fetchDashboardData = async () => {
+  // Inicializar meta desde localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedGoal = localStorage.getItem('doks_sales_goal');
+      if (savedGoal) {
+        Promise.resolve().then(() => {
+          setSalesGoal(Number(savedGoal));
+        });
+      }
+    }
+  }, []);
+
+  const updateSalesGoal = (newGoal: number) => {
+    setSalesGoal(newGoal);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('doks_sales_goal', newGoal.toString());
+    }
+    toast.success(`Meta de ventas diarias actualizada a $${newGoal.toLocaleString('es-MX')}`);
+  };
+
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const [statsRes, lowStockRes, customersRes, registerRes, salesRes] = await Promise.all([
@@ -86,7 +125,7 @@ export function useDashboard() {
       setLowStockProducts(lowStockRes.data);
       setSales(salesRes.data);
       
-      const debtorClients = customersRes.data.filter((c: any) => c.currentDebt > 0);
+      const debtorClients = (customersRes.data as DebtorCustomer[]).filter((c) => c.currentDebt > 0);
       setDebtors(debtorClients.slice(0, 4));
 
       setActiveRegister(registerRes.data);
@@ -95,8 +134,8 @@ export function useDashboard() {
       const events: FeedEvent[] = [];
 
       // 1. Agregar las últimas ventas al feed
-      const salesData = salesRes.data.slice(0, 5);
-      salesData.forEach((s: any) => {
+      const salesData = (salesRes.data as Sale[]).slice(0, 5);
+      salesData.forEach((s) => {
         events.push({
           id: `sale-${s.id}`,
           time: new Date(s.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
@@ -109,8 +148,9 @@ export function useDashboard() {
       });
 
       // 2. Agregar transacciones de caja de la sesión activa
-      if (registerRes.data && registerRes.data.transactions) {
-        registerRes.data.transactions.slice(0, 3).forEach((t: any) => {
+      const activeRegData = registerRes.data as ActiveRegister | null;
+      if (activeRegData && activeRegData.transactions) {
+        activeRegData.transactions.slice(0, 3).forEach((t) => {
           events.push({
             id: `trans-${t.id}`,
             time: new Date(t.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
@@ -125,7 +165,8 @@ export function useDashboard() {
       }
 
       // 3. Agregar alertas de stock
-      lowStockRes.data.slice(0, 2).forEach((p: any) => {
+      const lowStockData = lowStockRes.data as LowStockProduct[];
+      lowStockData.slice(0, 2).forEach((p) => {
         events.push({
           id: `alert-${p.id}`,
           time: 'Alerta',
@@ -138,27 +179,31 @@ export function useDashboard() {
       });
 
       setTimelineEvents(events.slice(0, 6)); 
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status !== 401) {
         console.error('Error loading dashboard:', error);
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (role !== 'NONE') {
-      fetchDashboardData();
+      Promise.resolve().then(() => {
+        fetchDashboardData();
+      });
     }
-  }, [role]);
+  }, [role, fetchDashboardData]);
 
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' }) + ' • ' + now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
     };
-    updateClock();
+    Promise.resolve().then(() => {
+      updateClock();
+    });
     const interval = setInterval(updateClock, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -175,7 +220,7 @@ export function useDashboard() {
       setRestockQty(0);
       fetchDashboardData();
     } catch (error) {
-      toast.error('Error al actualizar inventario.');
+      toast.error(parseAxiosError(error, 'Error al actualizar inventario.'));
     }
   };
 
@@ -192,8 +237,8 @@ export function useDashboard() {
       setAbonoAmount(0);
       setAbonoNotes('');
       fetchDashboardData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al procesar abono.');
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al procesar abono.'));
     }
   };
 
@@ -208,7 +253,7 @@ export function useDashboard() {
       };
     });
 
-    sales.forEach((sale: any) => {
+    sales.forEach((sale) => {
       const saleDate = new Date(sale.createdAt);
       const today = new Date();
       today.setHours(23, 59, 59, 999);
@@ -225,9 +270,8 @@ export function useDashboard() {
     return data;
   }, [sales]);
 
-  const salesGoal = 5000; 
   const todayEarnings = stats?.earningsToday || 0;
-  const goalPercentage = Math.min(100, (todayEarnings / salesGoal) * 100);
+  const goalPercentage = Math.min(100, salesGoal > 0 ? (todayEarnings / salesGoal) * 100 : 0);
 
   return {
     role,
@@ -248,12 +292,14 @@ export function useDashboard() {
     abonoAmount,
     setAbonoAmount,
     abonoNotes,
+    setConfirmNewPin: () => {}, // placeholder to match signature if needed
     setAbonoNotes,
     isAbonoOpen,
     setIsAbonoOpen,
     currentTime,
     weeklySalesData,
     salesGoal,
+    updateSalesGoal,
     todayEarnings,
     goalPercentage,
     fetchDashboardData,
