@@ -3,6 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Definir URL ficticia para pasar validaciones de Prisma 7 durante la compilación
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
 # Copiar archivos de dependencias
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -21,6 +24,8 @@ RUN npm run build
 FROM node:22-alpine AS runner
 
 WORKDIR /app
+
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
 # Copiar package.json y prisma
 COPY package*.json ./
