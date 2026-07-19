@@ -107,16 +107,16 @@ export default function InventoryPage() {
             <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
             Control de Stock
           </span>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Inventario de Tienda</h1>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Inventario de Tienda</h1>
         </div>
 
         {/* SECTOR DE PESTAÑAS (TABS RESPONSIVOS TÁCTILES) */}
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full max-w-md shrink-0">
+        <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl w-full max-w-md shrink-0">
           <Button
             variant={activeTab === 'CATALOG' ? 'default' : 'ghost'}
             className={cn(
               "flex-1 h-10 font-extrabold text-xs rounded-xl transition-all",
-              activeTab === 'CATALOG' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+              activeTab === 'CATALOG' ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"
             )}
             onClick={() => setActiveTab('CATALOG')}
           >
@@ -126,7 +126,7 @@ export default function InventoryPage() {
             variant={activeTab === 'SUPPLIERS' ? 'default' : 'ghost'}
             className={cn(
               "flex-1 h-10 font-extrabold text-xs rounded-xl transition-all",
-              activeTab === 'SUPPLIERS' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+              activeTab === 'SUPPLIERS' ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400"
             )}
             onClick={() => setActiveTab('SUPPLIERS')}
           >
@@ -145,7 +145,7 @@ export default function InventoryPage() {
             />
 
             {/* FILTROS */}
-            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-white p-4 border border-slate-100 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
               <div className="flex-1 flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -173,7 +173,7 @@ export default function InventoryPage() {
                   <CustomSelect
                     className="w-40"
                     value={stockFilter}
-                    onChange={(val) => setStockFilter(val as any)}
+                    onChange={(val) => setStockFilter(val as 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK')}
                     options={[
                       { value: 'ALL', label: 'Todo el Stock' },
                       { value: 'CRITICAL', label: 'Stock Bajo' },
@@ -192,7 +192,7 @@ export default function InventoryPage() {
             </div>
 
             {/* TABLA CATÁLOGO */}
-            <div className="border border-slate-100 rounded-2xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+            <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
               {loading ? (
                 <div className="p-4 space-y-4">
                   {Array.from({ length: 5 }).map((_, idx) => (
@@ -329,7 +329,7 @@ export default function InventoryPage() {
                 {suppliersLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, idx) => (
-                      <div key={idx} className="border border-slate-100 rounded-2xl p-4 bg-white shadow-xs space-y-3">
+                      <div key={idx} className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-4 bg-white dark:bg-slate-900 shadow-xs space-y-3">
                         <Skeleton className="h-4.5 w-32" />
                         <div className="space-y-1.5 pt-1">
                           <Skeleton className="h-3 w-24" />
@@ -344,11 +344,11 @@ export default function InventoryPage() {
                     {suppliers.map((supplier) => (
                       <div 
                         key={supplier.id} 
-                        className="border border-slate-100 rounded-2xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex flex-col justify-between gap-3"
+                        className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-4 bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex flex-col justify-between gap-3"
                       >
                         <div>
-                          <span className="text-xs font-bold text-slate-800 block truncate">{supplier.name}</span>
-                          <div className="flex flex-col gap-1.5 mt-2 text-[10px] text-slate-455 font-semibold">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">{supplier.name}</span>
+                          <div className="flex flex-col gap-1.5 mt-2 text-[10px] text-slate-455 dark:text-slate-400 font-semibold">
                             {supplier.phone && (
                               <span className="flex items-center gap-1"><Phone className="h-3 w-3 text-slate-400" /> {supplier.phone}</span>
                             )}
@@ -356,7 +356,7 @@ export default function InventoryPage() {
                           </div>
                         </div>
                         
-                        <div className="pt-2.5 border-t border-slate-50 flex gap-2">
+                        <div className="pt-2.5 border-t border-slate-50 dark:border-slate-800/60 flex gap-2">
                           <Button 
                             className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] h-8 rounded-lg active:scale-95 transition-all"
                             onClick={() => handleOpenRegisterPurchase(supplier)}
@@ -368,7 +368,7 @@ export default function InventoryPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-slate-400 text-xs bg-white border border-slate-100 rounded-2xl p-4">
+                  <div className="text-center py-12 text-slate-400 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-4">
                     No hay proveedores registrados.
                   </div>
                 )}
@@ -380,7 +380,7 @@ export default function InventoryPage() {
                   <FileText className="h-4 w-4 text-indigo-650" /> Bitácora de Compras Realizadas
                 </h3>
 
-                <div className="border border-slate-100 rounded-2xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+                <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
                   {suppliersLoading ? (
                     <div className="p-4 space-y-4">
                       {Array.from({ length: 4 }).map((_, idx) => (

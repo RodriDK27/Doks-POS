@@ -68,18 +68,18 @@ export default function TicketsPage() {
             <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
             Bitácora de Transacciones
           </span>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Historial de Tickets</h1>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Historial de Tickets</h1>
         </div>
       </div>
 
       {/* FILTROS Y BÚSQUEDA */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white p-4 border border-slate-100 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             type="text"
             placeholder="Buscar por Folio, Cliente o método..."
-            className="pl-9 h-11 border-slate-200 rounded-xl text-xs"
+            className="pl-9 h-11 border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -88,7 +88,7 @@ export default function TicketsPage() {
         <CustomSelect
           className="w-44"
           value={selectedDateFilter}
-          onChange={(val) => setSelectedDateFilter(val as any)}
+          onChange={(val) => setSelectedDateFilter(val as 'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK')}
           options={[
             { value: 'ALL', label: 'Todas las Ventas' },
             { value: 'TODAY', label: 'Solo Hoy' },
@@ -99,7 +99,7 @@ export default function TicketsPage() {
       </div>
 
       {/* TABLA DE HISTORIAL (RESPONSIVA) */}
-      <div className="border border-slate-100 rounded-2xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+      <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
         {loading ? (
           <div className="p-4 space-y-4">
             {Array.from({ length: 5 }).map((_, idx) => (

@@ -306,7 +306,7 @@ export default function DashboardLayout({
       </header>
 
       {/* CONTENEDOR DE PÁGINAS (OCUPA TODO EL ANCHO SIN SIDEBAR) */}
-      <main className="flex-1 overflow-y-auto p-4 pb-28 md:p-6 md:pb-28 bg-transparent relative z-10">
+      <main className="flex-1 overflow-y-auto p-4 pb-28 md:p-6 md:pb-28 bg-transparent relative">
         {children}
       </main>
 

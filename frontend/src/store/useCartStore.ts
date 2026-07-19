@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { toast } from 'sonner';
 
 export interface CartItem {
   id: string;
@@ -54,10 +55,14 @@ export const useCartStore = create<CartState>((set, get) => ({
     const existingItem = cartItems.find((item) => item.id === product.id);
 
     if (existingItem) {
+      const newQty = existingItem.quantity + quantity;
+      if (newQty > product.stock) {
+        toast.warning(`Stock insuficiente para "${product.name}". Solo hay ${product.stock} unidades en inventario.`);
+        return;
+      }
       // Incrementar cantidad del item existente
       const updatedItems = cartItems.map((item) => {
         if (item.id === product.id) {
-          const newQty = item.quantity + quantity;
           return {
             ...item,
             quantity: newQty,
@@ -68,6 +73,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
       set({ cartItems: updatedItems });
     } else {
+      if (quantity > product.stock) {
+        toast.warning(`Stock insuficiente para "${product.name}". Solo hay ${product.stock} unidades en inventario.`);
+        return;
+      }
       // Agregar nuevo producto
       const newItem: CartItem = {
         id: product.id,
@@ -95,6 +104,13 @@ export const useCartStore = create<CartState>((set, get) => ({
       get().removeFromCart(productId);
       return;
     }
+    
+    const existingItem = cartItems.find((item) => item.id === productId);
+    if (existingItem && quantity > existingItem.stock) {
+      toast.warning(`Stock insuficiente para "${existingItem.name}". Solo hay ${existingItem.stock} unidades en inventario.`);
+      return;
+    }
+
     const updatedItems = cartItems.map((item) => {
       if (item.id === productId) {
         return {

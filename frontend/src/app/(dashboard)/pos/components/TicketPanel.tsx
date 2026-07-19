@@ -63,7 +63,7 @@ export function TicketPanel({
                   {item.name}
                 </span>
 
-                <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-950/20 h-8 w-fit mt-2 select-none overflow-hidden focus-within:border-indigo-500 dark:focus-within:border-indigo-500 transition-colors">
+                <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-900/20 h-8 w-fit mt-2 select-none overflow-hidden focus-within:border-indigo-500 dark:focus-within:border-indigo-500 transition-colors">
                   <button
                     type="button"
                     className="h-full px-2 text-slate-550 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 hover:text-slate-755 dark:hover:text-slate-100 transition-colors flex items-center justify-center cursor-pointer active:scale-95 border-none outline-none focus:outline-none"

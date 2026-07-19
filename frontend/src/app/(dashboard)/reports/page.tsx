@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Skeleton } from '@/components/ui/skeleton';
 
-import { useReports } from './hooks/useReports';
+import { useReports, PeriodFilter } from './hooks/useReports';
 
 export default function ReportsPage() {
   const {
@@ -49,12 +49,12 @@ export default function ReportsPage() {
               <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
               Métricas de Rentabilidad
             </span>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Reporte de Utilidades</h1>
+            <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Reporte de Utilidades</h1>
           </div>
         </div>
 
         {/* FILTROS TÁCTILES RÁPIDOS */}
-        <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] space-y-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] space-y-4">
           <div className="flex flex-wrap gap-2">
             {[
               { id: 'TODAY', label: 'Ventas de Hoy' },
@@ -66,9 +66,9 @@ export default function ReportsPage() {
                 key={btn.id}
                 variant={period === btn.id ? 'default' : 'outline'}
                 className={`h-10 text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer ${
-                  period === btn.id ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'border-slate-200 text-slate-605'
+                  period === btn.id ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-350'
                 }`}
-                onClick={() => setPeriod(btn.id as any)}
+                onClick={() => setPeriod(btn.id as PeriodFilter)}
               >
                 {btn.label}
               </Button>
@@ -159,7 +159,7 @@ export default function ReportsPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               
               {/* UTILIDAD NETA */}
-              <Card className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/20 border-emerald-100/50 rounded-2xl shadow-sm col-span-2">
+              <Card className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/20 dark:from-emerald-950/20 dark:via-slate-900/60 dark:to-emerald-955/10 border border-emerald-100/50 dark:border-emerald-900/30 rounded-3xl shadow-sm col-span-2">
                 <CardContent className="p-5 flex flex-col justify-between h-full gap-2 relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
                     <TrendingUp className="h-28 w-28 text-emerald-600" />
@@ -168,8 +168,8 @@ export default function ReportsPage() {
                     <Badge className="bg-emerald-100 text-emerald-700 border-none font-bold text-[8px] uppercase tracking-wider py-0.5 px-2">
                       Dinero Libre (Take Home)
                     </Badge>
-                    <h3 className="text-xl font-bold text-slate-800 tracking-tight mt-2.5">Ganancia Neta Limpia</h3>
-                    <p className="text-[10px] text-slate-450 leading-relaxed mt-0.5">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight mt-2.5">Ganancia Neta Limpia</h3>
+                    <p className="text-[10px] text-slate-450 dark:text-slate-400 leading-relaxed mt-0.5">
                       Utilidad real generada restando el costo de compra a las ventas totales de este periodo.
                     </p>
                   </div>
@@ -185,20 +185,20 @@ export default function ReportsPage() {
               </Card>
 
               {/* VENTAS BRUTAS */}
-              <Card className="bg-white border-slate-100 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
-                <CardContent className="p-4 flex flex-col justify-between h-full gap-1">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Ingresos de Venta</span>
-                  <span className="text-lg font-black text-slate-855 block mt-1">${totalSales.toFixed(2)}</span>
-                  <span className="text-[9px] text-slate-400 block">Facturación total neta</span>
+              <Card className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300">
+                <CardContent className="p-5 flex flex-col justify-between h-full gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Ingresos de Venta</span>
+                  <span className="text-lg font-black text-slate-800 dark:text-slate-100 block mt-1">${totalSales.toFixed(2)}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-slate-500 block">Facturación total neta</span>
                 </CardContent>
               </Card>
 
               {/* COSTO DE COMPRA */}
-              <Card className="bg-white border-slate-100 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
-                <CardContent className="p-4 flex flex-col justify-between h-full gap-1">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Costo de Mercancía</span>
-                  <span className="text-lg font-black text-slate-855 block mt-1">${totalCost.toFixed(2)}</span>
-                  <span className="text-[9px] text-slate-400 block">Inversión a reabastecer</span>
+              <Card className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300">
+                <CardContent className="p-5 flex flex-col justify-between h-full gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Costo de Mercancía</span>
+                  <span className="text-lg font-black text-slate-800 dark:text-slate-100 block mt-1">${totalCost.toFixed(2)}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-slate-500 block">Inversión a reabastecer</span>
                 </CardContent>
               </Card>
             </div>
@@ -207,12 +207,11 @@ export default function ReportsPage() {
               
               {/* DESGLOSE METODOS DE PAGO Y DESCUENTOS */}
               <div className="md:col-span-2 space-y-6">
-                
-                {/* COMPOSICIÓN DE COBROS */}
-                <Card className="border-slate-100 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] rounded-2xl">
-                  <CardHeader className="pb-3 border-b border-slate-50">
-                    <CardTitle className="text-xs font-bold text-slate-850">Composición de Cobros</CardTitle>
-                    <CardDescription className="text-[9px]">Distribución de los ingresos según el método de pago</CardDescription>
+                       {/* COMPOSICIÓN DE COBROS */}
+                <Card className="border border-slate-200/60 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] rounded-2xl">
+                  <CardHeader className="pb-3 border-b border-slate-50 dark:border-slate-800/60">
+                    <CardTitle className="text-xs font-bold text-slate-850 dark:text-slate-100">Composición de Cobros</CardTitle>
+                    <CardDescription className="text-[9px] text-slate-400 dark:text-slate-500">Distribución de los ingresos según el método de pago</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-5 space-y-4 text-xs">
                     {report && Object.entries(report.paymentDistribution).map(([method, amount]) => {
@@ -220,17 +219,17 @@ export default function ReportsPage() {
                       return (
                         <div key={method} className="space-y-1.5">
                           <div className="flex justify-between items-baseline text-xs">
-                            <span className="font-bold text-slate-700">
+                            <span className="font-bold text-slate-700 dark:text-slate-350">
                               {method === 'EFECTIVO' ? 'Efectivo' : method === 'TARJETA' ? 'Tarjeta de Débito/Crédito' : method === 'TRANSFERENCIA' ? 'Transferencia Bancaria' : 'Fiado (Crédito de Confianza)'}
                             </span>
-                            <div className="flex gap-2 font-black text-slate-800">
+                            <div className="flex gap-2 font-black text-slate-800 dark:text-slate-200">
                               <span>${amount.toFixed(2)}</span>
-                              <span className="text-indigo-600">({percent.toFixed(0)}%)</span>
+                              <span className="text-indigo-650 dark:text-indigo-400">({percent.toFixed(0)}%)</span>
                             </div>
                           </div>
-                          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             <div 
-                              className="h-full rounded-full bg-indigo-650" 
+                              className="h-full rounded-full bg-indigo-650 dark:bg-indigo-500" 
                               style={{ width: `${percent}%` }}
                             ></div>
                           </div>
@@ -241,17 +240,17 @@ export default function ReportsPage() {
                 </Card>
 
                 {/* RESUMEN DE DESCUENTOS */}
-                <div className="border border-slate-100 rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex justify-between items-center gap-3">
+                <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex justify-between items-center gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-50 text-indigo-650 rounded-xl">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 rounded-xl">
                       <Percent className="h-5 w-5" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800">Descuentos Directos Aplicados</h4>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Dinero descontado en tickets para fidelizar clientes.</p>
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">Descuentos Directos Aplicados</h4>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Dinero descontado en tickets para fidelizar clientes.</p>
                     </div>
                   </div>
-                  <span className="text-base font-black text-slate-700">
+                  <span className="text-base font-black text-slate-700 dark:text-slate-200">
                     -${totalDiscount.toFixed(2)}
                   </span>
                 </div>
@@ -268,26 +267,26 @@ export default function ReportsPage() {
                     report.bestSellers.map((item, index) => (
                       <div 
                         key={item.name} 
-                        className="border border-slate-100 rounded-2xl p-4 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex flex-col justify-between gap-3 animate-in fade-in duration-200"
+                        className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-4 bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex flex-col justify-between gap-3 animate-in fade-in duration-200"
                       >
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
-                            <span className="text-xs font-bold text-slate-800 truncate block" title={item.name}>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate block" title={item.name}>
                               {item.name}
                             </span>
-                            <span className="text-[9px] text-slate-400 font-semibold uppercase block mt-0.5">
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold uppercase block mt-0.5">
                               {item.quantity} unidades vendidas
                             </span>
                           </div>
-                          <span className="h-6 w-6 rounded-lg bg-indigo-50 text-indigo-650 text-[10px] font-black flex items-center justify-center shrink-0">
+                          <span className="h-6 w-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 text-[10px] font-black flex items-center justify-center shrink-0">
                             #{index + 1}
                           </span>
                         </div>
                         
-                        <div className="flex justify-between items-center pt-2.5 border-t border-slate-50 text-xs">
+                        <div className="flex justify-between items-center pt-2.5 border-t border-slate-50 dark:border-slate-800/60 text-xs">
                           <div>
-                            <span className="text-[9px] text-slate-400 font-semibold block">Ventas</span>
-                            <span className="font-bold text-slate-600">${item.revenue.toFixed(0)}</span>
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold block">Ventas</span>
+                            <span className="font-bold text-slate-600 dark:text-slate-300">${item.revenue.toFixed(0)}</span>
                           </div>
                           <div className="text-right">
                             <span className="text-[9px] text-emerald-600 font-semibold block">Ganancia Libre</span>
@@ -297,7 +296,7 @@ export default function ReportsPage() {
                       </div>
                     ))
                   ) : (
-                    <div className="border border-slate-100 rounded-2xl p-6 bg-white text-center text-slate-400 text-xs animate-pulse">
+                    <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-6 bg-white dark:bg-slate-900 text-center text-slate-400 text-xs animate-pulse">
                       No hay suficientes ventas registradas para este periodo.
                     </div>
                   )}

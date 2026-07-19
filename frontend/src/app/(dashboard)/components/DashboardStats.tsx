@@ -39,7 +39,7 @@ export function DashboardStatsGrid({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
       
       {/* CARD 1: VENTAS DE HOY */}
-      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
         <div className="flex justify-between items-start">
           <div className="min-w-0 flex-1">
             <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Ventas de Hoy</span>
@@ -122,7 +122,7 @@ export function DashboardStatsGrid({
       </div>
 
       {/* CARD 2: DINERO EN CAJA */}
-      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
         <div className="flex justify-between items-start">
           <div className="min-w-0 flex-1">
             <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Dinero en Caja</span>
@@ -143,7 +143,7 @@ export function DashboardStatsGrid({
       </div>
 
       {/* CARD 3: FIADOS POR COBRAR */}
-      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
         <div className="flex justify-between items-start">
           <div className="min-w-0 flex-1">
             <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Por Cobrar (Fiados)</span>
@@ -161,7 +161,7 @@ export function DashboardStatsGrid({
       </div>
 
       {/* CARD 4: STOCK CRÍTICO */}
-      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
         <div className="flex justify-between items-start">
           <div className="min-w-0 flex-1">
             <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Stock Crítico</span>

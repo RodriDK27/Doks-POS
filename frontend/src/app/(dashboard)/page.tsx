@@ -105,7 +105,7 @@ export default function DashboardPage() {
       : '';
 
     return (
-      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between h-[212px]">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] relative overflow-hidden flex flex-col justify-between h-[212px]">
         <div className="flex justify-between items-center">
           <div>
             <span className="text-[9px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-widest block">Tendencia Semanal</span>
@@ -259,7 +259,7 @@ export default function DashboardPage() {
               {timelineEvents.length > 0 ? (
                 <ActivityFeed timelineEvents={timelineEvents} />
               ) : (
-                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 text-center text-[10px] text-slate-400 h-full flex items-center justify-center">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 text-center text-[10px] text-slate-400 h-full flex items-center justify-center">
                   No hay actividad registrada el día de hoy.
                 </div>
               )}
@@ -273,7 +273,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* TARJETA DE REABASTECIMIENTO RÁPIDO */}
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] space-y-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -313,7 +313,7 @@ export default function DashboardPage() {
         </div>
 
         {/* TARJETA DE COBRO A CLIENTES RÁPIDO */}
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] space-y-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <CreditCard className="h-4 w-4 text-indigo-650 dark:text-indigo-400" />
@@ -357,7 +357,7 @@ export default function DashboardPage() {
 
       {/* FILA 4: GUÍA DE CONFIGURACIÓN RÁPIDA (Solo si no hay eventos y la caja está cerrada) */}
       {timelineEvents.length === 0 && !activeRegister && (
-        <div className="border border-slate-100 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 rounded-3xl p-5 space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+        <div className="border border-slate-100 dark:border-slate-800 bg-white/70 dark:bg-slate-900 rounded-3xl p-5 space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
           <div className="flex items-center gap-2">
             <CheckSquare className="h-5 w-5 text-indigo-600" />
             <div>

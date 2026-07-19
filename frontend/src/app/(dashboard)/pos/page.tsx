@@ -212,7 +212,7 @@ export default function POSPage() {
                   ref={searchInputRef}
                   type="text"
                   placeholder="Nombre o código de barras... [F2]"
-                  className="pl-10 h-11 border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-indigo-500 w-full"
+                  className="pl-10 h-11 border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-indigo-500 w-full"
                   value={searchQuery}
                   onChange={(e) => handleSearchQueryChange(e.target.value)}
                   onKeyDown={(e) => {
@@ -378,11 +378,11 @@ export default function POSPage() {
         <>
           {/* Backdrop oscuro */}
           <div 
-            className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-200"
+            className="fixed inset-0 z-[60] bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-200"
             onClick={() => setIsCheckoutDrawerOpen(false)}
           />
           {/* Contenedor del Drawer */}
-          <div className="fixed top-0 right-0 z-50 h-full w-full sm:max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl p-5 flex flex-col justify-between animate-in slide-in-from-right duration-200">
+          <div className="fixed top-0 right-0 z-[70] h-full w-full sm:max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl p-5 flex flex-col justify-between animate-in slide-in-from-right duration-200">
             <PaymentPanel
               getTotal={getTotal}
               selectedCustomerId={selectedCustomerId}
@@ -409,7 +409,7 @@ export default function POSPage() {
       {/* OVERLAY DE BÚSQUEDA POR VOZ PARA ACCESIBILIDAD */}
       {isListening && (
         <div className="fixed inset-0 z-[999] bg-slate-900/50 backdrop-blur-xs flex flex-col items-center justify-center text-white animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 rounded-3xl p-8 max-w-xs w-full mx-4 flex flex-col items-center justify-center gap-6 shadow-2xl border border-slate-200/60 dark:border-slate-800/80 animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-3xl p-8 max-w-xs w-full mx-4 flex flex-col items-center justify-center gap-6 shadow-2xl border border-slate-200/60 dark:border-slate-800/80 animate-in zoom-in-95 duration-200">
             <div className="h-20 w-20 bg-rose-50 dark:bg-rose-955/20 rounded-full flex items-center justify-center text-rose-500 animate-bounce relative">
               <span className="absolute inset-0 rounded-full bg-rose-500/30 animate-ping duration-1000" />
               <Mic className="h-10 w-10 relative z-10" />

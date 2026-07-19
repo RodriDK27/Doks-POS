@@ -101,18 +101,18 @@ export default function RegisterPage() {
             <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
             Finanzas del Turno
           </span>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Caja Registradora</h1>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Caja Registradora</h1>
         </div>
 
         {!activeRegister ? (
           /* CAJA CERRADA: FORMULARIO DE APERTURA */
-          <div className="max-w-md mx-auto bg-white border border-slate-100 p-6 rounded-3xl shadow-[0_10px_35px_-10px_rgba(0,0,0,0.03)] space-y-5 animate-in fade-in duration-300">
+          <div className="max-w-md mx-auto bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-6 rounded-3xl shadow-[0_10px_35px_-10px_rgba(0,0,0,0.03)] space-y-5 animate-in fade-in duration-300">
             <div className="flex flex-col items-center text-center space-y-2">
-              <div className="h-12 w-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-2xl bg-rose-50 dark:bg-rose-955/30 text-rose-500 flex items-center justify-center">
                 <Lock className="h-5.5 w-5.5" />
               </div>
-              <h2 className="text-base font-extrabold text-slate-800">Turno Cerrado</h2>
-              <p className="text-xs text-slate-450 leading-normal max-w-[280px]">
+              <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-100">Turno Cerrado</h2>
+              <p className="text-xs text-slate-450 dark:text-slate-400 leading-normal max-w-[280px]">
                 Debes abrir la caja registradora especificando el fondo inicial para poder operar ventas.
               </p>
             </div>
@@ -174,21 +174,20 @@ export default function RegisterPage() {
                   <span>Por: <strong>{activeRegister.openedBy}</strong></span>
                 </div>
               </div>
-
               {/* BOTONES ACCIONES DE EFECTIVO */}
-              <div className="bg-white border p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col justify-between h-48">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col justify-between h-48">
                 <div>
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-1">Operaciones</h3>
-                  <p className="text-[10px] text-slate-450 leading-relaxed">
+                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider mb-1">Operaciones</h3>
+                  <p className="text-[10px] text-slate-455 dark:text-slate-400 leading-relaxed">
                     Registra salidas de efectivo para gastos o ingresos de cambio adicionales en caja.
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Button 
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-[11px] h-9.5 rounded-xl cursor-pointer"
+                    className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-[11px] h-9.5 rounded-xl cursor-pointer border border-transparent dark:border-slate-800/40"
                     onClick={() => setIsAdjOpen(true)}
                   >
-                    <Plus className="h-4 w-4 mr-1 text-indigo-600" /> Movimiento de Caja
+                    <Plus className="h-4 w-4 mr-1 text-indigo-600 dark:text-indigo-400" /> Movimiento de Caja
                   </Button>
                   <Button 
                     className="w-full bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[11px] h-9.5 rounded-xl cursor-pointer"
@@ -198,21 +197,21 @@ export default function RegisterPage() {
                   </Button>
                 </div>
               </div>
-
+              
               {/* INFORMACIÓN DEL TURNO */}
-              <div className="bg-white border p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col justify-between h-48">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col justify-between h-48">
                 <div>
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider mb-1 flex items-center gap-1">
                     <Clock className="h-4 w-4 text-indigo-500" /> Historial de Turno
                   </h3>
-                  <div className="mt-3 space-y-2 text-[11px] text-slate-500 font-semibold">
+                  <div className="mt-3 space-y-2 text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
                     <div className="flex justify-between">
                       <span>Abierto:</span>
-                      <span className="text-slate-800">{new Date(activeRegister.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ({new Date(activeRegister.openedAt).toLocaleDateString()})</span>
+                      <span className="text-slate-800 dark:text-slate-200">{new Date(activeRegister.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ({new Date(activeRegister.openedAt).toLocaleDateString()})</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Movimientos de Turno:</span>
-                      <span className="text-slate-800">{activeRegister.transactions?.length || 0}</span>
+                      <span className="text-slate-800 dark:text-slate-200">{activeRegister.transactions?.length || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -230,7 +229,7 @@ export default function RegisterPage() {
                 <History className="h-4 w-4 text-indigo-650" /> Movimientos en este Turno
               </h3>
               
-              <div className="border border-slate-100 rounded-3xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+              <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-3xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
                 {activeRegister.transactions && activeRegister.transactions.length > 0 ? (
                   <Table>
                     <TableHeader className="bg-slate-50/50">
@@ -243,9 +242,9 @@ export default function RegisterPage() {
                     </TableHeader>
                     <TableBody className="divide-y">
                       {activeRegister.transactions.map((tx) => (
-                        <TableRow key={tx.id} className="hover:bg-slate-50/20 border-b">
-                          <TableCell className="font-bold text-xs text-slate-700 py-3">{tx.description}</TableCell>
-                          <TableCell className="text-slate-450 text-xs py-3">
+                        <TableRow key={tx.id} className="hover:bg-slate-50/20 dark:hover:bg-slate-800/20 border-b dark:border-slate-800/60">
+                          <TableCell className="font-bold text-xs text-slate-700 dark:text-slate-300 py-3">{tx.description}</TableCell>
+                          <TableCell className="text-slate-450 dark:text-slate-400 text-xs py-3">
                             {new Date(tx.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </TableCell>
                           <TableCell className="text-center py-3">
@@ -253,14 +252,14 @@ export default function RegisterPage() {
                               variant="outline" 
                               className={
                                 tx.type === 'INGRESO' 
-                                  ? 'bg-emerald-50 text-emerald-600 border-none font-bold text-[8px] px-2 py-0.5' 
-                                  : 'bg-rose-50 text-rose-500 border-none font-bold text-[8px] px-2 py-0.5'
+                                  ? 'bg-emerald-50 dark:bg-emerald-955/30 text-emerald-600 dark:text-emerald-400 border-none font-bold text-[8px] px-2 py-0.5' 
+                                  : 'bg-rose-50 dark:bg-rose-955/30 text-rose-500 dark:text-rose-400 border-none font-bold text-[8px] px-2 py-0.5'
                               }
                             >
                               {tx.type}
                             </Badge>
                           </TableCell>
-                          <TableCell className={`text-right font-black text-xs py-3 ${tx.type === 'INGRESO' ? 'text-slate-805' : 'text-rose-505'}`}>
+                          <TableCell className={`text-right font-black text-xs py-3 ${tx.type === 'INGRESO' ? 'text-slate-800 dark:text-slate-200' : 'text-rose-500 dark:text-rose-450'}`}>
                             {tx.type === 'INGRESO' ? '+' : '-'}${Math.abs(tx.amount).toFixed(2)}
                           </TableCell>
                         </TableRow>
@@ -283,7 +282,7 @@ export default function RegisterPage() {
             <FileText className="h-4 w-4 text-indigo-650" /> Historial de Turnos Cerrados
           </h3>
 
-          <div className="border border-slate-100 rounded-3xl bg-white shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+          <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-3xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
             {history.length > 0 ? (
               <Table>
                 <TableHeader className="bg-slate-50/50">

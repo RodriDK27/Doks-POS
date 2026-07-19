@@ -61,7 +61,7 @@ export function PaymentPanel({
           </div>
 
           {/* Tarjeta de Total */}
-          <div className="bg-slate-955 dark:bg-black/40 border border-slate-900 dark:border-slate-850 p-4.5 rounded-2xl text-white flex flex-col justify-center items-center gap-1 shadow-sm shrink-0">
+          <div className="bg-slate-950 dark:bg-black/40 border border-slate-900 dark:border-slate-850 p-4.5 rounded-2xl text-white flex flex-col justify-center items-center gap-1 shadow-sm shrink-0">
             <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">Monto Neto a Cobrar</span>
             <span className="text-3xl font-black tracking-tight text-emerald-455">${currentTotal.toFixed(2)}</span>
           </div>
@@ -72,7 +72,7 @@ export function PaymentPanel({
               <User className="h-3 w-3" /> Cliente
             </label>
             <CustomSelect
-              className="h-9.5 rounded-xl text-[11px] bg-white dark:bg-slate-950 dark:border-slate-800 border-slate-200"
+              className="h-9.5 rounded-xl text-[11px] bg-white dark:bg-slate-900 dark:border-slate-800 border-slate-200"
               value={selectedCustomerId}
               onChange={setSelectedCustomerId}
               placeholder="-- Público General --"
@@ -122,7 +122,7 @@ export function PaymentPanel({
       {/* Modos dinámicos en base al método de pago */}
       <div className="flex-1 min-h-0">
         {paymentMethod === 'EFECTIVO' && (
-          <div className="p-3 border border-slate-200/60 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-955/40 rounded-2xl space-y-3.5 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="p-3 border border-slate-200/60 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/40 rounded-2xl space-y-3.5 animate-in fade-in slide-in-from-top-1 duration-150">
             {/* Billetes rápidos en scroll horizontal */}
             <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none items-center">
               <span className="text-[8px] font-black text-slate-400 dark:text-slate-555 uppercase shrink-0 mr-1">Rápido:</span>
@@ -157,7 +157,7 @@ export function PaymentPanel({
                     ref={amountPaidInputRef}
                     type="number"
                     step="any"
-                    className="pl-6.5 h-9.5 text-xs font-black border-slate-200 dark:border-slate-800 dark:bg-slate-950 focus-visible:ring-indigo-500 rounded-lg"
+                    className="pl-6.5 h-9.5 text-xs font-black border-slate-200 dark:border-slate-800 dark:bg-slate-900 focus-visible:ring-indigo-500 rounded-lg"
                     value={amountPaid || ''}
                     onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
                   />

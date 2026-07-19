@@ -31,7 +31,7 @@ export function SuspendCartDialog({
             placeholder="Ej. Sra. María, Clientes varios..."
             value={suspendName}
             onChange={(e) => setSuspendName(e.target.value)}
-            className="focus-visible:ring-indigo-500 h-10 text-xs font-semibold dark:bg-slate-950"
+            className="focus-visible:ring-indigo-500 h-10 text-xs font-semibold dark:bg-slate-900"
           />
         </div>
         <DialogFooter className="pt-2 sm:justify-end gap-2">

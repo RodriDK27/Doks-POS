@@ -8,7 +8,7 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({ timelineEvents }: ActivityFeedProps) {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.015)] divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] divide-y divide-slate-100 dark:divide-slate-800/60 hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300">
       {timelineEvents.map((event) => {
         const isNegative = event.isNegative || false;
         

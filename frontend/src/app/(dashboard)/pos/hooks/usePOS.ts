@@ -220,7 +220,7 @@ export function usePOS() {
       toast.warning(`"${product.name}" no tiene existencias en inventario.`);
     }
     addToCart(product, 1);
-    toast.success(`Añadido: ${product.name}`);
+    toast.success(`Añadido: ${product.name}`, { id: 'pos-add-toast' });
   };
 
   const handleAddGeneric = () => {
@@ -290,7 +290,7 @@ export function usePOS() {
         toast.warning(`"${exactBarcodeProduct.name}" no tiene existencias en inventario.`);
       }
       addToCart(exactBarcodeProduct, 1);
-      toast.success(`Añadido: ${exactBarcodeProduct.name} (código escaneado)`);
+      toast.success(`Añadido: ${exactBarcodeProduct.name} (código escaneado)`, { id: 'pos-add-toast' });
       setSearchQuery('');
     }
   }, [catalogProducts, addToCart, setSearchQuery]);
@@ -302,7 +302,7 @@ export function usePOS() {
         toast.warning(`"${singleProduct.name}" no tiene existencias en inventario.`);
       }
       addToCart(singleProduct, 1);
-      toast.success(`Añadido: ${singleProduct.name}`);
+      toast.success(`Añadido: ${singleProduct.name}`, { id: 'pos-add-toast' });
       setSearchQuery('');
     }
   }, [filteredCatalog, addToCart, setSearchQuery]);

@@ -36,7 +36,7 @@ export function GenericSaleDialog({
               <Input
                 type="text"
                 placeholder="Ej. Bolillo, Dulces..."
-                className="h-11 focus-visible:ring-indigo-500 text-xs font-bold dark:bg-slate-950"
+                className="h-11 focus-visible:ring-indigo-500 text-xs font-bold dark:bg-slate-900"
                 value={genericName}
                 onChange={(e) => setGenericName(e.target.value)}
               />
