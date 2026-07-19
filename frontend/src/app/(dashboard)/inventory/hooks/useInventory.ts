@@ -5,6 +5,27 @@ import { toast } from 'sonner';
 import { Product, Supplier, Purchase } from '../types';
 import { ProductFormValues } from '../components/ProductFormDialog';
 import { parseAxiosError } from '@/lib/errorMapper';
+import { exportToCSV, ParsedProductRow } from '../utils/csvUtils';
+
+// ─── Tipos ────────────────────────────────────────────────────────────────
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  type: 'ENTRADA' | 'SALIDA' | 'AJUSTE';
+  quantity: number;
+  reason: string | null;
+  createdAt: string;
+}
+
+interface InlineEdit {
+  productId: string;
+  field: 'sellPrice' | 'stock';
+  value: string;
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────
+
 export function useInventory() {
   const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS'>('CATALOG');
   
@@ -14,8 +35,6 @@ export function useInventory() {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  
-
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -51,7 +70,75 @@ export function useInventory() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activePurchaseDetail, setActivePurchaseDetail] = useState<Purchase | null>(null);
 
-  // SWR Queries
+  // ─── Inline Edit ─────────────────────────────────────────────────────────
+  const [inlineEdit, setInlineEdit] = useState<InlineEdit | null>(null);
+
+  const handleStartInlineEdit = (productId: string, field: 'sellPrice' | 'stock', currentValue: number) => {
+    setInlineEdit({ productId, field, value: currentValue.toString() });
+  };
+
+  const handleInlineEditCancel = () => setInlineEdit(null);
+
+  const handleInlineEditSave = async () => {
+    if (!inlineEdit) return;
+    const numValue = parseFloat(inlineEdit.value);
+    if (isNaN(numValue) || numValue < 0) {
+      toast.error('El valor debe ser un número válido mayor o igual a 0.');
+      return;
+    }
+    try {
+      await api.patch(`/products/${inlineEdit.productId}`, {
+        [inlineEdit.field]: numValue,
+      });
+      toast.success('Producto actualizado.');
+      setInlineEdit(null);
+      mutateProducts();
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al actualizar el producto.'));
+    }
+  };
+
+  // ─── Import CSV ──────────────────────────────────────────────────────────
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  const handleImportCSV = async (rows: ParsedProductRow[]) => {
+    const response = await api.post('/products/import', { rows });
+    mutateProducts();
+    return response.data as { created: string[]; skipped: { name: string; reason: string }[] };
+  };
+
+  // ─── Export CSV ──────────────────────────────────────────────────────────
+  const handleExportCSV = () => {
+    if (filteredProducts.length === 0) {
+      toast.error('No hay productos para exportar con los filtros actuales.');
+      return;
+    }
+    exportToCSV(filteredProducts, 'inventario.csv');
+    toast.success(`${filteredProducts.length} producto(s) exportado(s) a CSV.`);
+  };
+
+  // ─── Bitácora de Movimientos ─────────────────────────────────────────────
+  const [isMovementsOpen, setIsMovementsOpen] = useState(false);
+  const [activeMovementsProduct, setActiveMovementsProduct] = useState<Product | null>(null);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [movementsLoading, setMovementsLoading] = useState(false);
+
+  const handleOpenMovements = async (product: Product) => {
+    setActiveMovementsProduct(product);
+    setMovements([]);
+    setIsMovementsOpen(true);
+    setMovementsLoading(true);
+    try {
+      const res = await api.get(`/products/${product.id}/movements`);
+      setMovements(res.data);
+    } catch {
+      toast.error('No se pudo cargar el historial de movimientos.');
+    } finally {
+      setMovementsLoading(false);
+    }
+  };
+
+  // ─── SWR Queries ─────────────────────────────────────────────────────────
   const { data: swrProducts, mutate: mutateProducts, isLoading: loading } = useSWR<Product[]>('/products');
   const { data: swrCategories } = useSWR<string[]>('/products/categories');
   const { data: swrSuppliers, mutate: mutateSuppliers, isLoading: suppliersLoading } = useSWR<Supplier[]>(activeTab === 'SUPPLIERS' ? '/suppliers' : null);
@@ -303,5 +390,23 @@ export function useInventory() {
     handleRemovePurchaseItemIndex,
     handlePurchaseSubmit,
     totalInvoiceSum,
+    // Inline edit
+    inlineEdit,
+    handleStartInlineEdit,
+    handleInlineEditCancel,
+    handleInlineEditSave,
+    setInlineEdit,
+    // Import / Export CSV
+    isImportOpen,
+    setIsImportOpen,
+    handleImportCSV,
+    handleExportCSV,
+    // Bitácora de movimientos
+    isMovementsOpen,
+    setIsMovementsOpen,
+    activeMovementsProduct,
+    movements,
+    movementsLoading,
+    handleOpenMovements,
   };
 }

@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   purchasePrice: number;
   sellPrice: number;
+  wholesalePrice?: number | null;
   stock: number;
   minStock: number;
   category: string | null;

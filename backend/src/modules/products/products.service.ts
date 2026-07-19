@@ -19,9 +19,23 @@ export class ProductsService {
       }
     }
 
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: createProductDto,
     });
+
+    // Registrar movimiento inicial si el stock es > 0
+    if (product.stock > 0) {
+      await this.prisma.stockMovement.create({
+        data: {
+          productId: product.id,
+          type: 'ENTRADA',
+          quantity: product.stock,
+          reason: 'Stock inicial al crear producto',
+        },
+      });
+    }
+
+    return product;
   }
 
   // Buscar todos los productos (con filtros opcionales de búsqueda y categoría)
@@ -82,10 +96,25 @@ export class ProductsService {
       }
     }
 
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: updateProductDto,
     });
+
+    // Si el stock cambió manualmente, registrar un movimiento de ajuste
+    if (updateProductDto.stock !== undefined && updateProductDto.stock !== currentProduct.stock) {
+      const diff = updateProductDto.stock - currentProduct.stock;
+      await this.prisma.stockMovement.create({
+        data: {
+          productId: id,
+          type: 'AJUSTE',
+          quantity: diff,
+          reason: `Ajuste manual: de ${currentProduct.stock} a ${updateProductDto.stock}`,
+        },
+      });
+    }
+
+    return updated;
   }
 
   // Eliminar un producto
@@ -126,5 +155,39 @@ export class ProductsService {
       distinct: ['category'],
     });
     return result.map((r: { category: string | null }) => r.category).filter(Boolean);
+  }
+
+  // Importación masiva de productos desde CSV
+  async importProducts(rows: CreateProductDto[]) {
+    const results = await Promise.allSettled(
+      rows.map((row) => this.create(row)),
+    );
+
+    const created: string[] = [];
+    const skipped: { name: string; reason: string }[] = [];
+
+    results.forEach((result, index) => {
+      const name = rows[index]?.name ?? `Fila ${index + 1}`;
+      if (result.status === 'fulfilled') {
+        created.push(name);
+      } else {
+        skipped.push({
+          name,
+          reason: result.reason?.message ?? 'Error desconocido',
+        });
+      }
+    });
+
+    return { created, skipped };
+  }
+
+  // Obtener el historial de movimientos de stock de un producto
+  async getMovements(productId: string) {
+    await this.findOne(productId); // Valida que exista
+    return this.prisma.stockMovement.findMany({
+      where: { productId },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
   }
 }

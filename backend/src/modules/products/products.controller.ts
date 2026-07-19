@@ -17,6 +17,13 @@ export class ProductsController {
     return this.productsService.create(createProductDto);
   }
 
+  /** Importación masiva desde CSV — recibe un array de filas de producto */
+  @Post('import')
+  @Roles('ADMIN')
+  importProducts(@Body() body: { rows: CreateProductDto[] }) {
+    return this.productsService.importProducts(body.rows);
+  }
+
   @Get()
   findAll(
     @Query('search') search?: string,
@@ -38,6 +45,12 @@ export class ProductsController {
   @Get('barcode/:barcode')
   findByBarcode(@Param('barcode') barcode: string) {
     return this.productsService.findByBarcode(barcode);
+  }
+
+  /** Historial de movimientos de stock de un producto */
+  @Get(':id/movements')
+  getMovements(@Param('id') id: string) {
+    return this.productsService.getMovements(id);
   }
 
   @Get(':id')

@@ -29,6 +29,7 @@ model Product {
   updatedAt      DateTime   @updatedAt
   saleItems      SaleItem[]
   purchaseItems  PurchaseItem[]
+  stockMovements StockMovement[]
 
   @@index([barcode])
   @@index([name])
@@ -170,6 +171,20 @@ model PurchaseItem {
 
   @@index([purchaseId])
   @@index([productId])
+}
+
+/// Registra cada cambio de stock en el inventario (entrada, salida o ajuste manual)
+model StockMovement {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      String   // ENTRADA | SALIDA | AJUSTE
+  quantity  Float    // positivo para entradas, negativo para salidas/ajustes
+  reason    String?  // descripción (ej. "Compra abc123", "Venta #45", "Ajuste manual")
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
 }
 
 /// Representa un usuario o empleado del sistema con acceso por PIN

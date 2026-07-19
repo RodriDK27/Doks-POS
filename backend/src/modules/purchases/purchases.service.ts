@@ -82,6 +82,17 @@ export class PurchasesService {
             purchasePrice: item.costPrice, // Actualizar costo al último precio de adquisición
           },
         });
+
+        // Registrar movimiento de stock tipo ENTRADA
+        await tx.stockMovement.create({
+          data: {
+            productId: item.productId,
+            type: 'ENTRADA',
+            quantity: item.quantity,
+            reason: `Compra a proveedor: ${supplier.name}`,
+          },
+        });
+
       }
 
       // C. Si se pagó con caja chica, restar del cajón y crear un egreso

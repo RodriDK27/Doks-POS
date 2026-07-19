@@ -13,7 +13,10 @@ import {
   Truck, 
   Phone, 
   FileText, 
-  Eye
+  Eye,
+  Download,
+  Upload,
+  History,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +31,8 @@ import { useInventory } from './hooks/useInventory';
 import { InventoryMetrics } from './components/InventoryMetrics';
 import { ProductFormDialog } from './components/ProductFormDialog';
 import { SupplierFormDialog } from './components/SupplierFormDialog';
+import { ImportCSVModal } from './components/ImportCSVModal';
+import { StockMovementsDrawer } from './components/StockMovementsDrawer';
 import dynamic from 'next/dynamic';
 
 const PurchaseDialog = dynamic(() => import('./components/PurchaseDialog').then(mod => mod.PurchaseDialog), {
@@ -95,6 +100,24 @@ export default function InventoryPage() {
     handleRemovePurchaseItemIndex,
     handlePurchaseSubmit,
     totalInvoiceSum,
+    // Inline edit
+    inlineEdit,
+    handleStartInlineEdit,
+    handleInlineEditCancel,
+    handleInlineEditSave,
+    setInlineEdit,
+    // Import / Export
+    isImportOpen,
+    setIsImportOpen,
+    handleImportCSV,
+    handleExportCSV,
+    // Bitácora
+    isMovementsOpen,
+    setIsMovementsOpen,
+    activeMovementsProduct,
+    movements,
+    movementsLoading,
+    handleOpenMovements,
   } = useInventory();
 
   return (
@@ -144,9 +167,10 @@ export default function InventoryPage() {
               lowStockCount={lowStockCount}
             />
 
-            {/* FILTROS */}
-            <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
-              <div className="flex-1 flex flex-col sm:flex-row gap-2">
+            {/* FILTROS + ACCIONES */}
+            <div className="flex flex-col gap-3 bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+              {/* Fila 1: búsqueda y selectores */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
@@ -183,12 +207,29 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              <Button 
-                className="bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold text-xs h-11 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all w-full md:w-auto justify-center"
-                onClick={handleOpenAdd}
-              >
-                <Plus className="h-4 w-4" /> Nuevo Producto
-              </Button>
+              {/* Fila 2: botones de acción */}
+              <div className="flex flex-wrap gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  className="h-9 text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl gap-1.5 active:scale-95 transition-all"
+                  onClick={() => setIsImportOpen(true)}
+                >
+                  <Upload className="h-3.5 w-3.5" /> Importar CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-9 text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl gap-1.5 active:scale-95 transition-all"
+                  onClick={handleExportCSV}
+                >
+                  <Download className="h-3.5 w-3.5" /> Exportar CSV
+                </Button>
+                <Button 
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-9 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all"
+                  onClick={handleOpenAdd}
+                >
+                  <Plus className="h-4 w-4" /> Nuevo Producto
+                </Button>
+              </div>
             </div>
 
             {/* TABLA CATÁLOGO */}
@@ -214,11 +255,17 @@ export default function InventoryPage() {
                   <TableHeader className="bg-slate-50/50">
                     <TableRow className="border-b">
                       <TableHead className="text-xs font-bold text-slate-500">Producto</TableHead>
-                      <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Stock</TableHead>
-                      <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Venta</TableHead>
+                      <TableHead className="text-right text-xs font-bold text-slate-500 w-28">
+                        Stock
+                        <span className="text-[9px] font-normal text-slate-400 ml-1">(doble clic)</span>
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-bold text-slate-500 w-28">
+                        Venta
+                        <span className="text-[9px] font-normal text-slate-400 ml-1">(doble clic)</span>
+                      </TableHead>
                       <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
                       <TableHead className="text-right text-xs font-bold text-slate-500 w-20 hidden sm:table-cell">Margen</TableHead>
-                      <TableHead className="w-20 text-center text-xs font-bold text-slate-500">Acción</TableHead>
+                      <TableHead className="w-28 text-center text-xs font-bold text-slate-500">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y">
@@ -230,11 +277,21 @@ export default function InventoryPage() {
                         ? ((p.sellPrice - p.purchasePrice) / p.sellPrice) * 100 
                         : 0;
 
+                      const isEditingStock = inlineEdit?.productId === p.id && inlineEdit.field === 'stock';
+                      const isEditingPrice = inlineEdit?.productId === p.id && inlineEdit.field === 'sellPrice';
+
                       return (
-                        <TableRow key={p.id} className="hover:bg-slate-50/20 border-b">
+                        <TableRow
+                          key={p.id}
+                          className={cn(
+                            "hover:bg-slate-50/20 border-b transition-colors",
+                            isOut && "bg-rose-50/30 dark:bg-rose-950/10",
+                            !isOut && isCritical && "bg-amber-50/30 dark:bg-amber-950/10",
+                          )}
+                        >
                           <TableCell className="py-3">
                             <div>
-                              <span className="font-bold text-slate-800 text-xs block">{p.name}</span>
+                              <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">{p.name}</span>
                               <div className="flex items-center gap-2 mt-1">
                                 {p.barcode && (
                                   <span className="text-[9px] text-slate-400 font-mono flex items-center gap-0.5">
@@ -242,7 +299,7 @@ export default function InventoryPage() {
                                   </span>
                                 )}
                                 {p.category && (
-                                  <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-slate-100 text-slate-500 font-bold border-none">
+                                  <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold border-none">
                                     {p.category}
                                   </Badge>
                                 )}
@@ -250,19 +307,68 @@ export default function InventoryPage() {
                             </div>
                           </TableCell>
 
+                          {/* STOCK — con inline edit al doble clic */}
                           <TableCell className="text-right font-bold text-xs">
-                            <span className={isOut ? 'text-rose-500' : isCritical ? 'text-amber-500' : 'text-slate-700'}>
-                              {p.stock}
-                            </span>
-                            {isCritical && (
-                              <span className="text-[8px] font-black uppercase text-amber-500 bg-amber-50 px-1 py-0.5 rounded ml-1 block sm:inline-block">
-                                Mín {p.minStock}
+                            {isEditingStock ? (
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                className="w-20 text-right border border-indigo-400 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                                value={inlineEdit.value}
+                                autoFocus
+                                onChange={(e) => setInlineEdit({ ...inlineEdit, value: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleInlineEditSave();
+                                  if (e.key === 'Escape') handleInlineEditCancel();
+                                }}
+                                onBlur={handleInlineEditSave}
+                              />
+                            ) : (
+                              <span
+                                className={cn(
+                                  "cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded px-1 py-0.5 transition-colors",
+                                  isOut ? 'text-rose-500' : isCritical ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'
+                                )}
+                                onDoubleClick={() => handleStartInlineEdit(p.id, 'stock', p.stock)}
+                                title="Doble clic para editar"
+                              >
+                                {p.stock}
+                                {isCritical && (
+                                  <span className="text-[8px] font-black uppercase text-amber-500 bg-amber-50 dark:bg-amber-950/30 px-1 py-0.5 rounded ml-1 block sm:inline-block">
+                                    Mín {p.minStock}
+                                  </span>
+                                )}
                               </span>
                             )}
                           </TableCell>
 
+                          {/* PRECIO VENTA — con inline edit al doble clic */}
                           <TableCell className="text-right text-slate-805 font-black text-xs">
-                            ${p.sellPrice.toFixed(2)}
+                            {isEditingPrice ? (
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                className="w-24 text-right border border-indigo-400 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                                value={inlineEdit.value}
+                                autoFocus
+                                onChange={(e) => setInlineEdit({ ...inlineEdit, value: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleInlineEditSave();
+                                  if (e.key === 'Escape') handleInlineEditCancel();
+                                }}
+                                onBlur={handleInlineEditSave}
+                              />
+                            ) : (
+                              <span
+                                className="cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded px-1 py-0.5 transition-colors text-slate-800 dark:text-slate-100"
+                                onDoubleClick={() => handleStartInlineEdit(p.id, 'sellPrice', p.sellPrice)}
+                                title="Doble clic para editar"
+                              >
+                                ${p.sellPrice.toFixed(2)}
+                              </span>
+                            )}
                           </TableCell>
 
                           <TableCell className="text-right text-slate-400 text-xs hidden sm:table-cell">
@@ -274,20 +380,31 @@ export default function InventoryPage() {
                           </TableCell>
 
                           <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-0.5">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9 text-slate-500 hover:bg-slate-100"
+                                className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg"
+                                onClick={() => handleOpenMovements(p)}
+                                title="Ver bitácora de stock"
+                              >
+                                <History className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                                 onClick={() => handleOpenEdit(p)}
+                                title="Editar producto"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg"
+                                className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 rounded-lg"
                                 onClick={() => handleOpenDelete(p)}
+                                title="Eliminar producto"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -314,7 +431,7 @@ export default function InventoryPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Truck className="h-4 w-4 text-indigo-650" /> Proveedores Activos
+                    <Truck className="h-4 w-4 text-indigo-600" /> Proveedores Activos
                   </h3>
                   <Button 
                     size="sm" 
@@ -377,7 +494,7 @@ export default function InventoryPage() {
               {/* BITÁCORA DE COMPRAS A PROVEEDORES (2/3 ANCHO) */}
               <div className="md:col-span-2 space-y-3">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  <FileText className="h-4 w-4 text-indigo-650" /> Bitácora de Compras Realizadas
+                  <FileText className="h-4 w-4 text-indigo-600" /> Bitácora de Compras Realizadas
                 </h3>
 
                 <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
@@ -407,8 +524,8 @@ export default function InventoryPage() {
                       <TableBody className="divide-y">
                         {purchases.map((purchase) => (
                           <TableRow key={purchase.id} className="hover:bg-slate-50/20 border-b">
-                            <TableCell className="font-bold text-xs text-slate-700">{purchase.supplier.name}</TableCell>
-                            <TableCell className="text-slate-455 text-xs">
+                            <TableCell className="font-bold text-xs text-slate-700 dark:text-slate-200">{purchase.supplier.name}</TableCell>
+                            <TableCell className="text-slate-455 dark:text-slate-400 text-xs">
                               {new Date(purchase.createdAt).toLocaleDateString()} {new Date(purchase.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </TableCell>
                             <TableCell className="text-center">
@@ -492,6 +609,22 @@ export default function InventoryPage() {
           barcodeInputRef={barcodeInputRef}
         />
 
+        {/* MODAL: IMPORTAR CSV */}
+        <ImportCSVModal
+          open={isImportOpen}
+          onOpenChange={setIsImportOpen}
+          onImport={handleImportCSV}
+        />
+
+        {/* DRAWER: BITÁCORA DE MOVIMIENTOS */}
+        <StockMovementsDrawer
+          open={isMovementsOpen}
+          onOpenChange={setIsMovementsOpen}
+          product={activeMovementsProduct}
+          movements={movements}
+          loading={movementsLoading}
+        />
+
         {/* DIÁLOGO: ELIMINACIÓN PRODUCTO */}
         <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <DialogContent className="sm:max-w-[380px] rounded-2xl">
@@ -505,8 +638,8 @@ export default function InventoryPage() {
             </DialogHeader>
 
             {productToDelete && (
-              <div className="bg-slate-50 border p-3 rounded-xl text-xs space-y-1">
-                <span className="font-bold text-slate-800 text-sm">{productToDelete.name}</span>
+              <div className="bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 p-3 rounded-xl text-xs space-y-1">
+                <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{productToDelete.name}</span>
               </div>
             )}
 

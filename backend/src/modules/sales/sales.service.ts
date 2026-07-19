@@ -141,7 +141,18 @@ export class SalesService {
               stock: currentProduct.stock - item.quantity,
             },
           });
+
+          // Registrar movimiento de stock tipo SALIDA
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              type: 'SALIDA',
+              quantity: -item.quantity,
+              reason: `Venta Ticket #${sale.id}`,
+            },
+          });
         }
+
       }
 
       // C. Si es "FIADO", registrar la deuda del cliente
