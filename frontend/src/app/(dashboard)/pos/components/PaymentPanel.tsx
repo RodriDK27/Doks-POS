@@ -20,6 +20,7 @@ interface PaymentPanelProps {
   canCheckout: boolean;
   onCheckout: () => void;
   onBackToTicket: () => void;
+  isUnified?: boolean;
 }
 
 export function PaymentPanel({
@@ -37,61 +38,66 @@ export function PaymentPanel({
   canCheckout,
   onCheckout,
   onBackToTicket,
+  isUnified = false,
 }: PaymentPanelProps) {
   const currentTotal = getTotal();
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm p-4 overflow-y-auto scrollbar-none gap-4">
-      {/* Botón de Regresar */}
-      <div className="flex items-center justify-between shrink-0">
-        <Button
-          variant="ghost"
-          className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-extrabold text-xs flex items-center gap-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-2.5 py-1.5"
-          onClick={onBackToTicket}
-        >
-          <ArrowLeft className="h-4 w-4" /> Volver al Ticket
-        </Button>
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          Consola de Pago
-        </span>
-      </div>
+    <div className={`flex-1 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-y-auto scrollbar-none gap-4 ${isUnified ? 'p-3' : 'p-4'}`}>
+      {/* Botón de Regresar (Sólo si no está unificado) */}
+      {!isUnified && (
+        <>
+          <div className="flex items-center justify-between shrink-0">
+            <Button
+              variant="ghost"
+              className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-extrabold text-xs flex items-center gap-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-2.5 py-1.5"
+              onClick={onBackToTicket}
+            >
+              <ArrowLeft className="h-4 w-4" /> Volver al Ticket
+            </Button>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Consola de Pago
+            </span>
+          </div>
 
-      {/* Tarjeta de Total */}
-      <div className="bg-slate-955 dark:bg-black/40 border border-slate-900 dark:border-slate-850 p-4.5 rounded-2xl text-white flex flex-col justify-center items-center gap-1 shadow-sm shrink-0">
-        <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">Monto Neto a Cobrar</span>
-        <span className="text-3xl font-black tracking-tight text-emerald-455">${currentTotal.toFixed(2)}</span>
-      </div>
+          {/* Tarjeta de Total */}
+          <div className="bg-slate-955 dark:bg-black/40 border border-slate-900 dark:border-slate-850 p-4.5 rounded-2xl text-white flex flex-col justify-center items-center gap-1 shadow-sm shrink-0">
+            <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">Monto Neto a Cobrar</span>
+            <span className="text-3xl font-black tracking-tight text-emerald-455">${currentTotal.toFixed(2)}</span>
+          </div>
 
-      {/* Selector de Cliente Duplicado para facilidad en cobro */}
-      <div className="space-y-1 shrink-0">
-        <label className="text-[9px] font-black text-slate-455 dark:text-slate-505 uppercase tracking-wider flex items-center gap-1">
-          <User className="h-3 w-3" /> Cliente
-        </label>
-        <CustomSelect
-          className="h-9.5 rounded-xl text-[11px] bg-white dark:bg-slate-950 dark:border-slate-800 border-slate-200"
-          value={selectedCustomerId}
-          onChange={setSelectedCustomerId}
-          placeholder="-- Público General --"
-          options={[
-            { value: '', label: '-- Público General --' },
-            ...customers.map((c) => ({
-              value: c.id,
-              label: `${c.name} ${c.currentDebt > 0 ? `(Debe: $${c.currentDebt.toFixed(0)})` : ''}`,
-            })),
-          ]}
-        />
-      </div>
+          {/* Selector de Cliente Duplicado para facilidad en cobro */}
+          <div className="space-y-1 shrink-0">
+            <label className="text-[9px] font-black text-slate-455 dark:text-slate-505 uppercase tracking-wider flex items-center gap-1">
+              <User className="h-3 w-3" /> Cliente
+            </label>
+            <CustomSelect
+              className="h-9.5 rounded-xl text-[11px] bg-white dark:bg-slate-950 dark:border-slate-800 border-slate-200"
+              value={selectedCustomerId}
+              onChange={setSelectedCustomerId}
+              placeholder="-- Público General --"
+              options={[
+                { value: '', label: '-- Público General --' },
+                ...customers.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} ${c.currentDebt > 0 ? `(Debe: $${c.currentDebt.toFixed(0)})` : ''}`,
+                })),
+              ]}
+            />
+          </div>
+        </>
+      )}
 
       {/* Botones de Métodos de Pago */}
       <div className="space-y-1.5 shrink-0">
         <label className="text-[9px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-wider block">Método de Pago</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
+          {([
             { id: 'EFECTIVO', name: 'Efectivo', icon: Banknote, activeClass: 'border-emerald-500 bg-emerald-50/40 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' },
             { id: 'TARJETA', name: 'Tarjeta', icon: CreditCard, activeClass: 'border-blue-500 bg-blue-50/40 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400' },
             { id: 'TRANSFERENCIA', name: 'Transfer', icon: Landmark, activeClass: 'border-amber-500 bg-amber-50/40 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400' },
-            { id: 'FIADO', name: 'Fiado', icon: User, activeClass: 'border-rose-500 bg-rose-50/40 text-rose-700 dark:bg-rose-950/20 dark:text-rose-455' },
-          ].map((m) => {
+            { id: 'FIADO', name: 'Fiado', icon: User, activeClass: 'border-rose-500 bg-rose-50/40 text-rose-700 dark:bg-rose-955/20 dark:text-rose-455' },
+          ] as const).map((m) => {
             const Icon = m.icon;
             const isActive = paymentMethod === m.id;
             return (
@@ -103,7 +109,7 @@ export function PaymentPanel({
                     ? `border-2 ${m.activeClass} shadow-xs`
                     : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
-                onClick={() => setPaymentMethod(m.id as any)}
+                onClick={() => setPaymentMethod(m.id)}
               >
                 <Icon className="h-4.5 w-4.5" />
                 <span>{m.name}</span>

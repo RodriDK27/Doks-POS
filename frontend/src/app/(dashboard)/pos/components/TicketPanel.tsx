@@ -1,7 +1,6 @@
 import React from 'react';
 import { ShoppingCart, Minus, Plus, Trash2, User, Pause, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Customer } from '../types';
@@ -10,10 +9,7 @@ import { CartItem } from '@/store/useCartStore';
 interface TicketPanelProps {
   cartItems: CartItem[];
   cartItemsCount: number;
-  getSubtotal: () => number;
   getTotal: () => number;
-  discount: number;
-  setDiscount: (val: number) => void;
   selectedCustomerId: string;
   setSelectedCustomerId: (id: string) => void;
   customers: Customer[];
@@ -27,10 +23,7 @@ interface TicketPanelProps {
 export function TicketPanel({
   cartItems,
   cartItemsCount,
-  getSubtotal,
   getTotal,
-  discount,
-  setDiscount,
   selectedCustomerId,
   setSelectedCustomerId,
   customers,
@@ -40,12 +33,14 @@ export function TicketPanel({
   updateQuantity,
   removeFromCart,
 }: TicketPanelProps) {
+  const currentTotal = getTotal();
+
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0">
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0">
       {/* Header */}
       <div className="px-4 py-3.5 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="h-4.5 w-4.5 text-indigo-655 dark:text-indigo-400" />
+          <ShoppingCart className="h-4.5 w-4.5 text-indigo-650" />
           <span className="font-extrabold text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider">
             Artículos en Ticket
           </span>
@@ -56,7 +51,7 @@ export function TicketPanel({
       </div>
 
       {/* Lista de Artículos */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-2 space-y-1 min-h-0">
         {cartItems.length > 0 ? (
           cartItems.map((item) => (
             <div
@@ -68,46 +63,44 @@ export function TicketPanel({
                   {item.name}
                 </span>
 
-                <div className="flex items-center gap-1.5 mt-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 cursor-pointer active:scale-90 transition-transform"
+                <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-950/20 h-8 w-fit mt-2 select-none overflow-hidden focus-within:border-indigo-500 dark:focus-within:border-indigo-500 transition-colors">
+                  <button
+                    type="button"
+                    className="h-full px-2 text-slate-550 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 hover:text-slate-755 dark:hover:text-slate-100 transition-colors flex items-center justify-center cursor-pointer active:scale-95 border-none outline-none focus:outline-none"
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                   >
-                    <Minus className="h-3.5 w-3.5" />
-                  </Button>
-                  <Input
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <input
                     type="number"
                     step="any"
-                    className="h-8 w-12 text-center font-black text-xs p-0 rounded-lg border-slate-200 dark:border-slate-800 dark:bg-slate-950 focus-visible:ring-indigo-500"
+                    className="h-full w-10 text-center font-black text-xs bg-transparent border-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-slate-850 dark:text-slate-200 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     value={item.quantity}
                     onChange={(e) => updateQuantity(item.id, parseFloat(e.target.value) || 0)}
                   />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 cursor-pointer active:scale-90 transition-transform"
+                  <button
+                    type="button"
+                    className="h-full px-2 text-slate-550 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 hover:text-slate-755 dark:hover:text-slate-100 transition-colors flex items-center justify-center cursor-pointer active:scale-95 border-none outline-none focus:outline-none"
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
+                    <Plus className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
 
               <div className="text-right shrink-0 flex flex-col items-end gap-1.5 justify-between h-full py-0.5">
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">${item.sellPrice.toFixed(2)}</span>
+                  <span className="text-[10px] text-slate-450 dark:text-slate-500 font-bold">${item.sellPrice.toFixed(2)}</span>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg cursor-pointer transition-all active:scale-90"
+                    className="h-7 w-7 text-rose-500 hover:text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg cursor-pointer transition-all active:scale-90"
                     onClick={() => removeFromCart(item.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <span className="font-black text-slate-800 dark:text-slate-100 text-xs">
+                <span className="font-black text-slate-800 dark:text-slate-105 text-xs">
                   ${item.total.toFixed(2)}
                 </span>
               </div>
@@ -124,85 +117,71 @@ export function TicketPanel({
       </div>
 
       {/* Sección Inferior de Totales y Cliente */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10 space-y-3.5 shrink-0">
-        {/* Descuento y Subtotal */}
-        <div className="grid grid-cols-2 gap-4 items-center">
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Subtotal</span>
-            <span className="font-black text-slate-700 dark:text-slate-350">${getSubtotal().toFixed(2)}</span>
-          </div>
+      {cartItems.length > 0 && (
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-900/10 space-y-3.5 shrink-0">
+          {/* Totales finos */}
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between items-center text-slate-500 pt-1 gap-4">
+              <span className="flex items-center gap-1 shrink-0"><User className="h-3.5 w-3.5 text-slate-400" /> Cliente</span>
+              <div className="w-48 shrink-0">
+                <CustomSelect
+                  className="w-full h-9 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 font-bold text-xs"
+                  value={selectedCustomerId}
+                  onChange={setSelectedCustomerId}
+                  placeholder="Público General"
+                  options={[
+                    { value: '', label: 'Público General' },
+                    ...customers.map((c) => ({
+                      value: c.id,
+                      label: `${c.name} ${c.currentDebt > 0 ? `($${c.currentDebt})` : ''}`,
+                    })),
+                  ]}
+                />
+              </div>
+            </div>
 
-          <div className="flex justify-end items-center gap-2">
-            <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Desc:</span>
-            <div className="relative w-20">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-450 dark:text-slate-655">$</span>
-              <Input
-                type="number"
-                className="h-8 rounded-lg text-right pr-2 pl-4 font-black text-xs border-slate-200 dark:border-slate-800 dark:bg-slate-950 focus-visible:ring-indigo-500"
-                value={discount || ''}
-                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-              />
+            <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 dark:border-slate-800">
+              <span className="font-black text-slate-850 dark:text-slate-200">Total a Cobrar</span>
+              <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
+                ${currentTotal.toFixed(2)}
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* Cliente */}
-        <div className="space-y-1">
-          <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <User className="h-3 w-3" /> Cliente Asociado (Opcional)
-          </label>
-          <CustomSelect
-            className="h-9.5 rounded-xl text-[11px] bg-white dark:bg-slate-950 dark:border-slate-800 shadow-none border-slate-200/80"
-            value={selectedCustomerId}
-            onChange={setSelectedCustomerId}
-            placeholder="-- Público General --"
-            options={[
-              { value: '', label: '-- Público General --' },
-              ...customers.map((c) => ({
-                value: c.id,
-                label: `${c.name} ${c.currentDebt > 0 ? `(Debe: $${c.currentDebt.toFixed(0)})` : ''}`,
-              })),
-            ]}
-          />
-        </div>
-
-        {/* Botón de Proceder al Pago */}
-        <Button
-          type="button"
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs h-12 rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer mt-1"
-          disabled={cartItems.length === 0}
-          onClick={onProceedToPayment}
-        >
-          Proceder al Pago
-          <span className="px-2 py-0.5 bg-emerald-700 dark:bg-emerald-900 rounded-lg text-[10px] font-black shadow-xs">
-            ${getTotal().toFixed(2)}
-          </span>
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-
-        {/* Botones secundarios */}
-        <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/40">
+          {/* Botón de Proceder al Pago */}
           <Button
             type="button"
-            variant="outline"
-            className="h-8.5 rounded-xl font-bold border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 active:scale-95 transition-all cursor-pointer shadow-none"
-            disabled={cartItems.length === 0}
-            onClick={onSuspend}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs h-11.5 rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer mt-1"
+            onClick={onProceedToPayment}
           >
-            <Pause className="h-3.5 w-3.5 mr-1" /> Suspender
+            Proceder al Cobro
+            <span className="px-2 py-0.5 bg-indigo-700 dark:bg-indigo-900 rounded-lg text-[10px] font-black shadow-xs">
+              ${currentTotal.toFixed(2)}
+            </span>
+            <ArrowRight className="h-4 w-4" />
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-8.5 rounded-xl font-bold border-slate-200 dark:border-slate-800 text-rose-500 dark:text-rose-455 hover:bg-rose-50 dark:hover:bg-rose-950/20 active:scale-95 transition-all cursor-pointer shadow-none"
-            disabled={cartItems.length === 0}
-            onClick={onClearCart}
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1" /> Vaciar
-          </Button>
+
+          {/* Botones secundarios */}
+          <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/40">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-xl font-bold border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 active:scale-95 transition-all cursor-pointer shadow-none"
+              onClick={onSuspend}
+            >
+              <Pause className="h-3.5 w-3.5 mr-1" /> Suspender
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-xl font-bold border-slate-200 dark:border-slate-800 text-rose-500 dark:text-rose-455 hover:bg-rose-50 dark:hover:bg-rose-950/20 active:scale-95 transition-all cursor-pointer shadow-none"
+              onClick={onClearCart}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Vaciar
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

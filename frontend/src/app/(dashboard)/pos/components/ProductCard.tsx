@@ -18,11 +18,10 @@ export function ProductCard({ product, qtyInCart, onAdd }: ProductCardProps) {
     <button
       type="button"
       disabled={isOutOfStock}
-      className={`group p-3.5 border rounded-2xl relative text-left flex flex-col justify-between transition-all duration-300 min-h-[125px] select-none ${
-        isOutOfStock
-          ? 'opacity-40 bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-          : `cursor-pointer bg-white dark:bg-slate-900 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${colors.bg} ${colors.border}`
-      }`}
+      className={`group p-3.5 border rounded-2xl relative text-left flex flex-col justify-between transition-all duration-300 min-h-[125px] select-none ${isOutOfStock
+        ? 'opacity-40 bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+        : `cursor-pointer bg-white dark:bg-slate-900 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${colors.bg} ${colors.border}`
+        }`}
       onClick={() => onAdd(product)}
     >
       {/* Badge cantidad agregada */}
@@ -55,13 +54,12 @@ export function ProductCard({ product, qtyInCart, onAdd }: ProductCardProps) {
             ${product.sellPrice.toFixed(2)}
           </span>
           <span
-            className={`text-[9px] font-bold block mt-0.5 tracking-wide ${
-              isOutOfStock
-                ? 'text-rose-500 font-extrabold'
-                : isLowStock
+            className={`text-[9px] font-bold block mt-0.5 tracking-wide ${isOutOfStock
+              ? 'text-rose-500 font-extrabold'
+              : isLowStock
                 ? 'text-amber-600 dark:text-amber-400 font-extrabold'
                 : 'text-slate-400 dark:text-slate-500'
-            }`}
+              }`}
           >
             {isOutOfStock ? 'Agotado' : `Stock: ${product.stock.toFixed(0)}`}
           </span>

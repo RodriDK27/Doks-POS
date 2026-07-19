@@ -121,11 +121,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  body, html, input, select, button, textarea, span, div, p, h1, h2, h3, h4, h5, h6, strong, a {
+    font-family: var(--font-outfit), sans-serif !important;
+  }
   body {
     @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
   }
 }
 
