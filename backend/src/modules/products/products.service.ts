@@ -190,4 +190,69 @@ export class ProductsService {
       take: 200,
     });
   }
+
+  // Obtener estadísticas de ventas por producto (estrellas y menos vendidos)
+  async getSalesAnalytics() {
+    // 1. Obtener suma de cantidades vendidas agrupadas por producto
+    const itemsGrouped = await this.prisma.saleItem.groupBy({
+      by: ['productId'],
+      _sum: {
+        quantity: true,
+        total: true,
+      },
+    });
+
+    // 2. Traer los productos correspondientes para tener los nombres
+    const products = await this.prisma.product.findMany({
+      select: {
+        id: true,
+        name: true,
+        stock: true,
+        sellPrice: true,
+        category: true,
+      },
+    });
+
+    // Mapear los datos de analíticas
+    const productSalesMap = new Map(
+      itemsGrouped
+        .filter(item => item.productId !== null)
+        .map(item => [
+          item.productId as string,
+          {
+            quantitySold: item._sum.quantity || 0,
+            totalRevenue: item._sum.total || 0,
+          }
+        ])
+    );
+
+    const analytics = products.map(prod => {
+      const saleData = productSalesMap.get(prod.id) || { quantitySold: 0, totalRevenue: 0 };
+      return {
+        id: prod.id,
+        name: prod.name,
+        stock: prod.stock,
+        sellPrice: prod.sellPrice,
+        category: prod.category,
+        quantitySold: saleData.quantitySold,
+        totalRevenue: saleData.totalRevenue,
+      };
+    });
+
+    // Separar los más vendidos (top 10 ordenados por cantidad vendida desc)
+    const topSelling = [...analytics]
+      .filter(p => p.quantitySold > 0)
+      .sort((a, b) => b.quantitySold - a.quantitySold)
+      .slice(0, 10);
+
+    // Separar los menos vendidos o sin ventas (menos cantidad vendida asc)
+    const slowMoving = [...analytics]
+      .sort((a, b) => a.quantitySold - b.quantitySold)
+      .slice(0, 10);
+
+    return {
+      topSelling,
+      slowMoving,
+    };
+  }
 }

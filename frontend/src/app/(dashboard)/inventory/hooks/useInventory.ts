@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -27,11 +27,30 @@ interface InlineEdit {
 // ─── Hook ─────────────────────────────────────────────────────────────────
 
 export function useInventory() {
-  const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS'>('CATALOG');
+  const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS' | 'ANALYTICS'>('CATALOG');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'CRITICAL' | 'OUT_OF_STOCK'>('ALL');
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const handleSetSearchQuery = (val: string) => {
+    setSearchQuery(val);
+    setCurrentPage(1);
+  };
+
+  const handleSetSelectedCategory = (val: string) => {
+    setSelectedCategory(val);
+    setCurrentPage(1);
+  };
+
+  const handleSetStockFilter = (val: 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK') => {
+    setStockFilter(val);
+    setCurrentPage(1);
+  };
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -181,6 +200,10 @@ export function useInventory() {
   const { data: swrCategories } = useSWR<string[]>('/products/categories');
   const { data: swrSuppliers, mutate: mutateSuppliers, isLoading: suppliersLoading } = useSWR<Supplier[]>(activeTab === 'SUPPLIERS' ? '/suppliers' : null);
   const { data: swrPurchases, mutate: mutatePurchases } = useSWR<Purchase[]>(activeTab === 'SUPPLIERS' ? '/purchases' : null);
+  const { data: swrAnalytics, isLoading: analyticsLoading } = useSWR<{
+    topSelling: Array<{ id: string; name: string; stock: number; sellPrice: number; category: string | null; quantitySold: number; totalRevenue: number }>;
+    slowMoving: Array<{ id: string; name: string; stock: number; sellPrice: number; category: string | null; quantitySold: number; totalRevenue: number }>;
+  }>(activeTab === 'ANALYTICS' ? '/products/sales-analytics' : null);
 
   // Derived dynamic variables
   const products = swrProducts ?? [];
@@ -220,6 +243,13 @@ export function useInventory() {
     return matchesSearch && matchesCategory && matchesStock;
   });
 
+  // Paginación de productos filtrados
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const handleOpenAdd = () => {
     setEditingProduct(null);
     setIsFormOpen(true);
@@ -240,7 +270,6 @@ export function useInventory() {
     };
 
     try {
-      // Si editingProduct existe pero tiene ID vacío, es un duplicado, por lo que usamos POST
       if (editingProduct && editingProduct.id) {
         await api.patch(`/products/${editingProduct.id}`, payload);
         toast.success(`Producto "${values.name}" actualizado.`);
@@ -371,20 +400,23 @@ export function useInventory() {
     }
   };
 
+  const handleCancelEdit = () => setEditingProduct(null);
+
   const totalInvoiceSum = addedPurchaseItems.reduce((acc, i) => acc + (i.costPrice * i.quantity), 0);
 
   return {
+    handleCancelEdit,
     activeTab,
     setActiveTab,
     products,
     categories,
     loading,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: handleSetSearchQuery,
     selectedCategory,
-    setSelectedCategory,
+    setSelectedCategory: handleSetSelectedCategory,
     stockFilter,
-    setStockFilter,
+    setStockFilter: handleSetStockFilter,
     isFormOpen,
     setIsFormOpen,
     editingProduct,
@@ -456,5 +488,15 @@ export function useInventory() {
     toggleSelectAllProducts,
     isLabelsOpen,
     setIsLabelsOpen,
+    // Paginación
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    totalPages,
+    paginatedProducts,
+    // Analíticas
+    analytics: swrAnalytics,
+    analyticsLoading,
   };
 }

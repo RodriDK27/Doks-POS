@@ -47,7 +47,7 @@ export function CustomSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full h-11 border border-slate-200 dark:border-slate-800 rounded-xl px-4 bg-white dark:bg-slate-900 text-xs font-black text-slate-700 dark:text-slate-200 flex items-center justify-between shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left focus:outline-none focus:ring-1 focus:ring-indigo-500",
+          "w-full h-10 border border-slate-200 dark:border-slate-800 rounded-xl px-4 bg-white dark:bg-slate-900 text-xs font-black text-slate-700 dark:text-slate-200 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left focus:outline-none focus:ring-1 focus:ring-indigo-500",
           className
         )}
       >

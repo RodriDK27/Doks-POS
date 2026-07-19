@@ -37,6 +37,11 @@ export class ProductsController {
     return this.productsService.getLowStock();
   }
 
+  @Get('sales-analytics')
+  getSalesAnalytics() {
+    return this.productsService.getSalesAnalytics();
+  }
+
   @Get('categories')
   getCategories() {
     return this.productsService.getCategories();
