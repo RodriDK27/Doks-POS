@@ -103,6 +103,9 @@ export function PurchaseDialog({
                   value={newPurchaseItem.costPrice || ''}
                   onChange={(e) => setNewPurchaseItem({ ...newPurchaseItem, costPrice: parseFloat(e.target.value) || 0 })}
                 />
+                <span className="text-[8px] text-slate-400 dark:text-slate-500 leading-tight block">
+                  * Actualizará el costo en catálogo.
+                </span>
               </div>
 
               <div className="space-y-1.5">

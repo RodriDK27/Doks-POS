@@ -138,6 +138,44 @@ export function useInventory() {
     }
   };
 
+  // ─── Duplicar Producto ───────────────────────────────────────────────────
+  const handleOpenDuplicate = (product: Product) => {
+    // Al duplicar configuramos editingProduct a un objeto con la información existente,
+    // pero con ID nulo o un flag para indicar que es un registro nuevo (duplicado)
+    setEditingProduct({
+      ...product,
+      id: '', // Al no tener ID, se creará un producto nuevo
+      barcode: '', // Limpiamos código de barras para evitar conflicto de valor único
+    });
+    setIsFormOpen(true);
+    setTimeout(() => barcodeInputRef.current?.focus(), 150);
+  };
+
+  // ─── Selección de Productos (para imprimir etiquetas) ────────────────────
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [isLabelsOpen, setIsLabelsOpen] = useState(false);
+
+  const toggleSelectProduct = (productId: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const toggleSelectAllProducts = (filteredProds: Product[]) => {
+    const allFilteredIds = filteredProds.map((p) => p.id);
+    const areAllSelected = allFilteredIds.every((id) => selectedProductIds.includes(id));
+
+    if (areAllSelected) {
+      // Deseleccionar solo los filtrados
+      setSelectedProductIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      // Seleccionar todos los filtrados agregándolos sin duplicar
+      setSelectedProductIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  };
+
   // ─── SWR Queries ─────────────────────────────────────────────────────────
   const { data: swrProducts, mutate: mutateProducts, isLoading: loading } = useSWR<Product[]>('/products');
   const { data: swrCategories } = useSWR<string[]>('/products/categories');
@@ -202,7 +240,8 @@ export function useInventory() {
     };
 
     try {
-      if (editingProduct) {
+      // Si editingProduct existe pero tiene ID vacío, es un duplicado, por lo que usamos POST
+      if (editingProduct && editingProduct.id) {
         await api.patch(`/products/${editingProduct.id}`, payload);
         toast.success(`Producto "${values.name}" actualizado.`);
       } else {
@@ -408,5 +447,14 @@ export function useInventory() {
     movements,
     movementsLoading,
     handleOpenMovements,
+    // Duplicar producto
+    handleOpenDuplicate,
+    // Selección e impresión de etiquetas
+    selectedProductIds,
+    setSelectedProductIds,
+    toggleSelectProduct,
+    toggleSelectAllProducts,
+    isLabelsOpen,
+    setIsLabelsOpen,
   };
 }

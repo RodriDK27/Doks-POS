@@ -17,6 +17,9 @@ import {
   Download,
   Upload,
   History,
+  Copy,
+  Printer,
+  CheckSquare,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +36,7 @@ import { ProductFormDialog } from './components/ProductFormDialog';
 import { SupplierFormDialog } from './components/SupplierFormDialog';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { StockMovementsDrawer } from './components/StockMovementsDrawer';
+import { BarcodeLabelsModal } from './components/BarcodeLabelsModal';
 import dynamic from 'next/dynamic';
 
 const PurchaseDialog = dynamic(() => import('./components/PurchaseDialog').then(mod => mod.PurchaseDialog), {
@@ -118,11 +122,24 @@ export default function InventoryPage() {
     movements,
     movementsLoading,
     handleOpenMovements,
+    // Duplicar producto
+    handleOpenDuplicate,
+    // Selección e impresión de etiquetas
+    selectedProductIds,
+    setSelectedProductIds,
+    toggleSelectProduct,
+    toggleSelectAllProducts,
+    isLabelsOpen,
+    setIsLabelsOpen,
   } = useInventory();
+
+  // Filtrar productos seleccionados
+  const selectedProducts = products.filter((p) => selectedProductIds.includes(p.id));
+  const areAllFilteredSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedProductIds.includes(p.id));
 
   return (
     <PinLockGuard>
-      <div className="space-y-6 max-w-5xl mx-auto pb-6">
+      <div className="space-y-6 max-w-5xl mx-auto pb-20 relative">
         
         {/* HEADER PRINCIPAL */}
         <div className="flex flex-col gap-1">
@@ -254,6 +271,14 @@ export default function InventoryPage() {
                 <Table>
                   <TableHeader className="bg-slate-50/50">
                     <TableRow className="border-b">
+                      <TableHead className="w-12 text-center">
+                        <input
+                          type="checkbox"
+                          className="accent-indigo-650 h-4.5 w-4.5 rounded cursor-pointer"
+                          checked={areAllFilteredSelected}
+                          onChange={() => toggleSelectAllProducts(filteredProducts)}
+                        />
+                      </TableHead>
                       <TableHead className="text-xs font-bold text-slate-500">Producto</TableHead>
                       <TableHead className="text-right text-xs font-bold text-slate-500 w-28">
                         Stock
@@ -265,7 +290,7 @@ export default function InventoryPage() {
                       </TableHead>
                       <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
                       <TableHead className="text-right text-xs font-bold text-slate-500 w-20 hidden sm:table-cell">Margen</TableHead>
-                      <TableHead className="w-28 text-center text-xs font-bold text-slate-500">Acciones</TableHead>
+                      <TableHead className="w-36 text-center text-xs font-bold text-slate-500">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y">
@@ -279,22 +304,36 @@ export default function InventoryPage() {
 
                       const isEditingStock = inlineEdit?.productId === p.id && inlineEdit.field === 'stock';
                       const isEditingPrice = inlineEdit?.productId === p.id && inlineEdit.field === 'sellPrice';
+                      const isSelected = selectedProductIds.includes(p.id);
 
                       return (
                         <TableRow
                           key={p.id}
                           className={cn(
-                            "hover:bg-slate-50/20 border-b transition-colors",
-                            isOut && "bg-rose-50/30 dark:bg-rose-950/10",
-                            !isOut && isCritical && "bg-amber-50/30 dark:bg-amber-950/10",
+                            "hover:bg-slate-50/20 border-b transition-all border-l-4",
+                            isOut 
+                              ? "bg-rose-50/40 dark:bg-rose-950/15 border-l-rose-500 text-rose-950 dark:text-rose-250" 
+                              : isCritical 
+                              ? "bg-amber-50/40 dark:bg-amber-950/15 border-l-amber-500 text-amber-950 dark:text-amber-250" 
+                              : "border-l-transparent",
+                            isSelected && "bg-indigo-50/30 dark:bg-indigo-950/10"
                           )}
                         >
+                          <TableCell className="text-center py-3">
+                            <input
+                              type="checkbox"
+                              className="accent-indigo-650 h-4 w-4 rounded cursor-pointer"
+                              checked={isSelected}
+                              onChange={() => toggleSelectProduct(p.id)}
+                            />
+                          </TableCell>
+
                           <TableCell className="py-3">
                             <div>
                               <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">{p.name}</span>
                               <div className="flex items-center gap-2 mt-1">
                                 {p.barcode && (
-                                  <span className="text-[9px] text-slate-400 font-mono flex items-center gap-0.5">
+                                  <span className="text-[9px] text-slate-450 dark:text-slate-400 font-mono flex items-center gap-0.5">
                                     <Barcode className="h-3 w-3" /> {p.barcode}
                                   </span>
                                 )}
@@ -314,7 +353,7 @@ export default function InventoryPage() {
                                 type="number"
                                 min={0}
                                 step={1}
-                                className="w-20 text-right border border-indigo-400 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                                className="w-20 text-right border border-indigo-450 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                                 value={inlineEdit.value}
                                 autoFocus
                                 onChange={(e) => setInlineEdit({ ...inlineEdit, value: e.target.value })}
@@ -328,15 +367,18 @@ export default function InventoryPage() {
                               <span
                                 className={cn(
                                   "cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded px-1 py-0.5 transition-colors",
-                                  isOut ? 'text-rose-500' : isCritical ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'
+                                  isOut ? 'text-rose-600 dark:text-rose-455 font-black' : isCritical ? 'text-amber-600 dark:text-amber-455 font-black' : 'text-slate-700 dark:text-slate-200'
                                 )}
                                 onDoubleClick={() => handleStartInlineEdit(p.id, 'stock', p.stock)}
                                 title="Doble clic para editar"
                               >
                                 {p.stock}
                                 {isCritical && (
-                                  <span className="text-[8px] font-black uppercase text-amber-500 bg-amber-50 dark:bg-amber-950/30 px-1 py-0.5 rounded ml-1 block sm:inline-block">
-                                    Mín {p.minStock}
+                                  <span className={cn(
+                                    "text-[8px] font-black uppercase px-1 py-0.5 rounded ml-1 block sm:inline-block",
+                                    isOut ? "bg-rose-100 dark:bg-rose-950 text-rose-600" : "bg-amber-100 dark:bg-amber-950 text-amber-600"
+                                  )}>
+                                    {isOut ? 'Agotado' : `Mín ${p.minStock}`}
                                   </span>
                                 )}
                               </span>
@@ -350,7 +392,7 @@ export default function InventoryPage() {
                                 type="number"
                                 min={0}
                                 step={0.01}
-                                className="w-24 text-right border border-indigo-400 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                                className="w-24 text-right border border-indigo-450 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                                 value={inlineEdit.value}
                                 autoFocus
                                 onChange={(e) => setInlineEdit({ ...inlineEdit, value: e.target.value })}
@@ -384,11 +426,20 @@ export default function InventoryPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg"
+                                className="h-8 w-8 text-slate-400 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg"
                                 onClick={() => handleOpenMovements(p)}
                                 title="Ver bitácora de stock"
                               >
                                 <History className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg"
+                                onClick={() => handleOpenDuplicate(p)}
+                                title="Duplicar producto"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -431,7 +482,7 @@ export default function InventoryPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Truck className="h-4 w-4 text-indigo-600" /> Proveedores Activos
+                    <Truck className="h-4 w-4 text-indigo-650" /> Proveedores Activos
                   </h3>
                   <Button 
                     size="sm" 
@@ -494,7 +545,7 @@ export default function InventoryPage() {
               {/* BITÁCORA DE COMPRAS A PROVEEDORES (2/3 ANCHO) */}
               <div className="md:col-span-2 space-y-3">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  <FileText className="h-4 w-4 text-indigo-600" /> Bitácora de Compras Realizadas
+                  <FileText className="h-4 w-4 text-indigo-650" /> Bitácora de Compras Realizadas
                 </h3>
 
                 <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
@@ -564,6 +615,36 @@ export default function InventoryPage() {
           </>
         )}
 
+        {/* BARRA DE ACCIÓN FLOTANTE AL SELECCIONAR PRODUCTOS */}
+        {selectedProductIds.length > 0 && activeTab === 'CATALOG' && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white dark:bg-indigo-950 border border-slate-800 dark:border-indigo-900 rounded-2xl py-3 px-6 shadow-2xl flex items-center gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300 z-50">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5 text-indigo-400" />
+              <span className="text-xs font-black text-slate-100">
+                {selectedProductIds.length} producto(s) seleccionado(s)
+              </span>
+            </div>
+            <div className="h-6 w-px bg-slate-800 dark:bg-indigo-900" />
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-[11px] font-bold text-slate-400 hover:text-white hover:bg-slate-800 dark:hover:bg-indigo-900 rounded-lg px-2"
+                onClick={() => setSelectedProductIds([])}
+              >
+                Limpiar
+              </Button>
+              <Button
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-8 rounded-lg px-4 gap-1.5 active:scale-95 transition-all shadow-md"
+                onClick={() => setIsLabelsOpen(true)}
+              >
+                <Printer className="h-3.5 w-3.5" /> Generar Etiquetas
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* MODAL REGISTRAR PROVEEDOR */}
         <SupplierFormDialog
           open={isSupplierOpen}
@@ -599,7 +680,7 @@ export default function InventoryPage() {
           activePurchaseDetail={activePurchaseDetail}
         />
 
-        {/* DIÁLOGO: NUEVO PRODUCTO CATÁLOGO */}
+        {/* DIÁLOGO: NUEVO/EDITAR PRODUCTO CATÁLOGO */}
         <ProductFormDialog
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
@@ -623,6 +704,13 @@ export default function InventoryPage() {
           product={activeMovementsProduct}
           movements={movements}
           loading={movementsLoading}
+        />
+
+        {/* MODAL: CONFIGURAR E IMPRIMIR ETIQUETAS */}
+        <BarcodeLabelsModal
+          open={isLabelsOpen}
+          onOpenChange={setIsLabelsOpen}
+          selectedProducts={selectedProducts}
         />
 
         {/* DIÁLOGO: ELIMINACIÓN PRODUCTO */}
