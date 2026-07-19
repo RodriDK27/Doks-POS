@@ -63,8 +63,13 @@ async function bootstrap() {
     logger,
   });
 
-  // Habilitar CORS para permitir peticiones del frontend
-  app.enableCors();
+  // Habilitar CORS de forma explícita para permitir peticiones de Vercel y cabeceras de autorización
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type,Accept,Authorization',
+    credentials: true,
+  });
 
   // Configurar prefijo global para las rutas de la API
   app.setGlobalPrefix('api');
