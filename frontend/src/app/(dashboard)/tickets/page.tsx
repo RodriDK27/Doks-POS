@@ -33,7 +33,7 @@ export default function TicketsPage() {
   } = useTickets();
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-8 animate-in fade-in duration-200">
+    <div className="space-y-6 w-full pb-8 animate-in fade-in duration-200">
       
       {/* ESTILOS CSS INYECTADOS EXCLUSIVOS PARA IMPRESIÓN */}
       <style jsx global>{`

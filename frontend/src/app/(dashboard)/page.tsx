@@ -189,7 +189,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-6 px-1.5">
+    <div className="space-y-6 w-full pb-6">
       
       {/* HEADER PRINCIPAL CON BOTONES DE ACCIÓN RÁPIDA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

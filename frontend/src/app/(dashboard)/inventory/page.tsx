@@ -139,7 +139,7 @@ export default function InventoryPage() {
 
   return (
     <PinLockGuard>
-      <div className="space-y-6 max-w-5xl mx-auto pb-20 relative">
+      <div className="space-y-6 w-full pb-20 relative">
         
         {/* HEADER PRINCIPAL */}
         <div className="flex flex-col gap-1">

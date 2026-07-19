@@ -61,7 +61,7 @@ export default function RegisterPage() {
   if (loading) {
     return (
       <PinLockGuard>
-        <div className="space-y-6 max-w-5xl mx-auto pb-6 animate-in fade-in duration-300">
+        <div className="space-y-6 w-full pb-6 animate-in fade-in duration-300">
           <div className="flex flex-col gap-1">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-8 w-60 mt-1" />
@@ -93,7 +93,7 @@ export default function RegisterPage() {
 
   return (
     <PinLockGuard>
-      <div className="space-y-6 max-w-5xl mx-auto pb-6">
+      <div className="space-y-6 w-full pb-6">
         
         {/* HEADER */}
         <div className="flex flex-col gap-1">

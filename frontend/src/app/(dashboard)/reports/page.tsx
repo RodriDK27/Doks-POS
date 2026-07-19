@@ -37,7 +37,7 @@ export default function ReportsPage() {
 
   return (
     <PinLockGuard>
-      <div className="space-y-6 max-w-5xl mx-auto pb-8 animate-in fade-in duration-200">
+      <div className="space-y-6 w-full pb-8 animate-in fade-in duration-200">
         
         {/* HEADER DE NAVEGACIÓN */}
         <div className="flex flex-col gap-3">

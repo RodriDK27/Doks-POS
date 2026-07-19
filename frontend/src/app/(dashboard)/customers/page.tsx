@@ -66,7 +66,7 @@ export default function CustomersPage() {
 
   return (
     <PinLockGuard>
-      <div className="space-y-6 max-w-5xl mx-auto pb-6">
+      <div className="space-y-6 w-full pb-6">
         
         {/* HEADER */}
         <div className="flex flex-col gap-1">
@@ -131,7 +131,7 @@ export default function CustomersPage() {
             <CustomSelect
               className="w-56"
               value={filterDebt}
-              onChange={(val) => setFilterDebt(val as any)}
+              onChange={(val) => setFilterDebt(val as 'ALL' | 'DEBTORS' | 'CLEAN')}
               options={[
                 { value: 'ALL', label: 'Ver todos los Clientes' },
                 { value: 'DEBTORS', label: 'Con Deuda Pendiente' },
