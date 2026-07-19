@@ -12,4 +12,12 @@ export class CreateSupplierDto {
   @IsString({ message: 'La dirección debe ser texto' })
   @IsOptional()
   address?: string;
+
+  @IsString({ message: 'Los días de pedido deben ser texto' })
+  @IsOptional()
+  orderDays?: string;
+
+  @IsString({ message: 'Los días de entrega deben ser texto' })
+  @IsOptional()
+  deliveryDays?: string;
 }

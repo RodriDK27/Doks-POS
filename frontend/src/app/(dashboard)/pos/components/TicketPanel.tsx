@@ -38,7 +38,7 @@ export function TicketPanel({
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0">
       {/* Header */}
-      <div className="px-4 py-3.5 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0 min-h-[68px]">
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-4.5 w-4.5 text-indigo-650" />
           <span className="font-extrabold text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider">

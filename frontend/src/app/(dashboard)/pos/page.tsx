@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  ShoppingCart, 
-  Wifi, 
-  WifiOff, 
-  RefreshCw, 
-  History, 
-  Plus, 
-  Keyboard, 
-  Package, 
+import {
+  ShoppingCart,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  History,
+  Plus,
+  Keyboard,
+  Package,
   Search,
   Mic
 } from 'lucide-react';
@@ -94,8 +94,18 @@ export default function POSPage() {
   }, [cartItems.length, searchInputRef]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] md:h-[calc(100vh-12rem)] overflow-hidden gap-4 select-none">
-      
+    <div className="flex flex-col h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)] overflow-hidden gap-4 select-none">
+
+      {/* HEADER DE LA PÁGINA */}
+      <div className="flex flex-col gap-0.5 shrink-0">
+        <span className="text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
+          Operaciones de Caja
+        </span>
+        <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+          Vender Productos
+        </h1>
+      </div>
       {/* BARRA SUPERIOR DE ACCIONES Y CONECTIVIDAD */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 px-4 py-3 rounded-2xl shadow-sm">
         <div className="flex items-center gap-3">
@@ -168,18 +178,16 @@ export default function POSPage() {
       <div className="flex bg-slate-100/80 dark:bg-slate-800/40 p-1 rounded-2xl md:hidden w-full shrink-0 border dark:border-slate-800/60">
         <Button
           variant={posTab === 'CATALOG' ? 'default' : 'ghost'}
-          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${
-            posTab === 'CATALOG' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
-          }`}
+          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CATALOG' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
+            }`}
           onClick={() => setPosTab('CATALOG')}
         >
           <Package className="h-4 w-4 mr-1.5 text-indigo-650 dark:text-indigo-400" /> Catálogo
         </Button>
         <Button
           variant={posTab === 'CART' ? 'default' : 'ghost'}
-          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${
-            posTab === 'CART' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
-          }`}
+          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CART' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
+            }`}
           onClick={() => setPosTab('CART')}
         >
           <ShoppingCart className="h-4 w-4 mr-1.5 text-indigo-655 dark:text-indigo-400" /> Ticket ({cartItemsCount})
@@ -187,9 +195,8 @@ export default function POSPage() {
         <Button
           variant={posTab === 'PAYMENT' ? 'default' : 'ghost'}
           disabled={cartItems.length === 0}
-          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${
-            posTab === 'PAYMENT' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
-          }`}
+          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'PAYMENT' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
+            }`}
           onClick={() => setPosTab('PAYMENT')}
         >
           <ShoppingCart className="h-4 w-4 mr-1.5 text-indigo-655 dark:text-indigo-400" /> Cobro
@@ -198,11 +205,10 @@ export default function POSPage() {
 
       {/* CUERPO DEL POS (DISEÑO A 2 COLUMNAS ORIENTADO A TABLET LANDSCAPE / ESCRITORIO) */}
       <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden min-h-0">
-        
+
         {/* COLUMNA IZQUIERDA: CATÁLOGO TÁCTIL */}
-        <div className={`md:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden ${
-          posTab === 'CATALOG' ? 'flex' : 'hidden md:flex'
-        }`}>
+        <div className={`md:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden ${posTab === 'CATALOG' ? 'flex' : 'hidden md:flex'
+          }`}>
           {/* BUSCADOR */}
           <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0">
             <div className="flex gap-2 items-center w-full">
@@ -281,9 +287,8 @@ export default function POSPage() {
         </div>
 
         {/* COLUMNA DERECHA: TICKET / PAGO UNIFICADO */}
-        <div className={`md:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 ${
-          posTab === 'CART' || posTab === 'PAYMENT' ? 'flex' : 'hidden md:flex'
-        }`}>
+        <div className={`md:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 ${posTab === 'CART' || posTab === 'PAYMENT' ? 'flex' : 'hidden md:flex'
+          }`}>
           {/* Vista Móvil / Tablet Vertical (Se alternan las pestañas) */}
           <div className="flex md:hidden flex-col flex-1 min-h-0 overflow-hidden gap-3.5">
             {posTab !== 'PAYMENT' ? (
@@ -377,7 +382,7 @@ export default function POSPage() {
       {isCheckoutDrawerOpen && (
         <>
           {/* Backdrop oscuro */}
-          <div 
+          <div
             className="fixed inset-0 z-[60] bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-200"
             onClick={() => setIsCheckoutDrawerOpen(false)}
           />

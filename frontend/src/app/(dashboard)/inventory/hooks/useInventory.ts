@@ -66,7 +66,10 @@ export function useInventory() {
     name: '',
     phone: '',
     address: '',
+    orderDays: '',
+    deliveryDays: '',
   });
+  const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
 
   // Modal Compra
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
@@ -311,13 +314,41 @@ export function useInventory() {
     }
 
     try {
-      await api.post('/suppliers', supplierForm);
-      toast.success(`Proveedor "${supplierForm.name}" registrado.`);
+      if (editingSupplierId) {
+        await api.put(`/suppliers/${editingSupplierId}`, supplierForm);
+        toast.success(`Proveedor "${supplierForm.name}" actualizado.`);
+      } else {
+        await api.post('/suppliers', supplierForm);
+        toast.success(`Proveedor "${supplierForm.name}" registrado.`);
+      }
       setIsSupplierOpen(false);
-      setSupplierForm({ name: '', phone: '', address: '' });
+      setEditingSupplierId(null);
+      setSupplierForm({ name: '', phone: '', address: '', orderDays: '', deliveryDays: '' });
       fetchSuppliersData();
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al guardar proveedor.'));
+    }
+  };
+
+  const handleOpenEditSupplier = (supplier: Supplier) => {
+    setEditingSupplierId(supplier.id);
+    setSupplierForm({
+      name: supplier.name,
+      phone: supplier.phone || '',
+      address: supplier.address || '',
+      orderDays: supplier.orderDays || '',
+      deliveryDays: supplier.deliveryDays || '',
+    });
+    setIsSupplierOpen(true);
+  };
+
+  const handleToggleActiveSupplier = async (supplier: Supplier) => {
+    try {
+      await api.put(`/suppliers/${supplier.id}`, { isActive: !supplier.isActive });
+      toast.success(`Proveedor "${supplier.name}" ${supplier.isActive ? 'desactivado' : 'activado'}.`);
+      fetchSuppliersData();
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al cambiar estado del proveedor.'));
     }
   };
 
@@ -456,6 +487,10 @@ export function useInventory() {
     handleOpenDelete,
     handleDeleteSubmit,
     handleSupplierSubmit,
+    handleOpenEditSupplier,
+    handleToggleActiveSupplier,
+    editingSupplierId,
+    setEditingSupplierId,
     handleOpenRegisterPurchase,
     handleAddPurchaseItem,
     handleRemovePurchaseItemIndex,

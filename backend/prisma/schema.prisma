@@ -132,13 +132,16 @@ model CashTransaction {
 
 /// Representa un proveedor de mercancías
 model Supplier {
-  id        String     @id @default(uuid())
-  name      String     @unique // Nombre único de la empresa (ej. Bimbo, Coca-Cola)
-  phone     String?
-  address   String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  purchases Purchase[]
+  id           String     @id @default(uuid())
+  name         String     @unique // Nombre único de la empresa (ej. Bimbo, Coca-Cola)
+  phone        String?
+  address      String?
+  orderDays    String?    // Días de toma de pedido separados por comas (ej: "Martes,Jueves")
+  deliveryDays String?    // Días de entrega separados por comas (ej: "Miércoles,Viernes")
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  purchases    Purchase[]
 
   @@index([name])
 }

@@ -17,6 +17,9 @@ export interface Supplier {
   name: string;
   phone: string | null;
   address: string | null;
+  orderDays?: string;
+  deliveryDays?: string;
+  isActive?: boolean;
   createdAt: string;
   _count?: {
     purchases: number;
