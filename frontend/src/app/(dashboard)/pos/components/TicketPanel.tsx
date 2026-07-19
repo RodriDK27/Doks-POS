@@ -140,9 +140,9 @@ export function TicketPanel({
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-between items-center pt-2.5">
               <span className="font-black text-slate-850 dark:text-slate-200">Total a Cobrar</span>
-              <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
+              <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
                 ${currentTotal.toFixed(2)}
               </span>
             </div>
@@ -162,7 +162,7 @@ export function TicketPanel({
           </Button>
 
           {/* Botones secundarios */}
-          <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-slate-800/40">
+          <div className="grid grid-cols-2 gap-2 text-xs pt-1">
             <Button
               type="button"
               variant="outline"

@@ -9,6 +9,14 @@ import dbHelper from '@/lib/indexedDb';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { Product, Customer } from '../types';
 
+const SYNONYMS: Record<string, string[]> = {
+  refresco: ['coca', 'fanta', 'sprite', 'sidral', 'soda', 'pepsi', 'mundet', 'boing'],
+  soda: ['coca', 'fanta', 'sprite', 'sidral', 'pepsi', 'mundet', 'boing'],
+  leche: ['alpura', 'lala', 'leche', 'santa clara'],
+  sabritas: ['papas', 'chips', 'rufles', 'doritos', 'cheetos', 'fritos'],
+  pan: ['bimbo', 'tía rosa', 'concha', 'dona', 'bolillo'],
+};
+
 export function usePOS() {
   const { role } = useAuthStore();
   const { isOnline, updateSyncQueueCount, syncQueueCount, syncOfflineSales } = useOfflineStore();
@@ -241,13 +249,63 @@ export function usePOS() {
     setPosTab('CART');
   };
 
-  const filteredCatalog = catalogProducts.filter(p => {
-    const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (p.barcode && p.barcode.includes(searchQuery));
-    const matchesCategory = activeCategory === 'TODOS' || p.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredCatalog = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return catalogProducts.filter(p => activeCategory === 'TODOS' || p.category === activeCategory);
+    }
+
+    // Split query by spaces to match words in any order
+    const queryWords = query.split(/\s+/).filter(Boolean);
+
+    return catalogProducts.filter(p => {
+      const matchesCategory = activeCategory === 'TODOS' || p.category === activeCategory;
+      if (!matchesCategory) return false;
+
+      // Product must match all words of the search query
+      return queryWords.every(word => {
+        // Expand query term with synonyms
+        const synonyms = SYNONYMS[word] || [];
+        const termsToMatch = [word, ...synonyms];
+
+        return termsToMatch.some(term => {
+          const nameMatches = p.name.toLowerCase().includes(term);
+          const catMatches = p.category ? p.category.toLowerCase().includes(term) : false;
+          const barcodeMatches = p.barcode ? p.barcode.includes(term) : false;
+
+          return nameMatches || catMatches || barcodeMatches;
+        });
+      });
+    });
+  }, [catalogProducts, searchQuery, activeCategory]);
+
+  const handleSearchQueryChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    const query = value.trim();
+    if (!query || query.length < 3) return; // avoid matching incomplete inputs
+
+    const exactBarcodeProduct = catalogProducts.find(p => p.barcode === query);
+    if (exactBarcodeProduct) {
+      if (exactBarcodeProduct.stock <= 0) {
+        toast.warning(`"${exactBarcodeProduct.name}" no tiene existencias en inventario.`);
+      }
+      addToCart(exactBarcodeProduct, 1);
+      toast.success(`Añadido: ${exactBarcodeProduct.name} (código escaneado)`);
+      setSearchQuery('');
+    }
+  }, [catalogProducts, addToCart, setSearchQuery]);
+
+  const handleSearchSubmit = useCallback(() => {
+    if (filteredCatalog.length === 1) {
+      const singleProduct = filteredCatalog[0];
+      if (singleProduct.stock <= 0) {
+        toast.warning(`"${singleProduct.name}" no tiene existencias en inventario.`);
+      }
+      addToCart(singleProduct, 1);
+      toast.success(`Añadido: ${singleProduct.name}`);
+      setSearchQuery('');
+    }
+  }, [filteredCatalog, addToCart, setSearchQuery]);
 
   const total = getTotal();
   const changeAmount = (paymentMethod === 'EFECTIVO' && amountPaid >= total) ? amountPaid - total : 0;
@@ -513,6 +571,8 @@ export function usePOS() {
     removeFromCart,
     filteredCatalog,
     isListening,
-    toggleVoiceSearch
+    toggleVoiceSearch,
+    handleSearchSubmit,
+    handleSearchQueryChange
   };
 }

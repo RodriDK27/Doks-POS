@@ -15,6 +15,7 @@ interface CustomSelectProps {
   options: SelectOption[];
   placeholder?: string;
   className?: string;
+  menuPlacement?: 'top' | 'bottom';
 }
 
 export function CustomSelect({
@@ -23,6 +24,7 @@ export function CustomSelect({
   options,
   placeholder = 'Seleccionar...',
   className,
+  menuPlacement = 'bottom',
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,7 +47,7 @@ export function CustomSelect({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full h-11 border border-slate-200 dark:border-slate-800 rounded-xl px-4 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left focus:outline-none focus:ring-1 focus:ring-indigo-500",
+          "w-full h-11 border border-slate-200 dark:border-slate-800 rounded-xl px-4 bg-white dark:bg-slate-900 text-xs font-black text-slate-700 dark:text-slate-200 flex items-center justify-between shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-left focus:outline-none focus:ring-1 focus:ring-indigo-500",
           className
         )}
       >
@@ -54,7 +56,10 @@ export function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-[999] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className={cn(
+          "absolute left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-[999] max-h-60 overflow-y-auto animate-in fade-in duration-150",
+          menuPlacement === 'top' ? "bottom-full mb-1.5 slide-in-from-bottom-1" : "top-full mt-1.5 slide-in-from-top-1"
+        )}>
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -68,8 +73,8 @@ export function CustomSelect({
                 className={cn(
                   "w-full text-left px-4 py-2 text-xs font-semibold block transition-colors duration-150 cursor-pointer",
                   isSelected 
-                    ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400" 
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    ? "bg-indigo-50 dark:bg-indigo-955/40 text-indigo-650 dark:text-indigo-400" 
+                    : "text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800"
                 )}
               >
                 {opt.label}

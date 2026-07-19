@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShoppingCart, 
   Wifi, 
@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CustomSelect } from '@/components/CustomSelect';
 
 import { usePOS } from './hooks/usePOS';
-import { getCategoryIcon } from './helpers';
 import { ProductCard } from './components/ProductCard';
 import { TicketPanel } from './components/TicketPanel';
 import { PaymentPanel } from './components/PaymentPanel';
@@ -34,7 +34,6 @@ export default function POSPage() {
     cartItems,
     suspendedCarts,
     getTotal,
-    getSubtotal,
     searchQuery,
     setSearchQuery,
     activeCategory,
@@ -81,9 +80,18 @@ export default function POSPage() {
     filteredCatalog,
     isListening,
     toggleVoiceSearch,
+    handleSearchSubmit,
+    handleSearchQueryChange,
   } = usePOS();
 
   const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
+
+  // Autofocus del buscador al iniciar la página o al vaciar/cobrar el carrito
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      searchInputRef.current?.focus();
+    }
+  }, [cartItems.length, searchInputRef]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-8.5rem)] md:h-[calc(100vh-12rem)] overflow-hidden gap-4 select-none">
@@ -195,8 +203,8 @@ export default function POSPage() {
         <div className={`md:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden ${
           posTab === 'CATALOG' ? 'flex' : 'hidden md:flex'
         }`}>
-          {/* BUSCADOR Y CATEGORÍAS */}
-          <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 space-y-3 shrink-0">
+          {/* BUSCADOR */}
+          <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0">
             <div className="flex gap-2 items-center w-full">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -206,51 +214,23 @@ export default function POSPage() {
                   placeholder="Nombre o código de barras... [F2]"
                   className="pl-10 h-11 border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-indigo-500 w-full"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchQueryChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearchSubmit();
+                    }
+                  }}
                 />
               </div>
               <Button
                 type="button"
                 onClick={toggleVoiceSearch}
-                className="h-11 px-4 rounded-xl flex items-center gap-2 font-black text-xs bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100/70 border border-indigo-100/50 dark:border-indigo-900/30 cursor-pointer active:scale-95 transition-all shrink-0 shadow-none"
+                className="h-11 w-11 sm:w-52 rounded-xl flex items-center justify-center gap-2 font-black text-xs bg-indigo-50 dark:bg-indigo-955/40 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100/70 border border-indigo-100/50 dark:border-indigo-900/30 cursor-pointer active:scale-95 transition-all shrink-0 shadow-none"
               >
                 <Mic className="h-4 w-4" />
                 <span className="hidden sm:inline">Buscar por voz</span>
               </Button>
-            </div>
-
-            {/* CATEGORÍAS */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none items-center">
-              <Button
-                variant={activeCategory === 'TODOS' ? 'default' : 'outline'}
-                className={`h-9 px-4 text-[10px] font-black uppercase rounded-xl shrink-0 cursor-pointer tracking-wider active:scale-95 transition-all ${
-                  activeCategory === 'TODOS' 
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs' 
-                    : 'border-slate-200 dark:border-slate-800/85 text-slate-650 dark:text-slate-350 hover:bg-slate-105/55 dark:hover:bg-slate-800'
-                }`}
-                onClick={() => setActiveCategory('TODOS')}
-              >
-                TODOS
-              </Button>
-              {categories.map((c) => {
-                const Icon = getCategoryIcon(c);
-                const isActive = activeCategory === c;
-                return (
-                  <Button
-                    key={c}
-                    variant={isActive ? 'default' : 'outline'}
-                    className={`h-9 px-3.5 text-[10px] font-black uppercase rounded-xl shrink-0 cursor-pointer tracking-wider active:scale-95 transition-all flex items-center gap-1.5 ${
-                      isActive 
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs' 
-                        : 'border-slate-200 dark:border-slate-800/80 text-slate-655 dark:text-slate-350 hover:bg-slate-100/50 dark:hover:bg-slate-800'
-                    }`}
-                    onClick={() => setActiveCategory(c)}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    <span>{c}</span>
-                  </Button>
-                );
-              })}
             </div>
           </div>
 
@@ -267,6 +247,7 @@ export default function POSPage() {
                       product={prod}
                       qtyInCart={qtyInCart}
                       onAdd={handleTouchAdd}
+                      searchQuery={searchQuery}
                     />
                   );
                 })}
@@ -277,6 +258,25 @@ export default function POSPage() {
                 <p className="text-xs font-bold">No se encontraron productos.</p>
               </div>
             )}
+          </div>
+
+          {/* BARRA INFERIOR / FOOTER: FILTRO DE CATEGORÍAS */}
+          <div className="p-2.5 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-end items-center shrink-0">
+            <div className="w-52">
+              <CustomSelect
+                menuPlacement="top"
+                value={activeCategory}
+                onChange={setActiveCategory}
+                placeholder="Todas las categorías"
+                options={[
+                  { value: 'TODOS', label: 'Todas las categorías' },
+                  ...categories.map((c) => ({
+                    value: c,
+                    label: c.toUpperCase(),
+                  })),
+                ]}
+              />
+            </div>
           </div>
         </div>
 

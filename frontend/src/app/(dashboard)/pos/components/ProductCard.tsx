@@ -7,9 +7,35 @@ interface ProductCardProps {
   product: Product;
   qtyInCart: number;
   onAdd: (product: Product) => void;
+  searchQuery?: string;
 }
 
-export function ProductCard({ product, qtyInCart, onAdd }: ProductCardProps) {
+function HighlightText({ text, query }: { text: string; query?: string }) {
+  if (!query) return <>{text}</>;
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return <>{text}</>;
+
+  const escapedWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escapedWords.join('|')})`, 'gi');
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isMatch = words.some(w => part.toLowerCase() === w.toLowerCase());
+        return isMatch ? (
+          <mark key={i} className="bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-100 font-extrabold rounded-xs px-0.5">
+            {part}
+          </mark>
+        ) : (
+          part
+        );
+      })}
+    </>
+  );
+}
+
+export function ProductCard({ product, qtyInCart, onAdd, searchQuery }: ProductCardProps) {
   const colors = getCategoryColor(product.category);
   const isLowStock = product.stock <= 5;
   const isOutOfStock = product.stock <= 0;
@@ -44,7 +70,7 @@ export function ProductCard({ product, qtyInCart, onAdd }: ProductCardProps) {
           className="font-extrabold text-[11px] leading-snug text-slate-800 dark:text-slate-100 block line-clamp-2 w-full group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors"
           title={product.name}
         >
-          {product.name}
+          <HighlightText text={product.name} query={searchQuery} />
         </span>
       </div>
 
