@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BackupModule } from './modules/backup/backup.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { RequestedProductsModule } from './modules/requested-products/requested-products.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     AuthModule,
     BackupModule,
     ReportsModule,
+    RequestedProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

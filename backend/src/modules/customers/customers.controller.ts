@@ -45,4 +45,12 @@ export class CustomersController {
   ) {
     return this.customersService.registerAbono(id, createCreditTransactionDto);
   }
+
+  @Post(':id/deuda')
+  registerDeudaManual(
+    @Param('id') id: string,
+    @Body() createCreditTransactionDto: CreateCreditTransactionDto,
+  ) {
+    return this.customersService.registerDeudaManual(id, createCreditTransactionDto);
+  }
 }

@@ -41,6 +41,7 @@ import { SupplierFormDialog } from './components/SupplierFormDialog';
 import { ImportCSVModal } from './components/ImportCSVModal';
 import { StockMovementsDrawer } from './components/StockMovementsDrawer';
 import { BarcodeLabelsModal } from './components/BarcodeLabelsModal';
+import { RequestedProductsTab } from './components/RequestedProductsTab';
 import dynamic from 'next/dynamic';
 
 const PurchaseDialog = dynamic(() => import('./components/PurchaseDialog').then(mod => mod.PurchaseDialog), {
@@ -207,6 +208,18 @@ export default function InventoryPage() {
               variant="ghost"
               className={cn(
                 "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none",
+                activeTab === 'REQUESTED' 
+                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              )}
+              onClick={() => setActiveTab('REQUESTED')}
+            >
+              <FileText className="h-4 w-4" /> Solicitudes Especiales
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn(
+                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none",
                 activeTab === 'ANALYTICS' 
                   ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
@@ -229,11 +242,11 @@ export default function InventoryPage() {
             />
 
             {/* FILTROS + ACCIONES */}
-            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
               
               {/* Lado izquierdo: buscador y selectores */}
               <div className="flex flex-col sm:flex-row gap-2 flex-grow items-stretch sm:items-center">
-                <div className="relative w-full sm:w-[280px] md:w-[320px] lg:w-[360px] shrink-0">
+                <div className="relative w-full sm:w-[240px] md:w-[280px] lg:w-[320px] xl:w-[360px] shrink-0">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     type="text"
@@ -269,22 +282,10 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              {/* Lado derecho: botones de acción */}
-              <div className="flex items-center gap-2 justify-end shrink-0">
-                <Button
-                  className="h-10 text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-xl gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs"
-                  onClick={() => setIsImportOpen(true)}
-                >
-                  <Upload className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Importar CSV
-                </Button>
-                <Button
-                  className="h-10 text-xs font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-xl gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs"
-                  onClick={handleExportCSV}
-                >
-                  <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Exportar CSV
-                </Button>
+              {/* Lado derecho: botón de agregar producto */}
+              <div className="shrink-0">
                 <Button 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                   onClick={handleOpenAdd}
                 >
                   <Plus className="h-4 w-4" /> Nuevo Producto
@@ -294,6 +295,27 @@ export default function InventoryPage() {
 
             {/* TABLA CATÁLOGO */}
             <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+              {/* Barra de utilidades de tabla */}
+              <div className="px-4 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-3 flex-wrap">
+                <span className="text-xs font-bold text-slate-500">
+                  {filteredProducts.length} {filteredProducts.length === 1 ? 'producto encontrado' : 'productos encontrados'}
+                </span>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
+                    onClick={() => setIsImportOpen(true)}
+                  >
+                    <Upload className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Importar CSV
+                  </Button>
+                  <Button
+                    className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
+                    onClick={handleExportCSV}
+                  >
+                    <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Exportar CSV
+                  </Button>
+                </div>
+              </div>
               {loading ? (
                 <div className="p-4 space-y-4">
                   {Array.from({ length: 5 }).map((_, idx) => (
@@ -463,6 +485,10 @@ export default function InventoryPage() {
               )}
             </div>
           </>
+        ) : activeTab === 'REQUESTED' ? (
+          <div className="space-y-6 animate-in fade-in duration-300 w-full">
+            <RequestedProductsTab />
+          </div>
         ) : activeTab === 'SUPPLIERS' ? (
           <div className="space-y-8 animate-in fade-in duration-300 w-full">
             {/* 1. SECCIÓN DE PROVEEDORES */}

@@ -162,7 +162,12 @@ export function SupplierFormDialog({
           </div>
 
           <DialogFooter className="pt-4 gap-2">
-            <Button type="button" variant="outline" className="text-xs rounded-xl" onClick={() => onOpenChange(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="text-xs rounded-xl h-10 px-5" 
+              onClick={() => onOpenChange(false)}
+            >
               Cancelar
             </Button>
             <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 rounded-xl h-10">

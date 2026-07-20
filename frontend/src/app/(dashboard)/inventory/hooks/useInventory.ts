@@ -27,7 +27,7 @@ interface InlineEdit {
 // ─── Hook ─────────────────────────────────────────────────────────────────
 
 export function useInventory() {
-  const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS' | 'ANALYTICS'>('CATALOG');
+  const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS' | 'ANALYTICS' | 'REQUESTED'>('CATALOG');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');

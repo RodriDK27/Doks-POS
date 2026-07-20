@@ -91,6 +91,14 @@ export default function RegisterPage() {
     );
   }
 
+  const transactions = activeRegister?.transactions || [];
+  const ingresos = transactions
+    .filter((tx) => tx.type === 'INGRESO')
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const egresos = transactions
+    .filter((tx) => tx.type === 'EGRESO')
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
   return (
     <PinLockGuard>
       <div className="space-y-6 w-full pb-6">
@@ -150,77 +158,109 @@ export default function RegisterPage() {
               </Button>
             </form>
           </div>
-        ) : (
-          /* CAJA ABIERTA: PANEL OPERATIVO DE CAJA */
+        ) : (          /* CAJA ABIERTA: PANEL OPERATIVO DE CAJA */
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
-              {/* VISTA RESUMEN SALDO ESPERADO */}
-              <div className="bg-gradient-to-br from-indigo-950 to-black text-white p-5 rounded-3xl shadow flex flex-col justify-between h-48 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
-                  <Unlock className="h-32 w-32" />
-                </div>
-                <div>
-                  <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-emerald-400 bg-emerald-950/45 px-2.5 py-0.5 rounded-lg mb-2">
-                    Caja en Servicio
-                  </span>
-                  <span className="text-[10px] text-slate-400 block tracking-wider uppercase font-semibold">Efectivo Esperado</span>
-                  <span className="text-3xl font-black block tracking-tight mt-1 text-indigo-400">
-                    ${activeRegister.expectedBalance.toFixed(2)}
-                  </span>
-                </div>
-                <div className="border-t border-slate-800/80 pt-3 text-[10px] text-slate-400 flex justify-between">
-                  <span>Fondo Inicial: <strong>${activeRegister.initialBalance.toFixed(0)}</strong></span>
-                  <span>Por: <strong>{activeRegister.openedBy}</strong></span>
-                </div>
-              </div>
-              {/* BOTONES ACCIONES DE EFECTIVO */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col justify-between h-48">
-                <div>
-                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider mb-1">Operaciones</h3>
-                  <p className="text-[10px] text-slate-455 dark:text-slate-400 leading-relaxed">
-                    Registra salidas de efectivo para gastos o ingresos de cambio adicionales en caja.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Button 
-                    className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-[11px] h-9.5 rounded-xl cursor-pointer border border-transparent dark:border-slate-800/40"
-                    onClick={() => setIsAdjOpen(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-1 text-indigo-600 dark:text-indigo-400" /> Movimiento de Caja
-                  </Button>
-                  <Button 
-                    className="w-full bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[11px] h-9.5 rounded-xl cursor-pointer"
-                    onClick={() => setIsCloseOpen(true)}
-                  >
-                    <Lock className="h-3.5 w-3.5 mr-1" /> Cerrar Turno (Arqueo)
-                  </Button>
-                </div>
-              </div>
-              
-              {/* INFORMACIÓN DEL TURNO */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col justify-between h-48">
-                <div>
-                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <Clock className="h-4 w-4 text-indigo-500" /> Historial de Turno
-                  </h3>
-                  <div className="mt-3 space-y-2 text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
-                    <div className="flex justify-between">
-                      <span>Abierto:</span>
-                      <span className="text-slate-800 dark:text-slate-200">{new Date(activeRegister.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ({new Date(activeRegister.openedAt).toLocaleDateString()})</span>
+              {/* COLUMNA IZQUIERDA: RESUMEN DE SALDOS Y ACCIONES (Toma 2 columnas) */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex flex-col justify-between gap-6">
+                  
+                  <div>
+                    <div className="flex justify-between items-center border-b pb-4 border-slate-100 dark:border-slate-800/60">
+                      <div>
+                        <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Cuentas del Turno</h2>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Control de flujo de efectivo en caja chica</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2.5 py-1 rounded-full border border-emerald-200/30">
+                        Caja Abierta
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Movimientos de Turno:</span>
-                      <span className="text-slate-800 dark:text-slate-200">{activeRegister.transactions?.length || 0}</span>
+
+                    {/* GRIDS DE MÉTRICAS FINANCIERAS */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                      <div className="bg-slate-50/50 dark:bg-slate-800/30 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Fondo Inicial</span>
+                        <span className="text-base font-extrabold text-slate-800 dark:text-slate-100 block mt-1">
+                          ${activeRegister.initialBalance.toFixed(2)}
+                        </span>
+                      </div>
+                      
+                      <div className="bg-emerald-50/30 dark:bg-emerald-950/20 p-3.5 rounded-2xl border border-emerald-100/30 dark:border-emerald-900/30">
+                        <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider block">Ingresos (+)</span>
+                        <span className="text-base font-extrabold text-emerald-600 block mt-1">
+                          +${ingresos.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="bg-rose-50/30 dark:bg-rose-950/20 p-3.5 rounded-2xl border border-rose-100/30 dark:border-rose-900/30">
+                        <span className="text-[9px] font-bold text-rose-500 dark:text-rose-450 uppercase tracking-wider block">Egresos (-)</span>
+                        <span className="text-base font-extrabold text-rose-500 block mt-1">
+                          -${egresos.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="bg-indigo-50/30 dark:bg-indigo-950/20 p-3.5 rounded-2xl border border-indigo-100/30 dark:border-indigo-900/30">
+                        <span className="text-[9px] font-bold text-indigo-650 dark:text-indigo-450 uppercase tracking-wider block">Efectivo en Caja</span>
+                        <span className="text-base font-black text-indigo-600 dark:text-indigo-400 block mt-1">
+                          ${activeRegister.expectedBalance.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* ACCIONES DIRECTAS */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                    <Button 
+                      className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-xs h-11 rounded-xl cursor-pointer border border-transparent dark:border-slate-850 justify-center gap-1.5"
+                      onClick={() => setIsAdjOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 text-indigo-650 dark:text-indigo-400" /> Movimiento de Caja
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs h-11 rounded-xl cursor-pointer border-none justify-center gap-1.5"
+                      onClick={() => setIsCloseOpen(true)}
+                    >
+                      <Lock className="h-4 w-4" /> Realizar Corte de Caja (Arqueo)
+                    </Button>
+                  </div>
                 </div>
-                <Link href="/pos">
-                  <Button className="w-full bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold text-[11px] h-10 rounded-xl flex items-center justify-center gap-1 shadow cursor-pointer">
-                    Ir a Vender <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
               </div>
+
+              {/* COLUMNA DERECHA: INFORMACIÓN DETALLADA DEL TURNO */}
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] h-full flex flex-col justify-between gap-6">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b pb-4 border-slate-100 dark:border-slate-800/60 flex items-center gap-1.5">
+                      <Clock className="h-4.5 w-4.5 text-indigo-505" /> Información de Sesión
+                    </h3>
+                    
+                    <div className="space-y-3 text-xs font-semibold text-slate-550 dark:text-slate-400">
+                      <div className="flex justify-between border-b pb-2 border-slate-50 dark:border-slate-800/30">
+                        <span className="text-slate-400">Cajero asignado:</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-bold">{activeRegister.openedBy}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-2 border-slate-50 dark:border-slate-800/30">
+                        <span className="text-slate-400">Apertura:</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-bold">
+                          {new Date(activeRegister.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ({new Date(activeRegister.openedAt).toLocaleDateString()})
+                        </span>
+                      </div>
+                      <div className="flex justify-between pb-1">
+                        <span className="text-slate-400">Operaciones en Turno:</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-bold">{activeRegister.transactions?.length || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Link href="/pos" className="w-full">
+                    <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-11 rounded-xl flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer">
+                      Ir al Punto de Venta <ChevronRight className="h-4.5 w-4.5" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
             </div>
 
             {/* TABLA DE MOVIMIENTOS CAJA DEL TURNO */}

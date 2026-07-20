@@ -49,6 +49,13 @@ export class CustomersService {
         creditTransactions: {
           orderBy: { createdAt: 'desc' },
           take: 50, // Limitamos el historial rápido a los últimos 50 movimientos
+          include: {
+            sale: {
+              include: {
+                items: true,
+              },
+            },
+          },
         },
         sales: {
           orderBy: { createdAt: 'desc' },
@@ -115,6 +122,11 @@ export class CustomersService {
 
       return { customer: updatedCustomer, transaction };
     });
+  }
+
+  // Registrar un cargo manual de deuda a la cuenta del cliente (fuera de ticket)
+  async registerDeudaManual(id: string, dto: CreateCreditTransactionDto) {
+    return this.registerDeuda(id, dto.amount, undefined, dto.notes || 'Cargo manual registrado');
   }
 
   // Registrar una deuda (cargo) tras una venta fiada (se llama desde el módulo de ventas o servicio)

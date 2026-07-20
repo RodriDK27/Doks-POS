@@ -60,10 +60,12 @@ model CreditTransaction {
   amount      Float    // Monto de la transacción (positivo para abonos, negativo para cargos/deudas)
   type        String   // Tipo de movimiento: "DEUDA" (cuando se fía) o "ABONO" (cuando paga)
   saleId      Int?     // Relación opcional con la venta que generó la deuda (ahora entero)
+  sale        Sale?    @relation(fields: [saleId], references: [id], onDelete: SetNull)
   notes       String?  // Notas aclaratorias (ej. "Abono del fin de semana")
   createdAt   DateTime @default(now())
 
   @@index([customerId])
+  @@index([saleId])
 }
 
 /// Representa una venta (encabezado)
@@ -81,6 +83,7 @@ model Sale {
   cashRegister  CashRegister @relation(fields: [cashRegisterId], references: [id])
   createdAt     DateTime   @default(now())
   items         SaleItem[]
+  creditTransactions CreditTransaction[]
 
   @@index([customerId])
   @@index([cashRegisterId])
@@ -197,6 +200,17 @@ model User {
   name      String   // Nombre completo del cajero/administrador
   pin       String   // PIN encriptado con bcryptjs
   role      String   // Rol de acceso: "ADMIN" o "CAJERO"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Registra artículos solicitados por clientes que no existen en el catálogo
+model RequestedProduct {
+  id        String   @id @default(uuid())
+  name      String   // Nombre del artículo solicitado (ej. "Escoba")
+  quantity  Int      @default(1) // Cantidad solicitada
+  notes     String?  // Notas aclaratorias (ej. "Sra. María lo pidió, traer 2")
+  status    String   @default("PENDIENTE") // PENDIENTE | COMPRADO | CANCELADO
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -38,6 +38,7 @@ export default function CustomersPage() {
     editingCustomer,
     isAbonoOpen,
     setIsAbonoOpen,
+    transactionType,
     selectedCustomer,
     abonoAmount,
     setAbonoAmount,
@@ -58,6 +59,7 @@ export default function CustomersPage() {
     handleOpenEdit,
     handleFormSubmit,
     handleOpenAbono,
+    handleOpenDeuda,
     handleAbonoSubmit,
     handleOpenHistory,
     handleOpenDelete,
@@ -114,22 +116,23 @@ export default function CustomersPage() {
 
         {/* 2. BARRA DE FILTRADO */}
         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 bg-white p-4 border border-slate-100 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
-          <div className="flex-1 flex flex-col sm:flex-row gap-2">
-            {/* BUSCADOR */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="Buscar cliente por nombre o teléfono..."
-                className="pl-9 h-11 border-slate-200 rounded-xl text-xs"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+          {/* BUSCADOR */}
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Buscar cliente por nombre o teléfono..."
+              className="pl-9 h-11 border-slate-200 rounded-xl text-xs w-full"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
 
+          {/* ACCIONES Y FILTROS */}
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0 items-stretch sm:items-center">
             {/* FILTRO DEUDA */}
             <CustomSelect
-              className="w-56"
+              className="w-full sm:w-56 h-11"
               value={filterDebt}
               onChange={(val) => setFilterDebt(val as 'ALL' | 'DEBTORS' | 'CLEAN')}
               options={[
@@ -138,14 +141,14 @@ export default function CustomersPage() {
                 { value: 'CLEAN', label: 'Cuentas al Corriente' },
               ]}
             />
-          </div>
 
-          <Button 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-11 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all w-full md:w-auto justify-center cursor-pointer"
-            onClick={handleOpenAdd}
-          >
-            <Plus className="h-4 w-4" /> Registrar Cliente
-          </Button>
+            <Button 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-11 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all w-full sm:w-auto justify-center cursor-pointer"
+              onClick={handleOpenAdd}
+            >
+              <Plus className="h-4 w-4" /> Registrar Cliente
+            </Button>
+          </div>
         </div>
 
         {/* 3. LISTADO TÁCTIL */}
@@ -224,13 +227,21 @@ export default function CustomersPage() {
                   </div>
 
                   {/* BOTONES ACCIÓN TÁCTIL XL */}
-                  <div className="flex gap-2 border-t pt-3 border-slate-50">
+                  <div className="flex gap-1.5 border-t pt-3 border-slate-50 flex-wrap sm:flex-nowrap">
                     <Button 
                       className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] h-9 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
                       disabled={customer.currentDebt === 0}
                       onClick={() => handleOpenAbono(customer)}
+                      title="Abonar a cuenta"
                     >
-                      <DollarSign className="h-3.5 w-3.5" /> Abonar
+                      <DollarSign className="h-3 w-3" /> Abonar
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-650 dark:text-indigo-400 font-extrabold text-[10px] h-9 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-none"
+                      onClick={() => handleOpenDeuda(customer)}
+                      title="Registrar deuda fuera de ticket"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Fiar (Manual)
                     </Button>
                     <Button 
                       variant="outline" 
@@ -241,14 +252,14 @@ export default function CustomersPage() {
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl h-9 w-9 p-0 cursor-pointer"
+                      className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl h-9 w-9 p-0 cursor-pointer shrink-0"
                       onClick={() => handleOpenEdit(customer)}
                     >
                       <Edit3 className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="ghost" 
-                      className="text-slate-400 hover:text-rose-550 hover:bg-rose-50 rounded-xl h-9 w-9 p-0 cursor-pointer"
+                      className="text-slate-400 hover:text-rose-550 hover:bg-rose-50 rounded-xl h-9 w-9 p-0 cursor-pointer shrink-0"
                       disabled={customer.currentDebt > 0}
                       onClick={() => handleOpenDelete(customer)}
                     >
@@ -277,6 +288,7 @@ export default function CustomersPage() {
           open={isAbonoOpen}
           onOpenChange={setIsAbonoOpen}
           selectedCustomer={selectedCustomer}
+          transactionType={transactionType}
           abonoAmount={abonoAmount}
           setAbonoAmount={setAbonoAmount}
           abonoNotes={abonoNotes}

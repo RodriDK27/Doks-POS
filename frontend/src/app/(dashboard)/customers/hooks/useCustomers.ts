@@ -16,8 +16,9 @@ export function useCustomers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
 
-  // Estado Modal Abono Rápido
+  // Estado Modal Abono / Cargo Rápido
   const [isAbonoOpen, setIsAbonoOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<'ABONO' | 'DEUDA'>('ABONO');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [abonoAmount, setAbonoAmount] = useState<number>(0);
   const [abonoNotes, setAbonoNotes] = useState('');
@@ -97,7 +98,17 @@ export function useCustomers() {
   // Abrir Abono
   const handleOpenAbono = (customer: Customer) => {
     setSelectedCustomer(customer);
+    setTransactionType('ABONO');
     setAbonoAmount(customer.currentDebt);
+    setAbonoNotes('');
+    setIsAbonoOpen(true);
+  };
+
+  // Abrir Cargo / Fiar Manual
+  const handleOpenDeuda = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setTransactionType('DEUDA');
+    setAbonoAmount(0);
     setAbonoNotes('');
     setIsAbonoOpen(true);
   };
@@ -106,26 +117,38 @@ export function useCustomers() {
     e.preventDefault();
     if (!selectedCustomer) return;
     if (abonoAmount <= 0) {
-      toast.error('El abono debe ser mayor a cero.');
+      toast.error('El monto debe ser mayor a cero.');
       return;
-    }
-    if (abonoAmount > selectedCustomer.currentDebt) {
-      toast.warning('El abono supera la deuda actual.');
     }
 
     try {
-      await api.post(`/customers/${selectedCustomer.id}/abono`, {
-        amount: abonoAmount,
-        notes: abonoNotes.trim() || 'Abono registrado en cuenta',
-      });
-      toast.success(`Abono por $${abonoAmount.toFixed(2)} registrado correctamente.`);
+      if (transactionType === 'ABONO') {
+        if (abonoAmount > selectedCustomer.currentDebt) {
+          toast.warning('El abono supera la deuda actual.');
+        }
+        await api.post(`/customers/${selectedCustomer.id}/abono`, {
+          amount: abonoAmount,
+          notes: abonoNotes.trim() || 'Abono registrado en cuenta',
+        });
+        toast.success(`Abono por $${abonoAmount.toFixed(2)} registrado correctamente.`);
+      } else {
+        const nextDebt = selectedCustomer.currentDebt + abonoAmount;
+        if (selectedCustomer.creditLimit > 0 && nextDebt > selectedCustomer.creditLimit) {
+          toast.warning(`Este cargo excede el límite de crédito del cliente ($${selectedCustomer.creditLimit.toFixed(2)}).`);
+        }
+        await api.post(`/customers/${selectedCustomer.id}/deuda`, {
+          amount: abonoAmount,
+          notes: abonoNotes.trim() || 'Cargo manual registrado',
+        });
+        toast.success(`Cargo de $${abonoAmount.toFixed(2)} registrado correctamente.`);
+      }
       setIsAbonoOpen(false);
       setSelectedCustomer(null);
       setAbonoAmount(0);
       setAbonoNotes('');
       fetchCustomers();
     } catch (error) {
-      toast.error(parseAxiosError(error, 'Error al registrar abono.'));
+      toast.error(parseAxiosError(error, 'Error al registrar el movimiento.'));
     }
   };
 
@@ -175,6 +198,8 @@ export function useCustomers() {
     editingCustomer,
     isAbonoOpen,
     setIsAbonoOpen,
+    transactionType,
+    setTransactionType,
     selectedCustomer,
     abonoAmount,
     setAbonoAmount,
@@ -195,6 +220,7 @@ export function useCustomers() {
     handleOpenEdit,
     handleFormSubmit,
     handleOpenAbono,
+    handleOpenDeuda,
     handleAbonoSubmit,
     handleOpenHistory,
     handleOpenDelete,

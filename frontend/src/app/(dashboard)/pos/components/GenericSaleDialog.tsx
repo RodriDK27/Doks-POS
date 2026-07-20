@@ -73,7 +73,11 @@ export function GenericSaleDialog({
           </div>
         </div>
         <DialogFooter className="gap-2 pt-2 sm:justify-end">
-          <Button variant="outline" className="text-xs rounded-xl cursor-pointer" onClick={() => onOpenChange(false)}>
+          <Button 
+            variant="outline" 
+            className="text-xs rounded-xl h-10 px-6 cursor-pointer" 
+            onClick={() => onOpenChange(false)}
+          >
             Cancelar
           </Button>
           <Button

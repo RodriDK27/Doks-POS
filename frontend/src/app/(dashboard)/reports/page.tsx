@@ -157,15 +157,14 @@ export default function ReportsPage() {
           <>
             {/* TARJETAS MÉTRICAS DE RENTABILIDAD */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              {/* UTILIDAD NETA */}
-              <Card className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/20 dark:from-emerald-950/20 dark:via-slate-900/60 dark:to-emerald-955/10 border border-emerald-100/50 dark:border-emerald-900/30 rounded-3xl shadow-sm col-span-2">
+                       {/* UTILIDAD NETA */}
+              <Card className="bg-emerald-50/25 dark:bg-emerald-950/15 border border-emerald-100/60 dark:border-emerald-900/30 rounded-3xl shadow-sm col-span-2">
                 <CardContent className="p-5 flex flex-col justify-between h-full gap-2 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                  <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none">
                     <TrendingUp className="h-28 w-28 text-emerald-600" />
                   </div>
                   <div>
-                    <Badge className="bg-emerald-100 text-emerald-700 border-none font-bold text-[8px] uppercase tracking-wider py-0.5 px-2">
+                    <Badge className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-none font-bold text-[8px] uppercase tracking-wider py-0.5 px-2">
                       Dinero Libre (Take Home)
                     </Badge>
                     <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight mt-2.5">Ganancia Neta Limpia</h3>
@@ -174,10 +173,10 @@ export default function ReportsPage() {
                     </p>
                   </div>
                   <div className="flex items-baseline gap-2 mt-2">
-                    <span className="text-3xl font-black text-emerald-600 tracking-tight">
+                    <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
                       ${netProfit.toFixed(2)}
                     </span>
-                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
+                    <span className="text-xs font-bold text-emerald-650 dark:text-emerald-400 flex items-center gap-0.5">
                       <ArrowUpRight className="h-3.5 w-3.5" /> {profitMarginPercent.toFixed(0)}% margen
                     </span>
                   </div>
