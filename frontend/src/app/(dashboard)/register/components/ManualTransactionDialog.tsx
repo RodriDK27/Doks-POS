@@ -40,10 +40,10 @@ export function ManualTransactionDialog({
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              className={`h-10 rounded-xl font-black text-xs cursor-pointer border ${
+              className={`h-10 rounded-xl font-black text-xs cursor-pointer border transition-all ${
                 adjForm.type === 'INGRESO'
-                  ? 'bg-emerald-50 text-emerald-705 border-emerald-400'
-                  : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/50 dark:border-emerald-500/60 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
               onClick={() => setAdjForm({ ...adjForm, type: 'INGRESO' })}
             >
@@ -51,10 +51,10 @@ export function ManualTransactionDialog({
             </button>
             <button
               type="button"
-              className={`h-10 rounded-xl font-black text-xs cursor-pointer border ${
+              className={`h-10 rounded-xl font-black text-xs cursor-pointer border transition-all ${
                 adjForm.type === 'EGRESO'
-                  ? 'bg-rose-50 text-rose-700 border-rose-400'
-                  : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/50 dark:border-rose-500/60 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
               onClick={() => setAdjForm({ ...adjForm, type: 'EGRESO' })}
             >

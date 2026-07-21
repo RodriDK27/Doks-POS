@@ -291,7 +291,7 @@ export default function DashboardLayout({
                   logout();
                   toast.info('Acceso de Administrador bloqueado (Modo Cajero).');
                 }}
-                className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 title="Bloquear a Modo Cajero"
               >
                 <Lock className="h-3 w-3" /> Bloquear Admin
