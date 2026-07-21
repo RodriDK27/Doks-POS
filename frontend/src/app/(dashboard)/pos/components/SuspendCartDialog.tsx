@@ -35,7 +35,7 @@ export function SuspendCartDialog({
           />
         </div>
         <DialogFooter className="pt-2 sm:justify-end gap-2">
-          <Button variant="outline" className="text-xs rounded-xl cursor-pointer" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="text-xs font-bold rounded-xl h-10 px-5 cursor-pointer" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button

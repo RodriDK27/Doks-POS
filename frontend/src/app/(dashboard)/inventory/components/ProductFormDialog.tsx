@@ -106,8 +106,8 @@ export function ProductFormDialog({
               <Input
                 ref={(e) => {
                   register('barcode').ref(e);
-                  if (barcodeInputRef) {
-                    (barcodeInputRef as any).current = e;
+                  if (barcodeInputRef && 'current' in barcodeInputRef) {
+                    (barcodeInputRef as React.MutableRefObject<HTMLInputElement | null>).current = e;
                   }
                 }}
                 type="text"
@@ -213,7 +213,7 @@ export function ProductFormDialog({
           </div>
 
           <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="outline" className="text-xs rounded-xl" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            <Button type="button" variant="outline" className="text-xs font-bold rounded-xl h-10 px-5 cursor-pointer" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
             <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 rounded-xl h-10" disabled={isSubmitting}>

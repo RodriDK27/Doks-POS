@@ -87,7 +87,7 @@ export function ManualTransactionDialog({
           </div>
 
           <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="outline" className="text-xs rounded-xl" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" className="text-xs font-bold rounded-xl h-10 px-5 cursor-pointer" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button

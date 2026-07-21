@@ -109,7 +109,7 @@ export default function POSPage() {
       {/* BARRA SUPERIOR DE ACCIONES Y CONECTIVIDAD */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 px-4 py-3 rounded-2xl shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-indigo-50 dark:bg-indigo-955/40 rounded-xl flex items-center justify-center text-indigo-650 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30">
+          <div className="h-10 w-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center text-indigo-650 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30">
             <ShoppingCart className="h-5 w-5" />
           </div>
           <div>
@@ -120,7 +120,7 @@ export default function POSPage() {
                   <Wifi className="h-3 w-3" /> En Línea
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-550 bg-amber-50 dark:bg-amber-955/10 px-2 py-0.5 rounded-full border border-amber-200/30 animate-pulse">
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-550 bg-amber-50 dark:bg-amber-950/10 px-2 py-0.5 rounded-full border border-amber-200/30 animate-pulse">
                   <WifiOff className="h-3 w-3" /> Modo Local (Offline)
                 </span>
               )}

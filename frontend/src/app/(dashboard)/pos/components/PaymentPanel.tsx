@@ -96,7 +96,7 @@ export function PaymentPanel({
             { id: 'EFECTIVO', name: 'Efectivo', icon: Banknote, activeClass: 'border-emerald-500 bg-emerald-50/40 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' },
             { id: 'TARJETA', name: 'Tarjeta', icon: CreditCard, activeClass: 'border-blue-500 bg-blue-50/40 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400' },
             { id: 'TRANSFERENCIA', name: 'Transfer', icon: Landmark, activeClass: 'border-amber-500 bg-amber-50/40 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400' },
-            { id: 'FIADO', name: 'Fiado', icon: User, activeClass: 'border-rose-500 bg-rose-50/40 text-rose-700 dark:bg-rose-955/20 dark:text-rose-455' },
+            { id: 'FIADO', name: 'Fiado', icon: User, activeClass: 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 dark:bg-rose-950/40' },
           ] as const).map((m) => {
             const Icon = m.icon;
             const isActive = paymentMethod === m.id;

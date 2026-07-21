@@ -66,7 +66,7 @@ export function CustomerAbonoDialog({
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" className="text-xs rounded-xl" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="text-xs font-bold rounded-xl h-10 px-5 cursor-pointer" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button 

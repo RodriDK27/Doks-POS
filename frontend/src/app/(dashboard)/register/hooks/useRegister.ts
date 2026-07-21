@@ -46,15 +46,18 @@ export function useRegister() {
   // SWR queries
   const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading } = useSWR<CashRegister | null>(role !== 'NONE' ? '/register/active' : null);
   const { data: swrHistory, mutate: mutateHistory, isLoading: historyLoading } = useSWR<CashRegister[]>(role !== 'NONE' ? '/register' : null);
+  const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>('/auth/cashiers');
 
   const loading = activeRegisterLoading || historyLoading;
 
   const activeRegister = swrActiveRegister ?? null;
   const history = swrHistory ? swrHistory.filter((c) => c.status === 'CERRADO') : [];
+  const cashiers = swrCashiers || [];
 
   const fetchCajaData = async () => {
     mutateActiveRegister();
     mutateHistory();
+    mutateCashiers();
   };
 
   const handleDownloadPdf = async (registerId: string) => {
@@ -209,6 +212,8 @@ export function useRegister() {
     handleAdjustmentSubmit,
     handleCloseRegister,
     handleDownloadPdf,
-    fetchCajaData
+    fetchCajaData,
+    cashiers,
+    mutateCashiers,
   };
 }

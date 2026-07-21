@@ -1005,11 +1005,11 @@ export default function InventoryPage() {
             )}
 
             <DialogFooter className="gap-2 pt-2">
-              <Button variant="outline" className="text-xs rounded-xl" onClick={() => setIsDeleteOpen(false)}>
+              <Button variant="outline" className="text-xs font-bold rounded-xl h-10 px-5 cursor-pointer" onClick={() => setIsDeleteOpen(false)}>
                 Cancelar
               </Button>
               <Button 
-                className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl h-10 px-4 active:scale-95 transition-all" 
+                className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl h-10 px-5 cursor-pointer active:scale-95 transition-all" 
                 onClick={handleDeleteSubmit}
               >
                 Sí, Eliminar

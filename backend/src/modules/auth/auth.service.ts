@@ -77,4 +77,41 @@ export class AuthService implements OnModuleInit {
 
     return { message: 'El PIN ha sido actualizado con éxito.' };
   }
+
+  async getCashiers() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createCashier(name: string) {
+    const cajeroPinHash = await bcrypt.hash('0000', 10);
+    return this.prisma.user.create({
+      data: {
+        name,
+        role: 'CAJERO',
+        pin: cajeroPinHash,
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async deleteCashier(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new UnauthorizedException('Cajero no encontrado.');
+    if (user.role === 'ADMIN') throw new UnauthorizedException('No se puede eliminar la cuenta de Administrador.');
+    await this.prisma.user.delete({ where: { id } });
+    return { message: 'Cajero eliminado con éxito.' };
+  }
 }

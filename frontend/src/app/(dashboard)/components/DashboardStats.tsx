@@ -130,13 +130,13 @@ export function DashboardStatsGrid({
               ${activeRegister ? activeRegister.expectedBalance.toFixed(2) : '0.00'}
             </span>
           </div>
-          <div className={`h-9 w-9 rounded-2xl flex items-center justify-center shrink-0 ml-2 transition-transform group-hover:scale-110 duration-300 ${activeRegister ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400' : 'bg-rose-50 text-rose-500 dark:bg-rose-955/30'}`}>
+          <div className={`h-9 w-9 rounded-2xl flex items-center justify-center shrink-0 ml-2 transition-transform group-hover:scale-110 duration-300 ${activeRegister ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-400'}`}>
             <DollarSign className="h-4.5 w-4.5" />
           </div>
         </div>
         <div className="flex justify-between items-center pt-3 border-t border-slate-100/60 dark:border-slate-800/80 text-[10px]">
-          <span className="text-slate-400 truncate max-w-[65%]">Cajero: <strong className="text-slate-700 dark:text-slate-350 font-bold">{activeRegister ? activeRegister.openedBy : 'Ninguno'}</strong></span>
-          <Badge variant="outline" className={`text-[8px] font-bold border-none px-2 py-0.5 rounded-lg shrink-0 ${activeRegister ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-955/40 dark:text-emerald-400' : 'bg-rose-55 text-rose-700 dark:bg-rose-955/40 dark:text-rose-400'}`}>
+          <span className="text-slate-400 truncate max-w-[65%]">Cajero: <strong className="text-slate-700 dark:text-slate-300 font-bold">{activeRegister ? activeRegister.openedBy : 'Ninguno'}</strong></span>
+          <Badge variant="outline" className={`text-[8px] font-bold border-none px-2 py-0.5 rounded-lg shrink-0 ${activeRegister ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'}`}>
             {activeRegister ? 'Abierto' : 'Cerrado'}
           </Badge>
         </div>
@@ -169,7 +169,7 @@ export function DashboardStatsGrid({
               {stats?.lowStockCount || 0}
             </span>
           </div>
-          <div className={`h-9 w-9 rounded-2xl flex items-center justify-center shrink-0 ml-2 transition-transform group-hover:scale-110 duration-300 ${stats?.lowStockCount && stats.lowStockCount > 0 ? 'bg-amber-50 text-amber-500 dark:bg-amber-955/30' : 'bg-slate-50 text-slate-500 dark:bg-slate-800'}`}>
+          <div className={`h-9 w-9 rounded-2xl flex items-center justify-center shrink-0 ml-2 transition-transform group-hover:scale-110 duration-300 ${stats?.lowStockCount && stats.lowStockCount > 0 ? 'bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-slate-50 text-slate-500 dark:bg-slate-800'}`}>
             <Package className="h-4.5 w-4.5" />
           </div>
         </div>

@@ -13,8 +13,10 @@ import {
   Lock, 
   BadgeAlert,
   ChevronRight,
-  FileText
+  FileText,
+  UserCheck
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -56,38 +58,37 @@ export default function RegisterPage() {
     handleAdjustmentSubmit,
     handleCloseRegister,
     handleDownloadPdf,
+    cashiers,
   } = useRegister();
 
   if (loading) {
     return (
-      <PinLockGuard>
-        <div className="space-y-6 w-full pb-6 animate-in fade-in duration-300">
-          <div className="flex flex-col gap-1">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-8 w-60 mt-1" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <Skeleton className="h-48 rounded-3xl" />
-            <Skeleton className="h-48 rounded-3xl" />
-            <Skeleton className="h-48 rounded-3xl" />
-          </div>
-          <div className="space-y-3 pt-4">
-            <Skeleton className="h-4 w-48" />
-            <div className="border border-slate-100 rounded-3xl bg-white p-4 space-y-4 shadow-xs">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex justify-between items-center py-2.5 border-b last:border-0">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4.5 w-40" />
-                    <Skeleton className="h-3.5 w-24" />
-                  </div>
-                  <Skeleton className="h-6 w-16 rounded-md" />
-                  <Skeleton className="h-4.5 w-16" />
+      <div className="space-y-6 w-full pb-6 animate-in fade-in duration-300">
+        <div className="flex flex-col gap-1">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-60 mt-1" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <Skeleton className="h-48 rounded-3xl" />
+          <Skeleton className="h-48 rounded-3xl" />
+          <Skeleton className="h-48 rounded-3xl" />
+        </div>
+        <div className="space-y-3 pt-4">
+          <Skeleton className="h-4 w-48" />
+          <div className="border border-slate-100 rounded-3xl bg-white p-4 space-y-4 shadow-xs">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex justify-between items-center py-2.5 border-b last:border-0">
+                <div className="space-y-2">
+                  <Skeleton className="h-4.5 w-40" />
+                  <Skeleton className="h-3.5 w-24" />
                 </div>
-              ))}
-            </div>
+                <Skeleton className="h-6 w-16 rounded-md" />
+                <Skeleton className="h-4.5 w-16" />
+              </div>
+            ))}
           </div>
         </div>
-      </PinLockGuard>
+      </div>
     );
   }
 
@@ -100,8 +101,7 @@ export default function RegisterPage() {
     .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
   return (
-    <PinLockGuard>
-      <div className="space-y-6 w-full pb-6">
+    <div className="space-y-6 w-full pb-6">
         
         {/* HEADER */}
         <div className="flex flex-col gap-1">
@@ -113,46 +113,120 @@ export default function RegisterPage() {
         </div>
 
         {!activeRegister ? (
-          /* CAJA CERRADA: FORMULARIO DE APERTURA */
-          <div className="max-w-md mx-auto bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-6 rounded-3xl shadow-[0_10px_35px_-10px_rgba(0,0,0,0.03)] space-y-5 animate-in fade-in duration-300">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="h-12 w-12 rounded-2xl bg-rose-50 dark:bg-rose-955/30 text-rose-500 flex items-center justify-center">
-                <Lock className="h-5.5 w-5.5" />
+          /* CAJA CERRADA: FORMULARIO DE APERTURA PREMIUM */
+          <div className="max-w-lg mx-auto bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-7 rounded-3xl shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-6 animate-in fade-in duration-300">
+            <div className="flex flex-col items-center text-center space-y-2.5">
+              <div className="h-14 w-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-inner">
+                <Lock className="h-6 w-6" />
               </div>
-              <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-100">Turno Cerrado</h2>
-              <p className="text-xs text-slate-450 dark:text-slate-400 leading-normal max-w-[280px]">
-                Debes abrir la caja registradora especificando el fondo inicial para poder operar ventas.
+              <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">Apertura de Turno</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-[320px]">
+                Selecciona tu nombre de la plantilla de cajeros e ingresa el fondo inicial de la caja chica.
               </p>
             </div>
 
-            <form onSubmit={handleOpenRegister} className="space-y-4 text-xs pt-1">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold text-slate-400 uppercase">Nombre del Cajero / Operador *</label>
-                <Input
-                  type="text"
-                  required
-                  placeholder="Ej. Sra. María, Carlos..."
-                  className="focus-visible:ring-indigo-500 h-10 text-xs font-bold"
-                  value={openForm.openedBy}
-                  onChange={(e) => setOpenForm({ ...openForm, openedBy: e.target.value })}
-                />
+            <form onSubmit={handleOpenRegister} className="space-y-5 text-xs pt-1">
+              
+              {/* SELECCIÓN DE CAJERO */}
+              <div className="space-y-2.5">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest block">
+                  Cajero Operador *
+                </label>
+                
+                {cashiers.filter(c => c.role === 'CAJERO').length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {cashiers.filter(c => c.role === 'CAJERO').map((c) => {
+                      const isSelected = openForm.openedBy === c.name;
+                      const initial = c.name.charAt(0).toUpperCase();
+
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setOpenForm({ ...openForm, openedBy: c.name })}
+                          className={cn(
+                            "p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all duration-200 cursor-pointer font-bold text-xs relative overflow-hidden active:scale-95",
+                            isSelected
+                              ? "border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-md shadow-indigo-500/10 ring-2 ring-indigo-500/30"
+                              : "border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/30"
+                          )}
+                        >
+                          <div className={cn(
+                            "h-9 w-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-all duration-200",
+                            isSelected 
+                              ? "bg-indigo-600 text-white dark:bg-indigo-500 shadow-xs scale-105" 
+                              : "bg-indigo-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-slate-700"
+                          )}>
+                            {initial}
+                          </div>
+                          
+                          <div className="min-w-0 flex-1">
+                            <span className="truncate block font-extrabold text-xs leading-tight">{c.name}</span>
+                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 block mt-0.5 uppercase tracking-wider">
+                              {isSelected ? 'Seleccionado' : 'Cajero'}
+                            </span>
+                          </div>
+
+                          {isSelected && (
+                            <div className="h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Ej. Sra. María, Carlos..."
+                    className="focus-visible:ring-indigo-500 h-11 text-xs font-bold rounded-xl"
+                    value={openForm.openedBy}
+                    onChange={(e) => setOpenForm({ ...openForm, openedBy: e.target.value })}
+                  />
+                )}
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold text-slate-400 uppercase">Fondo Inicial de Caja ($) *</label>
-                <Input
-                  type="number"
-                  required
-                  placeholder="0.00"
-                  className="focus-visible:ring-indigo-500 h-10 text-xs font-bold text-indigo-650"
-                  value={openForm.initialBalance || ''}
-                  onChange={(e) => setOpenForm({ ...openForm, initialBalance: parseFloat(e.target.value) || 0 })}
-                />
+              {/* FONDO INICIAL CON ACCESOS RÁPIDOS */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest">
+                    Fondo Inicial de Caja ($) *
+                  </label>
+                  <span className="text-[9px] text-slate-400 font-medium">Sugerido: $500.00</span>
+                </div>
+
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">$</span>
+                  <Input
+                    type="number"
+                    required
+                    placeholder="0.00"
+                    className="focus-visible:ring-indigo-500 pl-8 h-12 text-sm font-black text-slate-800 dark:text-slate-100 rounded-2xl bg-slate-50/50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800"
+                    value={openForm.initialBalance || ''}
+                    onChange={(e) => setOpenForm({ ...openForm, initialBalance: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+
+                {/* Botones rápidos de fondo */}
+                <div className="flex gap-1.5 pt-1">
+                  {[200, 500, 1000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setOpenForm({ ...openForm, initialBalance: amt })}
+                      className="flex-1 py-1.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] font-black text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+                    >
+                      ${amt}
+                    </button>
+                  ))}
+                </div>
               </div>
 
+              {/* BOTÓN APERTURA */}
               <Button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-11 rounded-xl shadow active:scale-95 transition-all cursor-pointer"
+                disabled={!openForm.openedBy}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-black text-xs h-12 rounded-2xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed mt-2"
               >
                 Abrir Turno de Caja
               </Button>
@@ -353,15 +427,21 @@ export default function RegisterPage() {
                           ${reg.actualBalance ? reg.actualBalance.toFixed(0) : '0'}
                         </TableCell>
                         <TableCell className="text-center py-3">
-                          {diff === 0 ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-none font-bold text-[8px] px-2 py-0.5 rounded-md">CUADRÓ</Badge>
-                          ) : diff < 0 ? (
-                            <Badge variant="outline" className="bg-rose-50 text-rose-500 border-none font-bold text-[8px] px-2 py-0.5 rounded-md flex items-center gap-0.5 justify-center" title={`Faltante: $${Math.abs(diff).toFixed(0)}`}>
-                              <BadgeAlert className="h-3 w-3" /> FALTÓ
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-indigo-50 text-indigo-600 border-none font-bold text-[8px] px-2 py-0.5 rounded-md" title={`Sobrante: $${diff.toFixed(0)}`}>SOBRÓ</Badge>
-                          )}
+                          <div className="flex justify-center">
+                            {diff === 0 ? (
+                              <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full">
+                                CUADRÓ
+                              </Badge>
+                            ) : diff < 0 ? (
+                              <Badge variant="outline" className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full flex items-center gap-1 justify-center" title={`Faltante: $${Math.abs(diff).toFixed(0)}`}>
+                                <BadgeAlert className="h-3 w-3 shrink-0 text-rose-500 dark:text-rose-400" /> FALTÓ
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full" title={`Sobrante: $${diff.toFixed(0)}`}>
+                                SOBRÓ
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center py-3">
                           <Button 
@@ -411,6 +491,5 @@ export default function RegisterPage() {
         />
 
       </div>
-    </PinLockGuard>
   );
 }

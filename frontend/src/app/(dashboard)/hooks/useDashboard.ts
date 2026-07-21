@@ -180,7 +180,7 @@ export function useDashboard() {
 
       setTimelineEvents(events.slice(0, 6)); 
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status !== 401) {
+      if (axios.isAxiosError(error) && error.response?.status !== 401 && error.response?.status !== 403) {
         console.error('Error loading dashboard:', error);
       }
     } finally {
@@ -189,7 +189,7 @@ export function useDashboard() {
   }, []);
 
   useEffect(() => {
-    if (role !== 'NONE') {
+    if (role === 'ADMIN') {
       Promise.resolve().then(() => {
         fetchDashboardData();
       });

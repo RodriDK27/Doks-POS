@@ -7,14 +7,15 @@ import api from '@/lib/api';
 import axios from 'axios';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { cn } from '@/lib/utils';
-import { 
-  Store, 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Users, 
+import {
+  Store,
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Users,
   DollarSign,
   Lock,
+  Unlock,
   KeyRound,
   Sun,
   Moon,
@@ -28,14 +29,16 @@ import { toast } from 'sonner';
 import GlobalLockScreen from '@/components/GlobalLockScreen';
 import { useOfflineStore } from '@/store/useOfflineStore';
 import { useTheme } from 'next-themes';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import useSWR from 'swr';
+import { CashiersManagementDialog } from '@/components/CashiersManagementDialog';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -60,10 +63,14 @@ export default function DashboardLayout({
   const { role, logout } = useAuthStore();
 
   const [isChangePinOpen, setIsChangePinOpen] = useState(false);
+  const [isCashiersOpen, setIsCashiersOpen] = useState(false);
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
+
+  const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>('/auth/cashiers');
+  const cashiers = swrCashiers || [];
 
   const { theme, setTheme } = useTheme();
 
@@ -187,11 +194,15 @@ export default function DashboardLayout({
       setMounted(true);
       if (role !== 'NONE') {
         checkActiveRegister();
+        // Si no es ADMIN e intenta estar en la raíz '/', redirigir a Ventas (/pos)
+        if (role !== 'ADMIN' && (pathname === '/' || pathname === '/inventory' || pathname === '/reports')) {
+          router.replace('/pos');
+        }
       } else {
         setActiveRegister(null);
       }
     });
-  }, [pathname, role]);
+  }, [pathname, role, router]);
 
   if (!mounted) {
     return (
@@ -206,16 +217,16 @@ export default function DashboardLayout({
   }
 
   const navItems = [
-    { name: 'Inicio', href: '/', icon: LayoutDashboard },
+    { name: 'Inicio', href: '/', icon: LayoutDashboard, adminOnly: true },
     { name: 'Vender', href: '/pos', icon: ShoppingCart },
-    { name: 'Inventario', href: '/inventory', icon: Package },
+    { name: 'Inventario', href: '/inventory', icon: Package, adminOnly: true },
     { name: 'Clientes', href: '/customers', icon: Users },
     { name: 'Caja', href: '/register', icon: DollarSign },
-  ];
+  ].filter(item => !item.adminOnly || role === 'ADMIN');
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans pb-0 md:pt-0">
-      
+
       {/* HEADER SUPERIOR MÓVIL / TABLET */}
       <header className="h-14 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-5 sticky top-0 z-50 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
         <div className="flex items-center gap-2">
@@ -259,11 +270,18 @@ export default function DashboardLayout({
           >
             {theme === 'dark' ? <Sun className="h-3.5 w-3.5 text-amber-500" /> : <Moon className="h-3.5 w-3.5 text-slate-650" />}
           </button>
-          {role === 'ADMIN' && (
+          {role === 'ADMIN' ? (
             <div className="flex items-center gap-1.5">
               <button
+                onClick={() => setIsCashiersOpen(true)}
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                title="Gestionar Plantilla de Cajeros"
+              >
+                <Users className="h-3 w-3 text-slate-600" /> Cajeros
+              </button>
+              <button
                 onClick={() => setIsChangePinOpen(true)}
-                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all"
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 title="Cambiar PIN de seguridad"
               >
                 <KeyRound className="h-3 w-3 text-slate-600" /> PIN
@@ -271,16 +289,27 @@ export default function DashboardLayout({
               <button
                 onClick={() => {
                   logout();
-                  toast.info('Acceso de Administrador bloqueado.');
+                  toast.info('Acceso de Administrador bloqueado (Modo Cajero).');
                 }}
-                className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all"
-                title="Bloquear acceso de administrador"
+                className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                title="Bloquear a Modo Cajero"
               >
-                <Lock className="h-3 w-3" /> Bloquear
+                <Lock className="h-3 w-3" /> Bloquear Admin
               </button>
             </div>
+          ) : (
+            <button
+              onClick={() => {
+                logout();
+                toast.info('Introduce el PIN de Administrador.');
+              }}
+              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer"
+              title="Ingresar PIN de Administrador"
+            >
+              <Unlock className="h-3 w-3" /> Modo Admin
+            </button>
           )}
- 
+
           {!loading && (
             <div className="flex items-center gap-2 bg-slate-100/80 px-3 py-1 rounded-full text-[10px] font-bold">
               {activeRegister ? (
@@ -292,7 +321,7 @@ export default function DashboardLayout({
                 <>
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
                   <span className="text-rose-600 uppercase">Cerrada</span>
-                  <button 
+                  <button
                     className="text-indigo-600 hover:text-indigo-800 ml-1 underline"
                     onClick={() => router.push('/register')}
                   >
@@ -320,8 +349,8 @@ export default function DashboardLayout({
               href={item.href}
               className={cn(
                 "flex items-center justify-center transition-all duration-300 rounded-full py-2 px-4 text-xs font-extrabold tracking-wide active:scale-95 gap-2",
-                isActive 
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 scale-105" 
+                isActive
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 scale-105"
                   : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 p-2.5"
               )}
             >
@@ -356,7 +385,7 @@ export default function DashboardLayout({
                 placeholder="••••"
               />
             </div>
-            
+
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nuevo PIN (4 dígitos)</label>
               <Input
@@ -389,8 +418,8 @@ export default function DashboardLayout({
               <Button type="button" variant="outline" className="text-xs" disabled={pinLoading} onClick={() => setIsChangePinOpen(false)}>
                 Cancelar
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
                 disabled={pinLoading || currentPin.length !== 4 || newPin.length !== 4 || confirmNewPin.length !== 4}
               >
@@ -400,6 +429,14 @@ export default function DashboardLayout({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* DIÁLOGO GESTIÓN DE CAJEROS */}
+      <CashiersManagementDialog
+        open={isCashiersOpen}
+        onOpenChange={setIsCashiersOpen}
+        cashiers={cashiers}
+        onCashiersUpdated={mutateCashiers}
+      />
     </div>
   );
 }

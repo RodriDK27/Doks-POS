@@ -8,7 +8,10 @@ import { Delete, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseAxiosError } from '@/lib/errorMapper';
 
+import { useRouter } from 'next/navigation';
+
 export default function GlobalLockScreen() {
+  const router = useRouter();
   const { setRole } = useAuthStore();
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,13 +38,19 @@ export default function GlobalLockScreen() {
 
       setRole(role, token);
       toast.success(`Bienvenido al sistema. Rol: ${role}`);
+
+      if (role === 'ADMIN') {
+        router.replace('/');
+      } else if (role === 'CAJERO') {
+        router.replace('/pos');
+      }
     } catch (error) {
       toast.error(parseAxiosError(error, 'PIN de acceso incorrecto.'));
       setPin('');
     } finally {
       setLoading(false);
     }
-  }, [setRole]);
+  }, [setRole, router]);
 
   useEffect(() => {
     if (pin.length === 4) {
