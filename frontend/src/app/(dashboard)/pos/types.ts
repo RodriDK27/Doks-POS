@@ -5,6 +5,7 @@ export interface Product {
   sellPrice: number;
   stock: number;
   category: string | null;
+  unitType?: 'PIECE' | 'WEIGHT' | string;
 }
 
 export interface Customer {

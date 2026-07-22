@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import useSWR from 'swr';
 import PinLockGuard from '@/components/PinLockGuard';
 import { 
   Package, 
@@ -139,6 +140,11 @@ export default function InventoryPage() {
     analyticsLoading,
   } = useInventory();
 
+  const { data: swrRequestedProducts } = useSWR<Array<{ id: string; status: string }>>('/requested-products');
+  const pendingRequestedCount = React.useMemo(() => {
+    return swrRequestedProducts?.filter((p) => p.status === 'PENDIENTE').length || 0;
+  }, [swrRequestedProducts]);
+
   const [selectedMonth, setSelectedMonth] = React.useState<string>(() => new Date().toISOString().substring(0, 7));
 
   const uniqueMonths = React.useMemo(() => {
@@ -207,14 +213,20 @@ export default function InventoryPage() {
             <Button
               variant="ghost"
               className={cn(
-                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none",
+                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none relative",
                 activeTab === 'REQUESTED' 
                   ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
               )}
               onClick={() => setActiveTab('REQUESTED')}
             >
-              <FileText className="h-4 w-4" /> Solicitudes Especiales
+              <FileText className="h-4 w-4" /> 
+              <span>Solicitudes / Pendientes Alta</span>
+              {pendingRequestedCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 bg-rose-500 text-white font-black text-[10px] rounded-full animate-bounce shadow-xs">
+                  {pendingRequestedCount}
+                </span>
+              )}
             </Button>
             <Button
               variant="ghost"

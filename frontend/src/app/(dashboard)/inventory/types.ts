@@ -7,6 +7,7 @@ export interface Product {
   wholesalePrice?: number | null;
   stock: number;
   minStock: number;
+  unitType?: 'PIECE' | 'WEIGHT' | string;
   category: string | null;
   createdAt: string;
   updatedAt: string;

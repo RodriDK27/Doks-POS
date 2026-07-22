@@ -265,6 +265,36 @@ export function useInventory() {
     setTimeout(() => barcodeInputRef.current?.focus(), 150);
   };
 
+  const [pendingRequestedId, setPendingRequestedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleOpenFromRequested = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string; name: string; sellPrice: number }>).detail;
+      if (detail) {
+        setPendingRequestedId(detail.id);
+        setEditingProduct({
+          id: '',
+          name: detail.name,
+          barcode: null,
+          category: 'VARIOS',
+          purchasePrice: 0,
+          sellPrice: detail.sellPrice,
+          stock: 1,
+          minStock: 5,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        setIsFormOpen(true);
+        setTimeout(() => barcodeInputRef.current?.focus(), 150);
+      }
+    };
+
+    window.addEventListener('open-add-product-from-requested', handleOpenFromRequested);
+    return () => {
+      window.removeEventListener('open-add-product-from-requested', handleOpenFromRequested);
+    };
+  }, []);
+
   const handleFormSubmit = async (values: ProductFormValues) => {
     const payload = {
       ...values,
@@ -278,7 +308,17 @@ export function useInventory() {
         toast.success(`Producto "${values.name}" actualizado.`);
       } else {
         await api.post('/products', payload);
-        toast.success(`Producto "${values.name}" registrado.`);
+        toast.success(`Producto "${values.name}" registrado en inventario.`);
+
+        // Si provenía de un pedido / venta rápida pendiente, marcarlo automáticamente como COMPRADO
+        if (pendingRequestedId) {
+          try {
+            await api.patch(`/requested-products/${pendingRequestedId}`, { status: 'COMPRADO' });
+            setPendingRequestedId(null);
+          } catch (err) {
+            console.error('Error al actualizar estado del pedido pendiente:', err);
+          }
+        }
       }
       setIsFormOpen(false);
       fetchInventory();

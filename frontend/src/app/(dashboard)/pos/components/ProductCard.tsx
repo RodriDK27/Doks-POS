@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Scale } from 'lucide-react';
 import { Product } from '../types';
 import { getCategoryColor } from '../helpers';
 
@@ -24,7 +24,7 @@ function HighlightText({ text, query }: { text: string; query?: string }) {
       {parts.map((part, i) => {
         const isMatch = words.some(w => part.toLowerCase() === w.toLowerCase());
         return isMatch ? (
-          <mark key={i} className="bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-100 font-extrabold rounded-xs px-0.5">
+          <mark key={i} className="bg-amber-200 dark:bg-amber-800/60 text-amber-900 dark:text-amber-100 font-extrabold rounded-sm px-0.5">
             {part}
           </mark>
         ) : (
@@ -37,66 +37,84 @@ function HighlightText({ text, query }: { text: string; query?: string }) {
 
 export function ProductCard({ product, qtyInCart, onAdd, searchQuery }: ProductCardProps) {
   const colors = getCategoryColor(product.category);
-  const isLowStock = product.stock <= 5;
+  const isLowStock = product.stock > 0 && product.stock <= 5;
   const isOutOfStock = product.stock <= 0;
+  const isBulk = product.unitType === 'WEIGHT';
 
   return (
     <button
       type="button"
       disabled={isOutOfStock}
-      className={`group p-3.5 border rounded-2xl relative text-left flex flex-col justify-between transition-all duration-300 min-h-[125px] select-none ${isOutOfStock
-        ? 'opacity-40 bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-        : `cursor-pointer bg-white dark:bg-slate-900 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${colors.bg} ${colors.border}`
-        }`}
       onClick={() => onAdd(product)}
+      className={`group relative flex flex-col text-left rounded-2xl border transition-all duration-200 select-none overflow-hidden
+        ${isOutOfStock
+          ? 'opacity-40 bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+          : `cursor-pointer bg-white dark:bg-slate-900 ${colors.bg} ${colors.border} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97]`
+        }`}
     >
-      {/* Badge cantidad agregada */}
+      {/* BADGE CARRITO (esquina) */}
       {qtyInCart > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 h-6 min-w-6 px-1.5 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200">
+        <span className="absolute top-2 right-2 z-20 h-5.5 min-w-5.5 px-1.5 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200">
           {qtyInCart}
         </span>
       )}
 
-      <div className="w-full space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className={`text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-md ${colors.badge} tracking-wider`}>
-            {product.category || 'Otros'}
+      {/* ZONA SUPERIOR — NOMBRE + CATEGORÍA */}
+      <div className="flex-1 flex flex-col justify-start gap-2 px-3.5 pt-3.5 pb-2.5">
+        {/* FILA META: categoría + granel */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-widest ${colors.badge}`}>
+            {product.category || 'General'}
           </span>
-          {!isOutOfStock && isLowStock && (
-            <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+          {isBulk && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-800/50">
+              <Scale className="h-2.5 w-2.5" />
+              Granel
+            </span>
+          )}
+          {isLowStock && (
+            <span className="ml-auto h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
           )}
         </div>
-        <span
-          className="font-extrabold text-[11px] leading-snug text-slate-800 dark:text-slate-100 block line-clamp-2 w-full group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors"
+
+        {/* NOMBRE DEL PRODUCTO — protagonista */}
+        <p
+          className={`font-black text-[14px] leading-tight line-clamp-2 transition-colors
+            ${isOutOfStock
+              ? 'text-slate-500 dark:text-slate-500'
+              : 'text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
+            }`}
           title={product.name}
         >
           <HighlightText text={product.name} query={searchQuery} />
-        </span>
+        </p>
       </div>
 
-      <div className="flex justify-between items-end w-full mt-3">
-        <div className="min-w-0">
-          <span className={`font-black text-sm block tracking-tight ${colors.accent}`}>
+      {/* ZONA INFERIOR — PRECIO + BOTÓN */}
+      <div className={`flex items-center justify-between px-3.5 py-2.5 border-t ${isOutOfStock ? 'border-slate-200 dark:border-slate-800' : 'border-slate-100 dark:border-slate-800/60'}`}>
+        <div>
+          <div className={`font-black text-[15px] leading-none tracking-tight ${colors.accent}`}>
             ${product.sellPrice.toFixed(2)}
-          </span>
-          <span
-            className={`text-[9px] font-bold block mt-0.5 tracking-wide ${isOutOfStock
-              ? 'text-rose-500 font-extrabold'
+            {isBulk && <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5">/kg</span>}
+          </div>
+          <div className={`text-[9.5px] font-bold mt-1 ${
+            isOutOfStock
+              ? 'text-rose-500'
               : isLowStock
-                ? 'text-amber-600 dark:text-amber-400 font-extrabold'
+                ? 'text-amber-600 dark:text-amber-400'
                 : 'text-slate-400 dark:text-slate-500'
-              }`}
-          >
-            {isOutOfStock ? 'Agotado' : `Stock: ${product.stock.toFixed(0)}`}
-          </span>
+          }`}>
+            {isOutOfStock ? 'Sin stock' : `Stock: ${isBulk ? product.stock.toFixed(2) + ' kg' : product.stock}`}
+          </div>
         </div>
 
         {!isOutOfStock && (
-          <div className="h-8 w-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm opacity-90 group-hover:opacity-100 group-hover:bg-indigo-700 active:scale-90 transition-all shrink-0">
-            <Plus className="h-4 w-4" />
+          <div className="h-9 w-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md group-hover:bg-indigo-700 group-hover:scale-105 active:scale-90 transition-all shrink-0">
+            <Plus className="h-5 w-5 stroke-[2.5]" />
           </div>
         )}
       </div>
     </button>
   );
 }
+

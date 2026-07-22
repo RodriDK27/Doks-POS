@@ -215,12 +215,28 @@ export function usePOS() {
     }
   }, [isOnline]);
 
+  // Modal Venta a Granel
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [selectedBulkProduct, setSelectedBulkProduct] = useState<Product | null>(null);
+
   const handleTouchAdd = (product: Product) => {
+    if (product.unitType === 'WEIGHT') {
+      setSelectedBulkProduct(product);
+      setIsBulkOpen(true);
+      return;
+    }
+
     if (product.stock <= 0) {
       toast.warning(`"${product.name}" no tiene existencias en inventario.`);
     }
     addToCart(product, 1);
     toast.success(`Añadido: ${product.name}`, { id: 'pos-add-toast' });
+  };
+
+  const handleConfirmBulkAdd = (product: Product, quantity: number) => {
+    addToCart(product, quantity);
+    toast.success(`Añadido: ${quantity} kg de ${product.name}`, { id: 'pos-add-toast' });
+    setPosTab('CART');
   };
 
   const handleAddGeneric = () => {
@@ -546,6 +562,10 @@ export function usePOS() {
     setIsShortcutsHelpOpen,
     isGenericOpen,
     setIsGenericOpen,
+    isBulkOpen,
+    setIsBulkOpen,
+    selectedBulkProduct,
+    handleConfirmBulkAdd,
     genericPrice,
     genericName,
     setGenericName,

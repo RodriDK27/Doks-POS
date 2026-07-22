@@ -2,16 +2,18 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Barcode, CirclePercent } from 'lucide-react';
+import { Barcode, Package, Scale, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Product } from '../types';
+import { cn } from '@/lib/utils';
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre del producto es obligatorio'),
   barcode: z.string().nullable().optional().or(z.literal('')),
   category: z.string().nullable().optional().or(z.literal('')),
+  unitType: z.enum(['PIECE', 'WEIGHT']),
   purchasePrice: z.number().min(0, 'El precio de compra no puede ser negativo'),
   sellPrice: z.number().positive('El precio de venta debe ser mayor a cero'),
   stock: z.number().min(0, 'El stock no puede ser negativo'),
@@ -37,12 +39,13 @@ export function ProductFormDialog({
   categories,
   barcodeInputRef,
 }: ProductFormDialogProps) {
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
       barcode: '',
       category: '',
+      unitType: 'PIECE',
       purchasePrice: 0,
       sellPrice: 0,
       stock: 0,
@@ -56,6 +59,7 @@ export function ProductFormDialog({
         name: editingProduct?.name || '',
         barcode: editingProduct?.barcode || '',
         category: editingProduct?.category || '',
+        unitType: (editingProduct?.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
         purchasePrice: editingProduct?.purchasePrice ?? 0,
         sellPrice: editingProduct?.sellPrice ?? 0,
         stock: editingProduct?.stock ?? 0,
@@ -64,9 +68,7 @@ export function ProductFormDialog({
     }
   }, [open, editingProduct, reset]);
 
-  const purchasePrice = watch('purchasePrice') || 0;
-  const sellPrice = watch('sellPrice') || 0;
-  const calculatedMargin = sellPrice > 0 ? ((sellPrice - purchasePrice) / sellPrice) * 100 : 0;
+  const unitType = watch('unitType');
 
   const onFormSubmit = async (values: ProductFormValues) => {
     await onSubmit(values);
@@ -74,23 +76,27 @@ export function ProductFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-bold text-slate-800">
+      <DialogContent className="sm:max-w-[450px] rounded-3xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl">
+        <DialogHeader className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <DialogTitle className="font-black text-base text-slate-800 dark:text-slate-100">
             {editingProduct ? 'Editar Producto' : 'Registrar Nuevo Producto'}
           </DialogTitle>
-          <DialogDescription className="text-xs">
-            Introduce la información del artículo.
+          <DialogDescription className="text-xs text-slate-400 dark:text-slate-400">
+            Llena los datos del artículo para el catálogo e inventario.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4 py-1 text-xs">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-3 py-2 text-xs">
+          
+          {/* NOMBRE DEL PRODUCTO */}
           <div className="space-y-1">
-            <label className="text-[9px] font-bold text-slate-400 uppercase">Nombre del Producto *</label>
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+              Nombre del Producto *
+            </label>
             <Input
               type="text"
-              placeholder="Ej. Coca-Cola 600ml"
-              className={`focus-visible:ring-indigo-500 h-10 text-xs font-bold ${errors.name ? 'border-rose-500 focus-visible:ring-rose-500' : ''}`}
+              placeholder="Ej. Coca-Cola 600ml, Sabritas 45g..."
+              className={`focus-visible:ring-indigo-500 h-10 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl ${errors.name ? 'border-rose-500' : ''}`}
               {...register('name')}
             />
             {errors.name && (
@@ -98,10 +104,11 @@ export function ProductFormDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* CÓDIGO BARRAS Y CATEGORÍA */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                <Barcode className="h-3.5 w-3.5" /> Código de Barras
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Barcode className="h-3 w-3" /> Código Barras
               </label>
               <Input
                 ref={(e) => {
@@ -112,22 +119,21 @@ export function ProductFormDialog({
                 }}
                 type="text"
                 placeholder="Escanea o escribe..."
-                className="focus-visible:ring-indigo-500 h-10 text-xs font-mono"
+                className="focus-visible:ring-indigo-500 h-10 text-xs font-mono bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
                 name="barcode"
                 onChange={register('barcode').onChange}
                 onBlur={register('barcode').onBlur}
               />
-              {errors.barcode && (
-                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.barcode.message}</span>
-              )}
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase">Categoría</label>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Layers className="h-3 w-3" /> Categoría
+              </label>
               <Input
                 type="text"
                 placeholder="Bebidas, Abarrotes..."
-                className="focus-visible:ring-indigo-500 h-10 text-xs font-bold"
+                className="focus-visible:ring-indigo-500 h-10 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
                 {...register('category')}
                 list="category-suggestions"
               />
@@ -136,90 +142,121 @@ export function ProductFormDialog({
                   <option key={c} value={c} />
                 ))}
               </datalist>
-              {errors.category && (
-                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.category.message}</span>
-              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* TIPO DE VENTA (PIEZA VS GRANEL) */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+              Tipo de Venta *
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className={cn(
+                  "h-9 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer border",
+                  unitType === 'PIECE'
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800"
+                )}
+                onClick={() => setValue('unitType', 'PIECE')}
+              >
+                <Package className="h-4 w-4" />
+                <span>Por Pieza / Unidad</span>
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "h-9 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer border",
+                  unitType === 'WEIGHT'
+                    ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800"
+                )}
+                onClick={() => setValue('unitType', 'WEIGHT')}
+              >
+                <Scale className="h-4 w-4" />
+                <span>A Granel / Peso (kg)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* PRECIOS DE COMPRA Y VENTA */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase">Precio de Compra ($) *</label>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                Precio Compra ($) *
+              </label>
               <Input
                 type="number"
                 step="any"
                 placeholder="0.00"
-                className={`focus-visible:ring-indigo-500 h-10 text-xs font-bold ${errors.purchasePrice ? 'border-rose-500' : ''}`}
+                className={`focus-visible:ring-indigo-500 h-10 text-xs font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl ${errors.purchasePrice ? 'border-rose-500' : ''}`}
                 {...register('purchasePrice', { valueAsNumber: true })}
               />
-              {errors.purchasePrice && (
-                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.purchasePrice.message}</span>
-              )}
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase">Precio de Venta ($) *</label>
+              <label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                Precio Venta {unitType === 'WEIGHT' ? 'x Kg ($)' : '($)'} *
+              </label>
               <Input
                 type="number"
                 step="any"
                 placeholder="0.00"
-                className={`focus-visible:ring-indigo-500 h-10 text-xs font-bold text-indigo-650 ${errors.sellPrice ? 'border-rose-500 focus-visible:ring-rose-500' : ''}`}
+                className={`focus-visible:ring-indigo-500 h-10 text-xs font-black text-indigo-600 dark:text-indigo-400 bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 rounded-xl ${errors.sellPrice ? 'border-rose-500' : ''}`}
                 {...register('sellPrice', { valueAsNumber: true })}
               />
-              {errors.sellPrice && (
-                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.sellPrice.message}</span>
-              )}
             </div>
           </div>
 
-          <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex items-center justify-between">
-            <span className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
-              <CirclePercent className="h-3.5 w-3.5 text-indigo-655" />
-              Margen de Utilidad Proyectado:
-            </span>
-            <span className={`font-black text-xs ${calculatedMargin > 0 ? 'text-indigo-600' : 'text-rose-500'}`}>
-              {calculatedMargin.toFixed(1)}%
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          {/* EXISTENCIAS Y STOCK MÍNIMO */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase">Existencia *</label>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                {unitType === 'WEIGHT' ? 'Existencia (Kg) *' : 'Existencia Inicial *'}
+              </label>
               <Input
                 type="number"
                 step="any"
-                placeholder="Ej. 100"
-                className={`focus-visible:ring-indigo-500 h-10 text-xs font-bold ${errors.stock ? 'border-rose-500' : ''}`}
+                placeholder={unitType === 'WEIGHT' ? 'Ej. 10.5' : 'Ej. 24'}
+                className="focus-visible:ring-indigo-500 h-10 text-xs font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
                 {...register('stock', { valueAsNumber: true })}
               />
-              {errors.stock && (
-                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.stock.message}</span>
-              )}
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase">Mínimo Alerta *</label>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                Alerta Stock Bajo *
+              </label>
               <Input
                 type="number"
                 step="any"
                 placeholder="Ej. 5"
-                className={`focus-visible:ring-indigo-500 h-10 text-xs font-bold ${errors.minStock ? 'border-rose-500' : ''}`}
+                className="focus-visible:ring-indigo-500 h-10 text-xs font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
                 {...register('minStock', { valueAsNumber: true })}
               />
-              {errors.minStock && (
-                <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.minStock.message}</span>
-              )}
             </div>
           </div>
 
-          <DialogFooter className="pt-2 gap-2">
-            <Button type="button" variant="outline" className="text-xs font-bold rounded-xl h-10 px-5 cursor-pointer" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          {/* FOOTER BOTONES */}
+          <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-xs font-bold rounded-xl h-10 px-5 cursor-pointer"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancelar
             </Button>
-            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 rounded-xl h-10" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs h-10 rounded-xl shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : 'Registrar Producto'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

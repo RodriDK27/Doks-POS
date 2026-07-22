@@ -132,23 +132,33 @@ export class SalesService {
           },
         });
  
-        // Restar stock sólo si es un producto real del catálogo
+        // Restar stock si es producto de catálogo, o auto-crear registro en Pendientes de Alta si es Venta Rápida
         if (item.productId) {
           const currentProduct = productsMap.get(item.productId)!;
           await tx.product.update({
             where: { id: item.productId },
             data: {
-              stock: currentProduct.stock - item.quantity,
+              stock: {
+                decrement: item.quantity,
+              },
             },
           });
 
-          // Registrar movimiento de stock tipo SALIDA
-          await tx.stockMovement.create({
+          // Notificar stock crítico si baja del mínimo
+          const newStock = currentProduct.stock - item.quantity;
+          if (newStock <= currentProduct.minStock) {
+            console.warn(
+              `Alerta: El producto "${currentProduct.name}" ha alcanzado stock crítico (${newStock} unidades restantes).`,
+            );
+          }
+        } else {
+          // Es venta rápida: Registrar automáticamente en la lista de solicitudes / pendientes de alta
+          await tx.requestedProduct.create({
             data: {
-              productId: item.productId,
-              type: 'SALIDA',
-              quantity: -item.quantity,
-              reason: `Venta Ticket #${sale.id}`,
+              name: item.productName,
+              quantity: item.quantity,
+              notes: `Venta Rápida cobrada a $${item.price.toFixed(2)} (Pendiente de dar de alta en inventario)`,
+              status: 'PENDIENTE',
             },
           });
         }

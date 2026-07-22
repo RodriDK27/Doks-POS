@@ -5,7 +5,8 @@ import {
   Trash2, 
   Check, 
   X, 
-  PackageCheck
+  PackageCheck,
+  PackagePlus
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -133,20 +134,33 @@ export function RequestedProductsTab() {
                         {p.status === 'PENDIENTE' && (
                           <>
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg cursor-pointer"
-                              onClick={() => handleUpdateStatus(p.id, p.name, 'COMPRADO')}
-                              title="Marcar como Comprado"
+                              variant="outline"
+                              className="h-8 px-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200/60 dark:border-indigo-900/50 hover:bg-indigo-600 hover:text-white font-extrabold text-[10px] rounded-lg cursor-pointer flex items-center gap-1 transition-all"
+                              onClick={() => {
+                                const match = p.notes?.match(/\$(\d+(?:\.\d+)?)/);
+                                const sellPrice = match ? parseFloat(match[1]) : 0;
+
+                                window.dispatchEvent(
+                                  new CustomEvent('open-add-product-from-requested', {
+                                    detail: {
+                                      id: p.id,
+                                      name: p.name,
+                                      sellPrice,
+                                    },
+                                  })
+                                );
+                              }}
+                              title="Dar de Alta en Inventario"
                             >
-                              <Check className="h-4 w-4" />
+                              <PackagePlus className="h-3.5 w-3.5" />
+                              <span>Dar de alta</span>
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg cursor-pointer"
                               onClick={() => handleUpdateStatus(p.id, p.name, 'CANCELADO')}
-                              title="Cancelar Pedido"
+                              title="Descartar solicitud"
                             >
                               <X className="h-4 w-4" />
                             </Button>

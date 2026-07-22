@@ -25,6 +25,7 @@ model Product {
   wholesalePrice Float?     // Precio opcional para ventas de mayoreo
   stock          Float      // Existencia (Float para poder vender a granel: ej. 1.5 kg)
   minStock       Float      @default(0) // Umbral mínimo para alertas de stock bajo
+  unitType       String     @default("PIECE") // "PIECE" (Unidad/Pieza) | "WEIGHT" (A Granel / Peso kg)
   category       String?    // Categoría del producto (ej. Abarrotes, Lácteos, etc.)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt

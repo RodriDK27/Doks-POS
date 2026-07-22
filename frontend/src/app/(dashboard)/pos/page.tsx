@@ -22,6 +22,7 @@ import { ProductCard } from './components/ProductCard';
 import { TicketPanel } from './components/TicketPanel';
 import { PaymentPanel } from './components/PaymentPanel';
 import { GenericSaleDialog } from './components/GenericSaleDialog';
+import { BulkProductDialog } from './components/BulkProductDialog';
 import { SuspendCartDialog } from './components/SuspendCartDialog';
 import { SuspendedCartsDialog } from './components/SuspendedCartsDialog';
 import { ShortcutsHelpDialog } from './components/ShortcutsHelpDialog';
@@ -54,6 +55,10 @@ export default function POSPage() {
     setIsShortcutsHelpOpen,
     isGenericOpen,
     setIsGenericOpen,
+    isBulkOpen,
+    setIsBulkOpen,
+    selectedBulkProduct,
+    handleConfirmBulkAdd,
     genericPrice,
     genericName,
     setGenericName,
@@ -347,6 +352,8 @@ export default function POSPage() {
       </div>
 
       {/* DIÁLOGOS Y MODALES AUXILIARES */}
+
+      {/* MODAL VENTA GENÉRICA / LIBRE */}
       <GenericSaleDialog
         open={isGenericOpen}
         onOpenChange={setIsGenericOpen}
@@ -355,6 +362,15 @@ export default function POSPage() {
         setGenericName={setGenericName}
         onAdd={handleAddGeneric}
         handleKeypadPress={handleKeypadPress}
+      />
+
+      {/* MODAL VENTA A GRANEL (PESO / IMPORTE) */}
+      <BulkProductDialog
+        key={selectedBulkProduct?.id ?? 'bulk'}
+        open={isBulkOpen}
+        onOpenChange={setIsBulkOpen}
+        product={selectedBulkProduct}
+        onConfirm={handleConfirmBulkAdd}
       />
 
       <SuspendCartDialog
