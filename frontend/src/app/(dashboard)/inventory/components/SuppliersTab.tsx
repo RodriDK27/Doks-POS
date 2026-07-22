@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomSelect } from '@/components/CustomSelect';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Supplier, Purchase } from '../types';
+
 
 interface SuppliersTabProps {
   suppliers: Supplier[];
@@ -42,6 +44,8 @@ export function SuppliersTab({
   setActivePurchaseDetail,
   setIsDetailOpen,
 }: SuppliersTabProps) {
+  const { role } = useAuthStore();
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300 w-full">
       {/* 1. SECCIÓN DE PROVEEDORES */}
@@ -50,13 +54,16 @@ export function SuppliersTab({
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
             <Truck className="h-4 w-4 text-indigo-650" /> Directorio de Proveedores
           </h3>
-          <Button 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-            onClick={() => setIsSupplierOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Registrar Proveedor
-          </Button>
+          {role === 'ADMIN' && (
+            <Button 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+              onClick={() => setIsSupplierOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> Registrar Proveedor
+            </Button>
+          )}
         </div>
+
 
         <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden w-full">
           {suppliersLoading ? (
@@ -117,30 +124,35 @@ export function SuppliersTab({
                             Comprar
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-650 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-                          onClick={() => handleOpenEditSupplier(supplier)}
-                          title="Editar"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-7 w-7 rounded-lg cursor-pointer",
-                            supplier.isActive === false
-                              ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20"
-                              : "text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20"
-                          )}
-                          onClick={() => handleToggleActiveSupplier(supplier)}
-                          title={supplier.isActive === false ? 'Activar' : 'Desactivar'}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {role === 'ADMIN' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-650 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                              onClick={() => handleOpenEditSupplier(supplier)}
+                              title="Editar"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "h-7 w-7 rounded-lg cursor-pointer",
+                                supplier.isActive === false
+                                  ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20"
+                                  : "text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20"
+                              )}
+                              onClick={() => handleToggleActiveSupplier(supplier)}
+                              title={supplier.isActive === false ? 'Activar' : 'Desactivar'}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </div>
+
                     </TableCell>
                   </TableRow>
                 ))}

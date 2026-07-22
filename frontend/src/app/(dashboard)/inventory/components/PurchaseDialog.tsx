@@ -1,6 +1,7 @@
 import React from 'react';
-import { Truck, Trash2 } from 'lucide-react';
+import { Truck, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -35,6 +36,7 @@ interface PurchaseDialogProps {
   onAddPurchaseItem: () => void;
   onRemovePurchaseItemIndex: (index: number) => void;
   onPurchaseSubmit: () => void;
+  isSubmitting?: boolean;
   totalInvoiceSum: number;
 }
 
@@ -53,112 +55,128 @@ export function PurchaseDialog({
   onAddPurchaseItem,
   onRemovePurchaseItemIndex,
   onPurchaseSubmit,
+  isSubmitting = false,
   totalInvoiceSum,
 }: PurchaseDialogProps) {
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px] rounded-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-bold text-slate-800 flex items-center gap-1.5">
-            <Truck className="h-5 w-5 text-indigo-650" />
-            Ingresar Compra de Mercancía
+      <DialogContent className="w-[95vw] sm:max-w-[760px] max-h-[96vh] sm:max-h-[90vh] flex flex-col justify-between rounded-3xl p-3.5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-y-auto">
+        <DialogHeader className="pb-1 sm:pb-2 shrink-0">
+          <DialogTitle className="text-sm sm:text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>Ingresar Compra de Mercancía</span>
           </DialogTitle>
-          <DialogDescription className="text-xs">
-            Proveedor: <strong className="text-slate-800">{selectedSupplierForPurchase?.name}</strong>. Agrega artículos para surtir stock.
+          <DialogDescription className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
+            Proveedor: <strong className="text-slate-800 dark:text-slate-200 font-bold">{selectedSupplierForPurchase?.name}</strong>. Agrega artículos para surtir stock.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 py-2 text-xs">
-          {/* LADO IZQUIERDO: AGREGAR PRODUCTO (5/12 ANCHO) */}
-          <div className="md:col-span-5 space-y-4 p-3.5 border border-slate-100 bg-slate-50/50 rounded-xl">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Agregar Artículo</span>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-5 py-1 sm:py-3 text-xs md:items-stretch">
+          {/* LADO IZQUIERDO: FORMULARIO AGREGAR ARTÍCULO */}
+          <div className="md:col-span-5 space-y-2 sm:space-y-3.5 p-3 sm:p-4 border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl flex flex-col justify-between">
+            <div className="space-y-2 sm:space-y-3.5">
+              <span className="text-[9.5px] sm:text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                Agregar Artículo
+              </span>
 
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-500 uppercase">Seleccionar Producto</label>
-              <CustomSelect
-                value={newPurchaseItem.productId}
-                onChange={(val) => {
-                  const prod = products.find((p) => p.id === val);
-                  setNewPurchaseItem({
-                    productId: val,
-                    costPrice: prod ? prod.purchasePrice : 0,
-                    quantity: 1,
-                  });
-                }}
-                placeholder="-- Producto --"
-                options={[
-                  { value: '', label: '-- Producto --' },
-                  ...products.map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.stock.toFixed(0)})` })),
-                ]}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold text-slate-500 uppercase">Costo Adquisición ($)</label>
-                <Input
-                  type="number"
-                  step="any"
-                  className="focus-visible:ring-indigo-500 h-9 font-bold text-xs"
-                  value={newPurchaseItem.costPrice || ''}
-                  onChange={(e) => setNewPurchaseItem({ ...newPurchaseItem, costPrice: parseFloat(e.target.value) || 0 })}
-                />
-                <span className="text-[8px] text-slate-400 dark:text-slate-500 leading-tight block">
-                  * Actualizará el costo en catálogo.
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold text-slate-500 uppercase">Cantidad</label>
-                <Input
-                  type="number"
-                  step="any"
-                  className="focus-visible:ring-indigo-500 h-9 font-bold text-xs"
-                  value={newPurchaseItem.quantity || ''}
-                  onChange={(e) => setNewPurchaseItem({ ...newPurchaseItem, quantity: parseFloat(e.target.value) || 0 })}
+              <div className="space-y-0.5 sm:space-y-1">
+                <label className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Seleccionar Producto
+                </label>
+                <CustomSelect
+                  className="h-8.5 sm:h-10 text-xs"
+                  value={newPurchaseItem.productId}
+                  onChange={(val) => {
+                    const prod = products.find((p) => p.id === val);
+                    setNewPurchaseItem({
+                      productId: val,
+                      costPrice: prod ? prod.purchasePrice : 0,
+                      quantity: 1,
+                    });
+                  }}
+                  placeholder="-- Selecciona Producto --"
+                  options={[
+                    { value: '', label: '-- Selecciona Producto --' },
+                    ...products.map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.stock.toFixed(0)})` })),
+                  ]}
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                <div className="space-y-0.5 sm:space-y-1">
+                  <label className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    Costo ($)
+                  </label>
+                  <Input
+                    type="number"
+                    step="any"
+                    className="focus-visible:ring-indigo-500 h-8.5 sm:h-10 font-bold text-xs rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900"
+                    value={newPurchaseItem.costPrice || ''}
+                    onChange={(e) => setNewPurchaseItem({ ...newPurchaseItem, costPrice: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+
+                <div className="space-y-0.5 sm:space-y-1">
+                  <label className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    Cantidad
+                  </label>
+                  <Input
+                    type="number"
+                    step="any"
+                    className="focus-visible:ring-indigo-500 h-8.5 sm:h-10 font-bold text-xs rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900"
+                    value={newPurchaseItem.quantity || ''}
+                    onChange={(e) => setNewPurchaseItem({ ...newPurchaseItem, quantity: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <span className="text-[8.5px] sm:text-[9.5px] text-slate-400 dark:text-slate-500 leading-tight block">
+                * Actualizará el precio de costo del producto.
+              </span>
             </div>
 
             <Button
               type="button"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] h-9 rounded-lg"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-8.5 sm:h-10 rounded-xl active:scale-95 transition-all shadow-xs cursor-pointer mt-1.5 sm:mt-3"
               onClick={onAddPurchaseItem}
             >
               Insertar a Factura
             </Button>
           </div>
 
-          {/* LADO DERECHO: DESGLOSE ORDEN DE COMPRA (7/12 ANCHO) */}
-          <div className="md:col-span-7 flex flex-col justify-between min-h-[220px]">
-            <div className="space-y-3">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Artículos de esta factura</span>
+          {/* LADO DERECHO: DETALLE Y FACTURA */}
+          <div className="md:col-span-7 flex flex-col justify-between gap-2 sm:gap-3 md:min-h-[260px]">
+            <div className="space-y-1.5 sm:space-y-2 flex-1 flex flex-col">
+              <span className="text-[9.5px] sm:text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Artículos de esta factura
+              </span>
 
-              <div className="border border-slate-100 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              <div className="border border-slate-200/60 dark:border-slate-800 rounded-2xl overflow-hidden flex-1 min-h-[85px] sm:min-h-[140px] max-h-[120px] sm:max-h-[220px] overflow-y-auto bg-white dark:bg-slate-900 flex flex-col justify-center">
                 {addedPurchaseItems.length > 0 ? (
                   <Table>
-                    <TableHeader className="bg-slate-50/50">
-                      <TableRow className="border-b">
-                        <TableHead className="text-[9px] font-bold py-1">Nombre</TableHead>
-                        <TableHead className="text-right text-[9px] font-bold py-1 w-16">Costo</TableHead>
-                        <TableHead className="text-center text-[9px] font-bold py-1 w-16">Cant</TableHead>
-                        <TableHead className="text-right text-[9px] font-bold py-1 w-20">Subtotal</TableHead>
-                        <TableHead className="w-10 py-1"></TableHead>
+                    <TableHeader className="bg-slate-50/70 dark:bg-slate-800/50">
+                      <TableRow className="border-b border-slate-200/60 dark:border-slate-800">
+                        <TableHead className="text-[8.5px] sm:text-[9px] font-extrabold py-1.5 sm:py-2 text-slate-500">Nombre</TableHead>
+                        <TableHead className="text-right text-[8.5px] sm:text-[9px] font-extrabold py-1.5 sm:py-2 w-14 sm:w-16 text-slate-500">Costo</TableHead>
+                        <TableHead className="text-center text-[8.5px] sm:text-[9px] font-extrabold py-1.5 sm:py-2 w-10 sm:w-12 text-slate-500">Cant</TableHead>
+                        <TableHead className="text-right text-[8.5px] sm:text-[9px] font-extrabold py-1.5 sm:py-2 w-16 sm:w-20 text-slate-500">Subtotal</TableHead>
+                        <TableHead className="w-7 sm:w-8 py-1.5 sm:py-2"></TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y">
+                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {addedPurchaseItems.map((item, idx) => (
-                        <TableRow key={item.productId} className="border-b py-0 hover:bg-slate-50/20">
-                          <TableCell className="py-1.5 font-bold text-[10px] text-slate-700 truncate max-w-[100px]">
+                        <TableRow key={item.productId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                          <TableCell className="py-1.5 sm:py-2 font-bold text-xs text-slate-800 dark:text-slate-200 truncate max-w-[110px]">
                             {item.productName}
                           </TableCell>
-                          <TableCell className="py-1.5 text-right text-[10px] text-slate-450">${item.costPrice.toFixed(1)}</TableCell>
-                          <TableCell className="py-1.5 text-center text-[10px] font-bold">{item.quantity}</TableCell>
-                          <TableCell className="py-1.5 text-right font-bold text-[10px] text-slate-800">
+                          <TableCell className="py-1.5 sm:py-2 text-right text-xs text-slate-500 dark:text-slate-400">${item.costPrice.toFixed(2)}</TableCell>
+                          <TableCell className="py-1.5 sm:py-2 text-center text-xs font-black text-slate-700 dark:text-slate-300">{item.quantity}</TableCell>
+                          <TableCell className="py-1.5 sm:py-2 text-right font-black text-xs text-slate-800 dark:text-slate-100">
                             ${(item.costPrice * item.quantity).toFixed(2)}
                           </TableCell>
-                          <TableCell className="py-1.5 text-center">
-                            <button className="text-rose-500 hover:text-rose-600" onClick={() => onRemovePurchaseItemIndex(idx)}>
+                          <TableCell className="py-1.5 sm:py-2 text-center">
+                            <button className="text-rose-500 hover:text-rose-600 p-0.5 sm:p-1 cursor-pointer" onClick={() => onRemovePurchaseItemIndex(idx)}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </TableCell>
@@ -167,38 +185,42 @@ export function PurchaseDialog({
                     </TableBody>
                   </Table>
                 ) : (
-                  <div className="text-center py-10 text-slate-400 text-[10px]">Agrega productos del panel izquierdo.</div>
+                  <div className="text-center py-5 sm:py-8 text-slate-400 dark:text-slate-500 text-xs">
+                    Agrega productos del panel izquierdo.
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* CONTROLES TOTALES Y PAGO DE CAJA CHICA */}
-            <div className="pt-3 border-t border-slate-100 space-y-3">
-              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-slate-50 p-2.5 border border-slate-100 rounded-xl">
-                <div className="flex items-center gap-2">
+            {/* CAJA CHICA Y TOTAL */}
+            <div className="space-y-1.5 sm:space-y-2 pt-1">
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 p-2 sm:p-3 border border-slate-200/60 dark:border-slate-800 rounded-2xl gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     id="payFromRegister-chk"
-                    className="accent-indigo-600 h-4 w-4 shrink-0 rounded"
+                    className="accent-indigo-600 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 rounded cursor-pointer"
                     checked={payFromRegister}
                     onChange={(e) => setPayFromRegister(e.target.checked)}
                   />
-                  <label htmlFor="payFromRegister-chk" className="text-[10px] font-bold text-slate-600 leading-none">
+                  <label htmlFor="payFromRegister-chk" className="text-[11px] sm:text-xs font-extrabold text-slate-700 dark:text-slate-300 leading-none cursor-pointer">
                     Pagar con dinero de caja chica
                   </label>
                 </div>
-                <div className="text-right">
-                  <span className="text-[9px] text-slate-400 font-bold block uppercase">Total Factura</span>
-                  <span className="font-black text-sm text-indigo-650">${totalInvoiceSum.toFixed(2)}</span>
+                <div className="text-right shrink-0">
+                  <span className="text-[8.5px] sm:text-[9px] text-slate-400 font-extrabold block uppercase tracking-wider">Total Factura</span>
+                  <span className="font-black text-sm sm:text-base text-indigo-600 dark:text-indigo-400">${totalInvoiceSum.toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-400 uppercase">Notas / Factura Ref.</label>
+              <div className="space-y-0.5 sm:space-y-1">
+                <label className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Notas / Factura Ref.
+                </label>
                 <Input
                   type="text"
                   placeholder="Ej. Factura #88219..."
-                  className="focus-visible:ring-indigo-500 h-8 text-[11px] font-semibold"
+                  className="focus-visible:ring-indigo-500 h-8.5 sm:h-10 text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900"
                   value={purchaseNotes}
                   onChange={(e) => setPurchaseNotes(e.target.value)}
                 />
@@ -207,20 +229,35 @@ export function PurchaseDialog({
           </div>
         </div>
 
-        <DialogFooter className="pt-2 gap-2 border-t border-slate-100 pt-3">
-          <Button type="button" variant="outline" className="text-xs rounded-xl" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="pt-2 gap-2 flex-row justify-end shrink-0">
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="flex-1 sm:flex-none text-xs font-extrabold rounded-xl h-9.5 sm:h-11 px-4 sm:px-5 border-slate-200 dark:border-slate-800 cursor-pointer" 
+            onClick={() => onOpenChange(false)}
+          >
             Cancelar
           </Button>
+
           <Button
             type="button"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-6 rounded-xl h-10"
-            disabled={addedPurchaseItems.length === 0}
+            className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 sm:px-6 rounded-xl h-9.5 sm:h-11 shadow-sm cursor-pointer active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={addedPurchaseItems.length === 0 || isSubmitting}
             onClick={onPurchaseSubmit}
           >
-            Registrar Compra y Recibir Stock
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Procesando Compra...
+              </span>
+            ) : (
+              'Registrar Compra y Recibir Stock'
+            )}
           </Button>
         </DialogFooter>
+
+
       </DialogContent>
     </Dialog>
+
   );
 }

@@ -71,7 +71,9 @@ export default function POSPage() {
     setPaymentMethod,
     amountPaid,
     setAmountPaid,
+    isSubmitting,
     changeAmount,
+
     searchInputRef,
     amountPaidInputRef,
     confirmButtonRef,
@@ -104,7 +106,8 @@ export default function POSPage() {
   }, [cartItems.length, searchInputRef]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)] overflow-hidden gap-4 select-none">
+    <div className="flex flex-col h-[calc(100vh-10.8rem)] md:h-[calc(100vh-12rem)] overflow-hidden gap-2 sm:gap-4 select-none pb-1 sm:pb-0">
+
 
       {/* HEADER DE LA PÁGINA */}
       <div className="flex flex-col gap-0.5 shrink-0">
@@ -112,57 +115,80 @@ export default function POSPage() {
           <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
           Operaciones de Caja
         </span>
-        <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+        <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
           Vender Productos
         </h1>
       </div>
-      {/* BARRA SUPERIOR DE ACCIONES Y CONECTIVIDAD */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 px-4 py-3 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center text-indigo-650 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30">
-            <ShoppingCart className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 tracking-tight">Terminal Punto de Venta</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              {isOnline ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/10 px-2 py-0.5 rounded-full border border-emerald-200/30">
-                  <Wifi className="h-3 w-3" /> En Línea
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-550 bg-amber-50 dark:bg-amber-950/10 px-2 py-0.5 rounded-full border border-amber-200/30 animate-pulse">
-                  <WifiOff className="h-3 w-3" /> Modo Local (Offline)
-                </span>
-              )}
 
-              {syncQueueCount > 0 && (
-                <button
-                  onClick={() => setIsOfflineSyncModalOpen(true)}
-                  className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full border cursor-pointer active:scale-95 transition-all ${
-                    syncErrorCount > 0
-                      ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200/40 hover:bg-rose-100/60'
-                      : isSyncing
-                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200/40'
-                        : 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border-indigo-200/30 hover:bg-indigo-100/50'
-                  }`}
-                  title="Ver cola de sincronización"
-                >
-                  <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>
-                    {isSyncing
-                      ? 'Sincronizando...'
-                      : syncErrorCount > 0
-                        ? `${syncErrorCount} con error (${syncQueueCount})`
-                        : `${syncQueueCount} por sincronizar`}
-                  </span>
-                </button>
-              )}
+
+      {/* BARRA SUPERIOR DE ACCIONES Y CONECTIVIDAD */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 sm:h-10 sm:w-10 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center text-indigo-650 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30 shrink-0">
+              <ShoppingCart className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
+            <div>
+              <h1 className="font-extrabold text-xs sm:text-sm text-slate-800 dark:text-slate-100 tracking-tight">Punto de Venta</h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {isOnline ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/10 px-2 py-0.5 rounded-full border border-emerald-200/30">
+                    <Wifi className="h-2.5 w-2.5" /> En Línea
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-600 dark:text-amber-550 bg-amber-50 dark:bg-amber-950/10 px-2 py-0.5 rounded-full border border-amber-200/30 animate-pulse">
+                    <WifiOff className="h-2.5 w-2.5" /> Modo Local (Offline)
+                  </span>
+                )}
+
+                {syncQueueCount > 0 && (
+                  <button
+                    onClick={() => setIsOfflineSyncModalOpen(true)}
+                    className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-full border border-indigo-200/40 animate-pulse cursor-pointer"
+                  >
+                    <RefreshCw className={`h-2.5 w-2.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isSyncing
+                        ? 'Sincronizando...'
+                        : syncErrorCount > 0
+                          ? `${syncErrorCount} con error (${syncQueueCount})`
+                          : `${syncQueueCount} por sincronizar`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ACCIONES RÁPIDAS EN MÓVIL (COMPACTAS) */}
+          <div className="flex items-center gap-1.5 sm:hidden">
+            {suspendedCarts.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-200 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 bg-amber-50/40 dark:bg-amber-955/10 font-black text-[10px] h-8 rounded-lg flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer relative"
+                onClick={() => setIsSuspendedOpen(true)}
+              >
+                <History className="h-3.5 w-3.5" />
+                <span className="h-4 w-4 bg-amber-500 text-white rounded-full flex items-center justify-center text-[8px] font-black shadow-xs">
+                  {suspendedCarts.length}
+                </span>
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-black text-[10px] h-8 rounded-lg flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer"
+              onClick={() => setIsGenericOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5 text-indigo-500" /> Exprés
+            </Button>
           </div>
         </div>
 
-        {/* ACCIONES DEL POS */}
-        <div className="flex items-center justify-end gap-2">
+        {/* ACCIONES DEL POS EN ESCRITORIO / TABLET */}
+        <div className="hidden sm:flex items-center justify-end gap-2">
           {suspendedCarts.length > 0 && (
             <Button
               variant="outline"
@@ -201,7 +227,7 @@ export default function POSPage() {
       <div className="flex bg-slate-100/80 dark:bg-slate-800/40 p-1 rounded-2xl md:hidden w-full shrink-0 border dark:border-slate-800/60">
         <Button
           variant={posTab === 'CATALOG' ? 'default' : 'ghost'}
-          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CATALOG' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
+          className={`flex-1 h-10 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CATALOG' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
             }`}
           onClick={() => setPosTab('CATALOG')}
         >
@@ -209,7 +235,7 @@ export default function POSPage() {
         </Button>
         <Button
           variant={posTab === 'CART' ? 'default' : 'ghost'}
-          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CART' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
+          className={`flex-1 h-10 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CART' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
             }`}
           onClick={() => setPosTab('CART')}
         >
@@ -218,7 +244,7 @@ export default function POSPage() {
         <Button
           variant={posTab === 'PAYMENT' ? 'default' : 'ghost'}
           disabled={cartItems.length === 0}
-          className={`flex-1 h-11 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'PAYMENT' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
+          className={`flex-1 h-10 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'PAYMENT' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
             }`}
           onClick={() => setPosTab('PAYMENT')}
         >
@@ -230,7 +256,7 @@ export default function POSPage() {
       <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden min-h-0">
 
         {/* COLUMNA IZQUIERDA: CATÁLOGO TÁCTIL */}
-        <div className={`md:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden ${posTab === 'CATALOG' ? 'flex' : 'hidden md:flex'
+        <div className={`md:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden h-full ${posTab === 'CATALOG' ? 'flex' : 'hidden md:flex'
           }`}>
           {/* BUSCADOR */}
           <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0">
@@ -310,10 +336,11 @@ export default function POSPage() {
         </div>
 
         {/* COLUMNA DERECHA: TICKET / PAGO UNIFICADO */}
-        <div className={`md:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 ${posTab === 'CART' || posTab === 'PAYMENT' ? 'flex' : 'hidden md:flex'
+        <div className={`md:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 h-full ${posTab === 'CART' || posTab === 'PAYMENT' ? 'flex' : 'hidden md:flex'
           }`}>
           {/* Vista Móvil / Tablet Vertical (Se alternan las pestañas) */}
-          <div className="flex md:hidden flex-col flex-1 min-h-0 overflow-hidden gap-3.5">
+          <div className="flex md:hidden flex-col flex-1 h-full min-h-0 overflow-hidden gap-3.5">
+
             {posTab !== 'PAYMENT' ? (
               <TicketPanel
                 cartItems={cartItems}
@@ -338,6 +365,7 @@ export default function POSPage() {
                 setPaymentMethod={setPaymentMethod}
                 amountPaid={amountPaid}
                 setAmountPaid={setAmountPaid}
+                isSubmitting={isSubmitting}
                 changeAmount={changeAmount}
                 amountPaidInputRef={amountPaidInputRef}
                 confirmButtonRef={confirmButtonRef}
@@ -346,6 +374,7 @@ export default function POSPage() {
                 onBackToTicket={() => setPosTab('CART')}
                 isUnified={false}
               />
+
             )}
           </div>
 

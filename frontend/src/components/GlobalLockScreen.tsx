@@ -41,9 +41,19 @@ export default function GlobalLockScreen() {
 
       if (role === 'ADMIN') {
         router.replace('/');
-      } else if (role === 'CAJERO') {
-        router.replace('/pos');
+      } else {
+        try {
+          const regRes = await api.get('/register/active');
+          if (regRes.data) {
+            router.replace('/pos');
+          } else {
+            router.replace('/register');
+          }
+        } catch {
+          router.replace('/register');
+        }
       }
+
     } catch (error) {
       toast.error(parseAxiosError(error, 'PIN de acceso incorrecto.'));
       setPin('');

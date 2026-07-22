@@ -10,10 +10,12 @@ import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Product } from '../types';
 import { InventoryMetrics } from './InventoryMetrics';
 
 interface CatalogTabProps {
+
   totalProductsCount: number;
   totalInvestment: number;
   expectedProfit: number;
@@ -68,6 +70,8 @@ export function CatalogTab({
   handleOpenEdit,
   handleOpenDelete,
 }: CatalogTabProps) {
+  const { role } = useAuthStore();
+
   return (
     <>
       {/* METRICAS */}
@@ -117,14 +121,16 @@ export function CatalogTab({
           </div>
         </div>
 
-        <div className="shrink-0">
-          <Button 
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-            onClick={handleOpenAdd}
-          >
-            <Plus className="h-4 w-4" /> Nuevo Producto
-          </Button>
-        </div>
+        {role === 'ADMIN' && (
+          <div className="shrink-0">
+            <Button 
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+              onClick={handleOpenAdd}
+            >
+              <Plus className="h-4 w-4" /> Nuevo Producto
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* TABLA CATÁLOGO */}
@@ -135,12 +141,14 @@ export function CatalogTab({
           </span>
           
           <div className="flex items-center gap-2">
-            <Button
-              className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
-              onClick={() => setIsImportOpen(true)}
-            >
-              <Upload className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Importar CSV
-            </Button>
+            {role === 'ADMIN' && (
+              <Button
+                className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
+                onClick={() => setIsImportOpen(true)}
+              >
+                <Upload className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Importar CSV
+              </Button>
+            )}
             <Button
               className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
               onClick={handleExportCSV}
@@ -148,6 +156,7 @@ export function CatalogTab({
               <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Exportar CSV
             </Button>
           </div>
+
         </div>
         {loading ? (
           <div className="p-4 space-y-4">
@@ -166,25 +175,33 @@ export function CatalogTab({
             ))}
           </div>
         ) : filteredProducts.length > 0 ? (
-          <Table>
+          <div className="w-full overflow-x-auto scrollbar-none">
+            <Table className="min-w-[600px] sm:min-w-full">
+
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b">
-                <TableHead className="w-12 text-center">
+                <TableHead className="w-10 text-center">
                   <input
                     type="checkbox"
-                    className="accent-indigo-650 h-4.5 w-4.5 rounded cursor-pointer"
+                    className="accent-indigo-650 h-4 w-4 rounded cursor-pointer"
                     checked={areAllFilteredSelected}
                     onChange={() => toggleSelectAllProducts(filteredProducts)}
                   />
                 </TableHead>
-                <TableHead className="text-xs font-bold text-slate-500">Producto</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Stock</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Venta</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-20 hidden sm:table-cell">Margen</TableHead>
-                <TableHead className="w-36 text-center text-xs font-bold text-slate-500">Acciones</TableHead>
+                <TableHead className="text-xs font-bold text-slate-500 min-w-[140px]">Producto</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Stock</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Venta</TableHead>
+                {role === 'ADMIN' && (
+                  <>
+                    <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
+                    <TableHead className="text-right text-xs font-bold text-slate-500 w-20 hidden sm:table-cell">Margen</TableHead>
+                  </>
+                )}
+                <TableHead className="w-44 min-w-[170px] text-center text-xs font-bold text-slate-500">Acciones</TableHead>
+
               </TableRow>
             </TableHeader>
+
             <TableBody className="divide-y">
               {filteredProducts.map((p) => {
                 const isCritical = p.stock <= p.minStock;
@@ -252,15 +269,20 @@ export function CatalogTab({
                       </span>
                     </TableCell>
 
-                    <TableCell className="text-right text-slate-400 text-xs hidden sm:table-cell">
-                      ${p.purchasePrice.toFixed(2)}
-                    </TableCell>
+                    {role === 'ADMIN' && (
+                      <>
+                        <TableCell className="text-right text-slate-400 text-xs hidden sm:table-cell">
+                          ${p.purchasePrice.toFixed(2)}
+                        </TableCell>
 
-                    <TableCell className="text-right text-emerald-500 font-bold text-xs hidden sm:table-cell">
-                      {margin.toFixed(0)}%
-                    </TableCell>
+                        <TableCell className="text-right text-emerald-500 font-bold text-xs hidden sm:table-cell">
+                          {margin.toFixed(0)}%
+                        </TableCell>
+                      </>
+                    )}
 
                     <TableCell className="text-center">
+
                       <div className="flex items-center justify-center gap-0.5">
                         <Button
                           variant="ghost"
@@ -280,41 +302,48 @@ export function CatalogTab({
                         >
                           <UtensilsCrossed className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg"
-                          onClick={() => handleOpenDuplicate(p)}
-                          title="Duplicar producto"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                          onClick={() => handleOpenEdit(p)}
-                          title="Editar producto"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 rounded-lg"
-                          onClick={() => handleOpenDelete(p)}
-                          title="Eliminar producto"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {role === 'ADMIN' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg"
+                              onClick={() => handleOpenDuplicate(p)}
+                              title="Duplicar producto"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                              onClick={() => handleOpenEdit(p)}
+                              title="Editar producto"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 rounded-lg"
+                              onClick={() => handleOpenDelete(p)}
+                              title="Eliminar producto"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </div>
+
                     </TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
+        </div>
         ) : (
+
           <div className="py-20 text-center text-slate-400 text-xs">
             No se encontraron productos en el inventario.
           </div>

@@ -241,7 +241,7 @@ export default function RegisterPage() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex flex-col justify-between gap-6">
                   
                   <div>
-                    <div className="flex justify-between items-center border-b pb-4 border-slate-100 dark:border-slate-800/60">
+                    <div className="flex justify-between items-center pb-2">
                       <div>
                         <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Cuentas del Turno</h2>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Control de flujo de efectivo en caja chica</p>
@@ -252,7 +252,8 @@ export default function RegisterPage() {
                     </div>
 
                     {/* GRIDS DE MÉTRICAS FINANCIERAS */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+
                       <div className="bg-slate-50/50 dark:bg-slate-800/30 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
                         <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Fondo Inicial</span>
                         <span className="text-base font-extrabold text-slate-800 dark:text-slate-100 block mt-1">
@@ -283,21 +284,26 @@ export default function RegisterPage() {
                     </div>
                   </div>
 
-                  {/* ACCIONES DIRECTAS */}
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                  {/* ACCIONES DIRECTAS DE CAJA */}
+                  <div className="flex flex-col gap-3 pt-2">
                     <Button 
-                      className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-xs h-11 rounded-xl cursor-pointer border border-transparent dark:border-slate-850 justify-center gap-1.5"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs sm:text-sm h-11 rounded-full flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer"
                       onClick={() => setIsAdjOpen(true)}
                     >
-                      <Plus className="h-4 w-4 text-indigo-650 dark:text-indigo-400" /> Movimiento de Caja
+                      <Plus className="h-4 w-4" /> Movimiento de Caja
                     </Button>
                     <Button 
-                      className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs h-11 rounded-xl cursor-pointer border-none justify-center gap-1.5"
+                      className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs sm:text-sm h-11 rounded-full flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer border-none"
                       onClick={() => setIsCloseOpen(true)}
                     >
-                      <Lock className="h-4 w-4" /> Realizar Corte de Caja (Arqueo)
+                      <Lock className="h-4 w-4" /> Realizar Corte de Caja
                     </Button>
                   </div>
+
+
+
+
+
                 </div>
               </div>
 
@@ -305,9 +311,10 @@ export default function RegisterPage() {
               <div className="space-y-6">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] h-full flex flex-col justify-between gap-6">
                   <div className="space-y-4">
-                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b pb-4 border-slate-100 dark:border-slate-800/60 flex items-center gap-1.5">
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5 pb-1">
                       <Clock className="h-4.5 w-4.5 text-indigo-505" /> Información de Sesión
                     </h3>
+
                     
                     <div className="space-y-3 text-xs font-semibold text-slate-550 dark:text-slate-400">
                       <div className="flex justify-between border-b pb-2 border-slate-50 dark:border-slate-800/30">
@@ -328,10 +335,11 @@ export default function RegisterPage() {
                   </div>
 
                   <Link href="/pos" className="w-full">
-                    <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-11 rounded-xl flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer">
+                    <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-11 rounded-full flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer">
                       Ir al Punto de Venta <ChevronRight className="h-4.5 w-4.5" />
                     </Button>
                   </Link>
+
                 </div>
               </div>
 
@@ -390,81 +398,84 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* BITÁCORA DE HISTORIAL TURNOS ANTERIORES */}
-        <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-450 uppercase tracking-widest flex items-center gap-1">
-            <FileText className="h-4 w-4 text-indigo-650" /> Historial de Turnos Cerrados
-          </h3>
+        {/* BITÁCORA DE HISTORIAL TURNOS ANTERIORES (SOLO VISIBLE PARA ADMIN) */}
+        {role === 'ADMIN' && (
+          <div className="space-y-3 pt-2">
+            <h3 className="text-xs font-bold text-slate-450 uppercase tracking-widest flex items-center gap-1">
+              <FileText className="h-4 w-4 text-indigo-650" /> Historial de Turnos Cerrados
+            </h3>
 
-          <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-3xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
-            {history.length > 0 ? (
-              <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow className="border-b">
-                    <TableHead className="text-xs font-bold text-slate-500">Cajero</TableHead>
-                    <TableHead className="text-xs font-bold text-slate-500">Apertura</TableHead>
-                    <TableHead className="text-xs font-bold text-slate-500">Cierre</TableHead>
-                    <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Esperado</TableHead>
-                    <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Entregado</TableHead>
-                    <TableHead className="text-center text-xs font-bold text-slate-500 w-24">Estado</TableHead>
-                    <TableHead className="text-center text-xs font-bold text-slate-500 w-24">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y">
-                  {history.map((reg) => {
-                    const diff = (reg.actualBalance || 0) - reg.expectedBalance;
-                    return (
-                      <TableRow key={reg.id} className="hover:bg-slate-50/20 border-b">
-                        <TableCell className="font-bold text-xs text-slate-700 py-3">{reg.openedBy}</TableCell>
-                        <TableCell className="text-slate-450 text-xs py-3">
-                          {new Date(reg.openedAt).toLocaleDateString()} {new Date(reg.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </TableCell>
-                        <TableCell className="text-slate-450 text-xs py-3">
-                          {reg.closedAt ? `${new Date(reg.closedAt).toLocaleDateString()} ${new Date(reg.closedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : '--'}
-                        </TableCell>
-                        <TableCell className="text-right text-slate-650 text-xs py-3">${reg.expectedBalance.toFixed(0)}</TableCell>
-                        <TableCell className="text-right font-bold text-slate-800 text-xs py-3">
-                          ${reg.actualBalance ? reg.actualBalance.toFixed(0) : '0'}
-                        </TableCell>
-                        <TableCell className="text-center py-3">
-                          <div className="flex justify-center">
-                            {diff === 0 ? (
-                              <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full">
-                                CUADRÓ
-                              </Badge>
-                            ) : diff < 0 ? (
-                              <Badge variant="outline" className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full flex items-center gap-1 justify-center" title={`Faltante: $${Math.abs(diff).toFixed(0)}`}>
-                                <BadgeAlert className="h-3 w-3 shrink-0 text-rose-500 dark:text-rose-400" /> FALTÓ
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full" title={`Sobrante: $${diff.toFixed(0)}`}>
-                                SOBRÓ
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center py-3">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 px-2 rounded-lg cursor-pointer"
-                            onClick={() => handleDownloadPdf(reg.id)}
-                          >
-                            PDF
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="py-14 text-center text-slate-400 text-xs">
-                No hay turnos cerrados en el historial.
-              </div>
-            )}
+            <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-3xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+              {history.length > 0 ? (
+                <Table>
+                  <TableHeader className="bg-slate-50/50">
+                    <TableRow className="border-b">
+                      <TableHead className="text-xs font-bold text-slate-500">Cajero</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-500">Apertura</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-500">Cierre</TableHead>
+                      <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Esperado</TableHead>
+                      <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Entregado</TableHead>
+                      <TableHead className="text-center text-xs font-bold text-slate-500 w-24">Estado</TableHead>
+                      <TableHead className="text-center text-xs font-bold text-slate-500 w-24">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y">
+                    {history.map((reg) => {
+                      const diff = (reg.actualBalance || 0) - reg.expectedBalance;
+                      return (
+                        <TableRow key={reg.id} className="hover:bg-slate-50/20 border-b">
+                          <TableCell className="font-bold text-xs text-slate-700 py-3">{reg.openedBy}</TableCell>
+                          <TableCell className="text-slate-450 text-xs py-3">
+                            {new Date(reg.openedAt).toLocaleDateString()} {new Date(reg.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </TableCell>
+                          <TableCell className="text-slate-450 text-xs py-3">
+                            {reg.closedAt ? `${new Date(reg.closedAt).toLocaleDateString()} ${new Date(reg.closedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : '--'}
+                          </TableCell>
+                          <TableCell className="text-right text-slate-650 text-xs py-3">${reg.expectedBalance.toFixed(0)}</TableCell>
+                          <TableCell className="text-right font-bold text-slate-800 text-xs py-3">
+                            ${reg.actualBalance ? reg.actualBalance.toFixed(0) : '0'}
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            <div className="flex justify-center">
+                              {diff === 0 ? (
+                                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full">
+                                  CUADRÓ
+                                </Badge>
+                              ) : diff < 0 ? (
+                                <Badge variant="outline" className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full flex items-center gap-1 justify-center" title={`Faltante: $${Math.abs(diff).toFixed(0)}`}>
+                                  <BadgeAlert className="h-3 w-3 shrink-0 text-rose-500 dark:text-rose-400" /> FALTÓ
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/40 font-black text-[9px] px-2.5 py-0.5 rounded-full" title={`Sobrante: $${diff.toFixed(0)}`}>
+                                  SOBRÓ
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 px-2 rounded-lg cursor-pointer"
+                              onClick={() => handleDownloadPdf(reg.id)}
+                            >
+                              PDF
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="py-14 text-center text-slate-400 text-xs">
+                  No hay turnos cerrados en el historial.
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
 
         {/* DIÁLOGOS COMPONENTIZADOS */}
         <ManualTransactionDialog

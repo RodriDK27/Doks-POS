@@ -451,6 +451,8 @@ export function useInventory() {
     setAddedPurchaseItems(updated);
   };
 
+  const [isSubmittingPurchase, setIsSubmittingPurchase] = useState(false);
+
   const handlePurchaseSubmit = async () => {
     if (!selectedSupplierForPurchase) return;
     if (addedPurchaseItems.length === 0) {
@@ -470,6 +472,7 @@ export function useInventory() {
     };
 
     try {
+      setIsSubmittingPurchase(true);
       await api.post('/purchases', payload);
       toast.success('Compra registrada. Stock de inventario e historial de caja actualizados.');
       setIsPurchaseOpen(false);
@@ -477,8 +480,11 @@ export function useInventory() {
       fetchSuppliersData();
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al guardar la compra.'));
+    } finally {
+      setIsSubmittingPurchase(false);
     }
   };
+
 
   const handleCancelEdit = () => setEditingProduct(null);
 
@@ -544,7 +550,9 @@ export function useInventory() {
     handleAddPurchaseItem,
     handleRemovePurchaseItemIndex,
     handlePurchaseSubmit,
+    isSubmittingPurchase,
     totalInvoiceSum,
+
     // Inline edit
     inlineEdit,
     handleStartInlineEdit,

@@ -1,12 +1,16 @@
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { CashRegister } from '../types';
 import { parseAxiosError } from '@/lib/errorMapper';
+
 export function useRegister() {
+  const router = useRouter();
   const { role } = useAuthStore();
+
 
 
   // Estados Formulario Apertura
@@ -45,8 +49,9 @@ export function useRegister() {
 
   // SWR queries
   const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading } = useSWR<CashRegister | null>(role !== 'NONE' ? '/register/active' : null);
-  const { data: swrHistory, mutate: mutateHistory, isLoading: historyLoading } = useSWR<CashRegister[]>(role !== 'NONE' ? '/register' : null);
-  const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>('/auth/cashiers');
+  const { data: swrHistory, mutate: mutateHistory, isLoading: historyLoading } = useSWR<CashRegister[]>(role === 'ADMIN' ? '/register' : null);
+  const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>(role !== 'NONE' ? '/auth/cashiers' : null);
+
 
   const loading = activeRegisterLoading || historyLoading;
 
@@ -106,8 +111,9 @@ export function useRegister() {
       toast.success('¡Turno de caja abierto correctamente!');
       setOpenForm({ openedBy: '', initialBalance: 0 });
       fetchCajaData();
-      setTimeout(() => window.location.reload(), 500);
+      router.replace('/pos');
     } catch (error) {
+
       toast.error(parseAxiosError(error, 'Error al abrir caja.'));
     }
   };
@@ -181,8 +187,13 @@ export function useRegister() {
       });
 
       fetchCajaData();
-      setTimeout(() => window.location.reload(), 1500);
+      if (role !== 'ADMIN') {
+        router.replace('/register');
+      } else {
+        setTimeout(() => window.location.reload(), 800);
+      }
     } catch (error) {
+
       toast.error(parseAxiosError(error, 'Error al cerrar la caja.'));
     }
   };

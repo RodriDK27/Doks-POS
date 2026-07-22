@@ -179,24 +179,39 @@ export default function DashboardLayout({
   const checkActiveRegister = async () => {
     try {
       const response = await api.get('/register/active');
-      setActiveRegister(response.data);
+      const activeReg = response.data;
+      setActiveRegister(activeReg);
+      return activeReg;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status !== 401) {
         console.error('Error checking active register:', error);
       }
+      setActiveRegister(null);
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    Promise.resolve().then(() => {
+    Promise.resolve().then(async () => {
       setMounted(true);
       if (role !== 'NONE') {
-        checkActiveRegister();
-        // Si no es ADMIN e intenta estar en la raíz '/', redirigir a Ventas (/pos)
-        if (role !== 'ADMIN' && (pathname === '/' || pathname === '/inventory' || pathname === '/reports')) {
-          router.replace('/pos');
+        const activeReg = await checkActiveRegister();
+
+        // Para roles que no son ADMIN (ej. Cajero):
+        if (role !== 'ADMIN') {
+          if (!activeReg) {
+            // Si la caja NO está abierta, forzar ir a Caja (/register) para que abra el turno
+            if (pathname !== '/register') {
+              router.replace('/register');
+            }
+          } else {
+            // Si la caja SÍ está abierta e intenta entrar a raíz ('/') o reportes ('/reports'), mandarlo a ventas (/pos)
+            if (pathname === '/' || pathname === '/reports') {
+              router.replace('/pos');
+            }
+          }
         }
       } else {
         setActiveRegister(null);
@@ -204,13 +219,15 @@ export default function DashboardLayout({
     });
   }, [pathname, role, router]);
 
+
   if (!mounted) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="animate-spin rounded-full h-9 w-9 border-t-2 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
       </div>
     );
   }
+
 
   if (role === 'NONE') {
     return <GlobalLockScreen />;
@@ -219,82 +236,100 @@ export default function DashboardLayout({
   const navItems = [
     { name: 'Inicio', href: '/', icon: LayoutDashboard, adminOnly: true },
     { name: 'Vender', href: '/pos', icon: ShoppingCart },
-    { name: 'Inventario', href: '/inventory', icon: Package, adminOnly: true },
+    { name: 'Inventario', href: '/inventory', icon: Package },
     { name: 'Clientes', href: '/customers', icon: Users },
     { name: 'Caja', href: '/register', icon: DollarSign },
-  ].filter(item => !item.adminOnly || role === 'ADMIN');
+  ].filter(item => {
+    if (item.adminOnly && role !== 'ADMIN') return false;
+    // Si el usuario es Cajero y la caja NO está abierta, ocultar todas las secciones excepto "Caja"
+    if (role !== 'ADMIN' && !activeRegister && item.href !== '/register') {
+      return false;
+    }
+    return true;
+  });
+
+
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-900 font-sans pb-0 md:pt-0">
 
       {/* HEADER SUPERIOR MÓVIL / TABLET */}
-      <header className="h-14 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-5 sticky top-0 z-50 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-        <div className="flex items-center gap-2">
-          <Store className="h-5 w-5 text-indigo-600" />
-          <span className="font-black text-sm tracking-tight text-slate-800">{"Dok's POS"}</span>
+      <header className="h-14 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-3 sm:px-5 sticky top-0 z-50 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)] gap-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Store className="h-4.5 w-4.5 text-indigo-600 dark:text-indigo-400" />
+          <span className="font-black text-xs sm:text-sm tracking-tight text-slate-800 dark:text-slate-100 whitespace-nowrap">
+            {"Dok's POS"}
+          </span>
         </div>
 
         {/* Estatus Caja chica y Rol de seguridad */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {isInstallable && (
             <button
               onClick={handleInstallClick}
               title="Instalar Aplicación (PWA)"
-              className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-2.5 py-1 rounded-full text-[9px] uppercase tracking-wider transition-all animate-pulse shadow-sm shadow-indigo-600/10 cursor-pointer"
+              className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-2 py-1 rounded-full text-[9px] uppercase tracking-wider transition-all shadow-sm shadow-indigo-600/10 cursor-pointer"
             >
               <Smartphone className="h-3 w-3 shrink-0" />
-              <span className="hidden sm:inline">Instalar App</span>
+              <span className="hidden md:inline">Instalar App</span>
             </button>
           )}
+
           {isOnline ? (
-            <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/25 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">
+            <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/25 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wider" title="Conectado a internet">
               <Wifi className="h-3 w-3 text-emerald-500" />
-              <span className="hidden sm:inline">En línea</span>
+              <span className="hidden md:inline">En línea</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 bg-rose-50 dark:bg-rose-950/25 text-rose-700 dark:text-rose-400 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
+            <div className="flex items-center gap-1 bg-rose-50 dark:bg-rose-950/25 text-rose-700 dark:text-rose-400 px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse" title="Sin internet - Modo Local">
               <WifiOff className="h-3 w-3 text-rose-500" />
-              <span>Offline</span>
+              <span className="hidden sm:inline">Offline</span>
             </div>
           )}
+
           {syncQueueCount > 0 && (
-            <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/25 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
+            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/25 text-amber-700 dark:text-amber-400 px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping"></span>
-              Pendientes: {syncQueueCount}
+              <span className="hidden sm:inline">Pendientes: </span>{syncQueueCount}
             </div>
           )}
+
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             title="Cambiar Tema (Claro / Oscuro)"
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors inline-flex items-center"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors inline-flex items-center shrink-0 cursor-pointer"
           >
             {theme === 'dark' ? <Sun className="h-3.5 w-3.5 text-amber-500" /> : <Moon className="h-3.5 w-3.5 text-slate-650" />}
           </button>
+
           {role === 'ADMIN' ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => setIsCashiersOpen(true)}
-                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 title="Gestionar Plantilla de Cajeros"
               >
-                <Users className="h-3 w-3 text-slate-600" /> Cajeros
+                <Users className="h-3 w-3 text-slate-600 dark:text-slate-400" />
+                <span className="hidden md:inline">Cajeros</span>
               </button>
               <button
                 onClick={() => setIsChangePinOpen(true)}
-                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 title="Cambiar PIN de seguridad"
               >
-                <KeyRound className="h-3 w-3 text-slate-600" /> PIN
+                <KeyRound className="h-3 w-3 text-slate-600 dark:text-slate-400" />
+                <span className="hidden md:inline">PIN</span>
               </button>
               <button
                 onClick={() => {
                   logout();
                   toast.info('Acceso de Administrador bloqueado (Modo Cajero).');
                 }}
-                className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 title="Bloquear a Modo Cajero"
               >
-                <Lock className="h-3 w-3" /> Bloquear Admin
+                <Lock className="h-3 w-3" />
+                <span className="hidden sm:inline">Bloquear Admin</span>
               </button>
             </div>
           ) : (
@@ -303,26 +338,30 @@ export default function DashboardLayout({
                 logout();
                 toast.info('Introduce el PIN de Administrador.');
               }}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer"
+              className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer shrink-0"
               title="Ingresar PIN de Administrador"
             >
-              <Unlock className="h-3 w-3" /> Modo Admin
+              <Unlock className="h-3 w-3" />
+              <span className="hidden sm:inline">Modo Admin</span>
             </button>
           )}
 
           {!loading && (
-            <div className="flex items-center gap-2 bg-slate-100/80 px-3 py-1 rounded-full text-[10px] font-bold">
+            <div className="flex items-center gap-1.5 bg-slate-100/80 dark:bg-slate-800/80 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold shrink-0">
               {activeRegister ? (
                 <>
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-slate-600">Caja: <strong className="text-slate-800">${activeRegister.expectedBalance.toFixed(0)}</strong></span>
+                  <span className="text-slate-600 dark:text-slate-300">
+                    <span className="hidden sm:inline">Caja: </span>
+                    <strong className="text-slate-800 dark:text-slate-100">${activeRegister.expectedBalance.toFixed(0)}</strong>
+                  </span>
                 </>
               ) : (
                 <>
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                  <span className="text-rose-600 uppercase">Cerrada</span>
+                  <span className="text-rose-600 dark:text-rose-400 uppercase font-black text-[9px]">Cerrada</span>
                   <button
-                    className="text-indigo-600 hover:text-indigo-800 ml-1 underline"
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline ml-0.5"
                     onClick={() => router.push('/register')}
                   >
                     Abrir
@@ -334,13 +373,15 @@ export default function DashboardLayout({
         </div>
       </header>
 
+
       {/* CONTENEDOR DE PÁGINAS (OCUPA TODO EL ANCHO SIN SIDEBAR) */}
-      <main className="flex-1 overflow-y-auto p-4 pb-28 md:p-6 md:pb-28 bg-transparent relative">
+      <main className="flex-1 overflow-y-auto p-3 pb-24 md:p-6 md:pb-28 bg-transparent relative">
         {children}
       </main>
 
-      {/* BARRA DE NAVEGACIÓN INFERIOR FLOTANTE (ESTILO FLOATING DOCK GIGANTE) */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg h-16 bg-white border border-slate-200 z-50 flex items-center justify-around px-4 shadow-[0_15px_45px_rgba(0,0,0,0.08)] rounded-full shrink-0">
+
+      {/* BARRA DE NAVEGACIÓN INFERIOR FLOTANTE (ESTILO FLOATING DOCK GIGANTE OPTIMIZADA PARA TABLETS Y CELULARES) */}
+      <nav className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-[95%] sm:w-[92%] max-w-lg h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border border-slate-200/80 dark:border-slate-800 z-50 flex items-center justify-around px-2 sm:px-4 shadow-[0_15px_45px_rgba(0,0,0,0.12)] rounded-full shrink-0 select-none-touch pb-safe">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -348,15 +389,15 @@ export default function DashboardLayout({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center justify-center transition-all duration-300 rounded-full py-2 px-4 text-xs font-extrabold tracking-wide active:scale-95 gap-2",
+                "flex items-center justify-center transition-all duration-300 rounded-full py-2 px-3 sm:px-4 text-xs font-extrabold tracking-wide active:scale-95 gap-1.5 touch-manipulation",
                 isActive
                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 scale-105"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 p-2.5"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 p-2 sm:p-2.5"
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
               {isActive && (
-                <span className="text-[11px] font-black uppercase tracking-wider animate-in fade-in slide-in-from-left-2 duration-300">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider animate-in fade-in slide-in-from-left-2 duration-300">
                   {item.name}
                 </span>
               )}
@@ -364,6 +405,7 @@ export default function DashboardLayout({
           );
         })}
       </nav>
+
 
       {/* DIÁLOGO CAMBIO DE PIN */}
       <Dialog open={isChangePinOpen} onOpenChange={setIsChangePinOpen}>

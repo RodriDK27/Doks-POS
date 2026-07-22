@@ -186,11 +186,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-14rem)] w-full my-auto">
+        <div className="animate-spin rounded-full h-9 w-9 border-t-2 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
       </div>
     );
   }
+
 
   return (
     <PinLockGuard>
@@ -198,32 +199,36 @@ export default function DashboardPage() {
         
         {/* HEADER PRINCIPAL CON BOTONES DE ACCIÓN RÁPIDA */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
-              {getGreeting()}
-            </span>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Panel de Control</h1>
-          </div>
+          <div className="flex items-center justify-between sm:flex-col sm:items-start gap-1 w-full sm:w-auto">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
+                {getGreeting()}
+              </span>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Panel de Control</h1>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
             {currentTime && (
-              <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/60 px-3 py-2 rounded-xl shadow-xs self-center">
+              <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-white/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/60 px-2.5 py-1.5 rounded-xl shadow-xs shrink-0 self-center sm:self-start sm:mt-1">
                 {currentTime}
               </span>
             )}
-            <Link href={activeRegister ? "/pos" : "/register"}>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-9 px-4 rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <Link href={activeRegister ? "/pos" : "/register"} className="flex-1 sm:flex-initial">
+              <Button className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 px-4 rounded-xl shadow-md cursor-pointer transition-all active:scale-95">
                 Ir a Vender
               </Button>
             </Link>
-            <Link href="/reports">
-              <Button variant="outline" className="border-indigo-100 dark:border-indigo-900/60 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-extrabold text-xs h-9 px-4 rounded-xl cursor-pointer transition-all active:scale-95 shadow-none">
+            <Link href="/reports" className="flex-1 sm:flex-initial">
+              <Button variant="outline" className="w-full sm:w-auto border-indigo-100 dark:border-indigo-900/60 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-extrabold text-xs h-10 px-4 rounded-xl cursor-pointer transition-all active:scale-95 shadow-none">
                 Ver Utilidades
               </Button>
             </Link>
           </div>
         </div>
+
 
         {/* FILA 1: KPIs DE UN VISTAZO */}
         <DashboardStatsGrid 

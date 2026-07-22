@@ -16,8 +16,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { CustomSelect } from '@/components/CustomSelect';
+import { useAuthStore } from '@/store/useAuthStore';
+
 
 import { useInventory } from './hooks/useInventory';
+
 import { ProductFormDialog } from './components/ProductFormDialog';
 import { SupplierFormDialog } from './components/SupplierFormDialog';
 import { ImportCSVModal } from './components/ImportCSVModal';
@@ -40,7 +44,9 @@ const PurchaseDetailsDialog = dynamic(() => import('./components/PurchaseDetails
 });
 
 export default function InventoryPage() {
+  const { role } = useAuthStore();
   const {
+
     activeTab,
     setActiveTab,
     products,
@@ -99,7 +105,9 @@ export default function InventoryPage() {
     handleAddPurchaseItem,
     handleRemovePurchaseItemIndex,
     handlePurchaseSubmit,
+    isSubmittingPurchase,
     totalInvoiceSum,
+
     // Import / Export
     isImportOpen,
     setIsImportOpen,
@@ -162,8 +170,8 @@ export default function InventoryPage() {
   const areAllFilteredSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedProductIds.includes(p.id));
 
   return (
-    <PinLockGuard>
-      <div className="space-y-6 w-full pb-20 relative">
+    <div className="space-y-6 w-full pb-20 relative">
+
         {/* HEADER PRINCIPAL Y TABS SELECTOR */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
           <div className="flex flex-col gap-0.5">
@@ -173,14 +181,29 @@ export default function InventoryPage() {
             </span>
             <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Inventario de Tienda</h1>
           </div>
+          {/* MÓVIL: SELECT DESPLEGABLE LIMPIO */}
+          <div className="w-full sm:hidden shrink-0">
+            <CustomSelect
+              value={activeTab}
+              onChange={(val: string) => setActiveTab(val as typeof activeTab)}
+              options={[
+                { value: 'CATALOG', label: 'Catálogo de Productos' },
+                { value: 'SUPPLIERS', label: 'Proveedores y Compras' },
+                { value: 'REQUESTED', label: `Solicitudes ${pendingRequestedCount > 0 ? `(${pendingRequestedCount} pendientes)` : ''}` },
+                ...(role === 'ADMIN' ? [{ value: 'ANALYTICS', label: 'Rendimiento y Reportes' }] : []),
+                { value: 'WASTE', label: 'Mermas y Consumos Internos' },
+              ]}
+            />
+          </div>
 
-          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0 border border-slate-200/40 dark:border-slate-800/40 self-start sm:self-center">
+          {/* ESCRITORIO / TABLET: BOTONES CONTINUOS */}
+          <div className="hidden sm:flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl shrink-0 border border-slate-200/40 dark:border-slate-800/40 gap-1">
             <Button
               variant="ghost"
               className={cn(
-                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none",
+                "h-8 px-3 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border-none",
                 activeTab === 'CATALOG' 
-                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
+                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs" 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
               )}
               onClick={() => setActiveTab('CATALOG')}
@@ -190,9 +213,9 @@ export default function InventoryPage() {
             <Button
               variant="ghost"
               className={cn(
-                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none",
+                "h-8 px-3 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border-none",
                 activeTab === 'SUPPLIERS' 
-                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
+                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs" 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
               )}
               onClick={() => setActiveTab('SUPPLIERS')}
@@ -202,39 +225,41 @@ export default function InventoryPage() {
             <Button
               variant="ghost"
               className={cn(
-                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none relative",
+                "h-8 px-3 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none relative",
                 activeTab === 'REQUESTED' 
-                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
+                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs" 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
               )}
               onClick={() => setActiveTab('REQUESTED')}
             >
               <FileText className="h-4 w-4" /> 
-              <span>Solicitudes / Pendientes Alta</span>
+              <span>Solicitudes</span>
               {pendingRequestedCount > 0 && (
                 <span className="ml-1 px-1.5 py-0.2 bg-rose-500 text-white font-black text-[10px] rounded-full animate-bounce shadow-xs">
                   {pendingRequestedCount}
                 </span>
               )}
             </Button>
+            {role === 'ADMIN' && (
+              <Button
+                variant="ghost"
+                className={cn(
+                  "h-8 px-3 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border-none",
+                  activeTab === 'ANALYTICS' 
+                    ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs" 
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+                onClick={() => setActiveTab('ANALYTICS')}
+              >
+                <Star className="h-4 w-4" /> Rendimiento
+              </Button>
+            )}
             <Button
               variant="ghost"
               className={cn(
-                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none",
-                activeTab === 'ANALYTICS' 
-                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-              )}
-              onClick={() => setActiveTab('ANALYTICS')}
-            >
-              <Star className="h-4 w-4" /> Rendimiento
-            </Button>
-            <Button
-              variant="ghost"
-              className={cn(
-                "h-8 px-4 font-bold text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 border-none",
+                "h-8 px-3 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border-none",
                 activeTab === 'WASTE' 
-                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm" 
+                  ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xs" 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
               )}
               onClick={() => setActiveTab('WASTE')}
@@ -242,9 +267,11 @@ export default function InventoryPage() {
               <UtensilsCrossed className="h-4 w-4" /> Mermas y Consumos
             </Button>
           </div>
+
         </div>
 
         {/* CONTENIDO SEGÚN PESTAÑA */}
+
         {activeTab === 'CATALOG' ? (
           <CatalogTab
             totalProductsCount={totalProductsCount}
@@ -370,8 +397,10 @@ export default function InventoryPage() {
           onAddPurchaseItem={handleAddPurchaseItem}
           onRemovePurchaseItemIndex={handleRemovePurchaseItemIndex}
           onPurchaseSubmit={handlePurchaseSubmit}
+          isSubmitting={isSubmittingPurchase}
           totalInvoiceSum={totalInvoiceSum}
         />
+
 
         <PurchaseDetailsDialog
           open={isDetailOpen}
@@ -439,6 +468,6 @@ export default function InventoryPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </PinLockGuard>
   );
 }
+

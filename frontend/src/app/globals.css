@@ -233,5 +233,39 @@
 /* Reemplazar degradados claros en modo oscuro */
 .dark .bg-gradient-to-br.from-indigo-50 {
   background-image: linear-gradient(135deg, oklch(0.22 0.05 264 / 30%), var(--card)) !important;
-  border-color: oklch(0.3 0.06 264 / 30%) !important;
+  border-color: oklch(0.3 0.06 264 / 40%) !important;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   OPTIMIZACIONES PWA Y MÓVILES (TABLETS & CELULARES)
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Prevenir seleccion accidental de texto en botones y elementos touch */
+button,
+nav,
+.select-none-touch {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Evitar el efecto de parpadeo azul al tocar elementos en Android/Chrome */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevenir el scroll de rebote en iOS (overscroll-behavior) */
+html,
+body {
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+}
+
+/* Soporte para notch y barras de navegacion gestuales (Safe Areas iOS / Android) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0.5rem);
+}

@@ -57,6 +57,8 @@ export function usePOS() {
   // Estados de cobro
   const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'FIADO'>('EFECTIVO');
   const [amountPaid, setAmountPaid] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -270,35 +272,44 @@ export function usePOS() {
     setPosTab('CART');
   };
 
+  const normalizeText = (str: string) =>
+    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
   const filteredCatalog = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) {
+    const rawQuery = searchQuery.trim();
+    if (!rawQuery) {
       return catalogProducts.filter(p => activeCategory === 'TODOS' || p.category === activeCategory);
     }
 
+    const normalizedQuery = normalizeText(rawQuery);
     // Split query by spaces to match words in any order
-    const queryWords = query.split(/\s+/).filter(Boolean);
+    const queryWords = normalizedQuery.split(/\s+/).filter(Boolean);
 
     return catalogProducts.filter(p => {
       const matchesCategory = activeCategory === 'TODOS' || p.category === activeCategory;
       if (!matchesCategory) return false;
 
+      const normName = normalizeText(p.name);
+      const normCat = p.category ? normalizeText(p.category) : '';
+      const normBarcode = p.barcode ? p.barcode.toLowerCase() : '';
+
       // Product must match all words of the search query
       return queryWords.every(word => {
         // Expand query term with synonyms
         const synonyms = SYNONYMS[word] || [];
-        const termsToMatch = [word, ...synonyms];
+        const termsToMatch = [word, ...synonyms.map(normalizeText)];
 
         return termsToMatch.some(term => {
-          const nameMatches = p.name.toLowerCase().includes(term);
-          const catMatches = p.category ? p.category.toLowerCase().includes(term) : false;
-          const barcodeMatches = p.barcode ? p.barcode.includes(term) : false;
+          const nameMatches = normName.includes(term);
+          const catMatches = normCat ? normCat.includes(term) : false;
+          const barcodeMatches = normBarcode ? normBarcode.includes(term) : false;
 
           return nameMatches || catMatches || barcodeMatches;
         });
       });
     });
   }, [catalogProducts, searchQuery, activeCategory]);
+
 
   const handleSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -375,6 +386,8 @@ export function usePOS() {
       })),
     };
 
+    setIsSubmitting(true);
+
     if (!isOnline) {
       try {
         if (!dbHelper) throw new Error('IndexedDB no disponible');
@@ -396,8 +409,11 @@ export function usePOS() {
         toast.success('Venta guardada localmente. Se sincronizará al recuperar la conexión.', { duration: 8005 });
         clearCart();
         setSelectedCustomerId('');
+        setPosTab('CATALOG');
       } catch {
         toast.error('Error al guardar la venta de forma local.');
+      } finally {
+        setIsSubmitting(false);
       }
       return;
     }
@@ -414,12 +430,16 @@ export function usePOS() {
 
       clearCart();
       setSelectedCustomerId('');
+      setPosTab('CATALOG');
       // Recargar catálogo para actualizar el stock local
       mutateProducts();
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al procesar la venta.'));
+    } finally {
+      setIsSubmitting(false);
     }
   }, [
+
     getTotal,
     customers,
     selectedCustomerId,
@@ -452,7 +472,11 @@ export function usePOS() {
     }
   };
 
-  const cartItemsCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
+  const rawCartItemsCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
+  const cartItemsCount = Number.isInteger(rawCartItemsCount)
+    ? rawCartItemsCount
+    : Number(rawCartItemsCount.toFixed(2));
+
 
   const canCheckout = cartItems.length > 0 && 
     !(paymentMethod === 'FIADO' && !selectedCustomerId) && 
@@ -581,7 +605,9 @@ export function usePOS() {
     setPaymentMethod,
     amountPaid,
     setAmountPaid,
+    isSubmitting,
     changeAmount,
+
     searchInputRef,
     amountPaidInputRef,
     confirmButtonRef,

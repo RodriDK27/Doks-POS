@@ -12,8 +12,15 @@ interface ProductCardProps {
 
 function HighlightText({ text, query }: { text: string; query?: string }) {
   if (!query) return <>{text}</>;
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = query.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return <>{text}</>;
+
+  const normText = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  // Verificar si hay alguna coincidencia desacentuada
+  const normWords = words.map(w => w.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
+  const hasMatch = normWords.some(w => normText.includes(w));
+  if (!hasMatch) return <>{text}</>;
 
   const escapedWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const regex = new RegExp(`(${escapedWords.join('|')})`, 'gi');
@@ -22,7 +29,8 @@ function HighlightText({ text, query }: { text: string; query?: string }) {
   return (
     <>
       {parts.map((part, i) => {
-        const isMatch = words.some(w => part.toLowerCase() === w.toLowerCase());
+        const normPart = part.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const isMatch = normWords.some(w => normPart === w || normPart.includes(w));
         return isMatch ? (
           <mark key={i} className="bg-amber-200 dark:bg-amber-800/60 text-amber-900 dark:text-amber-100 font-extrabold rounded-sm px-0.5">
             {part}
@@ -34,6 +42,7 @@ function HighlightText({ text, query }: { text: string; query?: string }) {
     </>
   );
 }
+
 
 export function ProductCard({ product, qtyInCart, onAdd, searchQuery }: ProductCardProps) {
   const colors = getCategoryColor(product.category);
@@ -54,20 +63,20 @@ export function ProductCard({ product, qtyInCart, onAdd, searchQuery }: ProductC
     >
       {/* BADGE CARRITO (esquina) */}
       {qtyInCart > 0 && (
-        <span className="absolute top-2 right-2 z-20 h-5.5 min-w-5.5 px-1.5 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-md border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200">
+        <span className="absolute top-1.5 right-1.5 z-20 h-5 min-w-5 px-1.5 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-md border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200">
           {qtyInCart}
         </span>
       )}
 
       {/* ZONA SUPERIOR — NOMBRE + CATEGORÍA */}
-      <div className="flex-1 flex flex-col justify-start gap-2 px-3.5 pt-3.5 pb-2.5">
+      <div className="flex-1 flex flex-col justify-start gap-1.5 px-3 pt-3 pb-2 min-w-0">
         {/* FILA META: categoría + granel */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-widest ${colors.badge}`}>
+        <div className="flex items-center gap-1 flex-wrap pr-5 min-w-0">
+          <span className={`text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded-md tracking-wider truncate max-w-[100px] ${colors.badge}`}>
             {product.category || 'General'}
           </span>
           {isBulk && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-800/50">
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8.5px] font-black bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-800/50 shrink-0">
               <Scale className="h-2.5 w-2.5" />
               Granel
             </span>
@@ -76,6 +85,7 @@ export function ProductCard({ product, qtyInCart, onAdd, searchQuery }: ProductC
             <span className="ml-auto h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
           )}
         </div>
+
 
         {/* NOMBRE DEL PRODUCTO — protagonista */}
         <p

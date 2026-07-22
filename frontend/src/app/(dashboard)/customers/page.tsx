@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
 
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomers } from './hooks/useCustomers';
@@ -153,31 +155,22 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {/* 3. LISTADO TÁCTIL */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* 3. LISTADO TÁCTIL Y COMPACTO */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {loading ? (
           <>
             {Array.from({ length: 4 }).map((_, idx) => (
-              <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-xs space-y-4">
+              <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3 shadow-xs space-y-3">
                 <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4.5 w-36" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
                     <Skeleton className="h-3 w-20" />
                   </div>
-                  <Skeleton className="h-5 w-24 rounded-full" />
+                  <Skeleton className="h-4 w-20 rounded-full" />
                 </div>
-                <div className="space-y-1.5 mt-2">
-                  <div className="flex justify-between">
-                    <Skeleton className="h-3 w-16" />
-                    <Skeleton className="h-3 w-16" />
-                  </div>
-                  <Skeleton className="h-2 w-full rounded-full" />
-                </div>
-                <div className="flex gap-2 pt-2 border-t border-slate-50">
-                  <Skeleton className="h-9 flex-1 rounded-xl" />
-                  <Skeleton className="h-9 flex-1 rounded-xl" />
-                  <Skeleton className="h-9 w-9 rounded-xl" />
-                  <Skeleton className="h-9 w-9 rounded-xl" />
+                <div className="flex gap-2 pt-1 border-t border-slate-50 dark:border-slate-800">
+                  <Skeleton className="h-8 flex-1 rounded-xl" />
+                  <Skeleton className="h-8 flex-1 rounded-xl" />
                 </div>
               </div>
             ))}
@@ -191,34 +184,40 @@ export default function CustomersPage() {
             return (
               <div 
                 key={customer.id} 
-                className="bg-white border border-slate-100 rounded-2xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.015)] hover:border-indigo-600/30 transition-all flex flex-col justify-between gap-4"
+                className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-3 shadow-[0_2px_10px_rgba(0,0,0,0.01)] hover:border-indigo-500/30 transition-all flex flex-col justify-between gap-2.5"
               >
                 <div>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-sm font-black text-slate-805 block">{customer.name}</span>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-100 truncate block">{customer.name}</span>
+                      <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 font-medium">
                         {customer.phone && (
-                          <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" /> {customer.phone}</span>
+                          <span className="flex items-center gap-0.5 shrink-0"><Phone className="h-3 w-3" /> {customer.phone}</span>
                         )}
                         {customer.address && (
-                          <span className="truncate block max-w-[150px]" title={customer.address}>{customer.address}</span>
+                          <span className="truncate block" title={customer.address}>{customer.address}</span>
                         )}
                       </div>
                     </div>
-                    <Badge variant={customer.currentDebt > 0 ? 'destructive' : 'secondary'} className="text-[8px] px-2 py-0.5 font-bold border-none">
-                      {customer.currentDebt > 0 ? 'DEUDA PENDIENTE' : 'AL CORRIENTE'}
+                    <Badge 
+                      variant={customer.currentDebt > 0 ? 'destructive' : 'secondary'} 
+                      className={cn(
+                        "text-[9px] px-2 py-0.5 font-extrabold border-none shrink-0",
+                        customer.currentDebt === 0 && "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                      )}
+                    >
+                      {customer.currentDebt > 0 ? `$${customer.currentDebt.toFixed(0)} PENDIENTE` : 'AL CORRIENTE'}
                     </Badge>
                   </div>
 
                   {/* Consumo de crédito bar */}
                   {customer.creditLimit > 0 && (
-                    <div className="space-y-1 mt-4">
+                    <div className="space-y-0.5 mt-2">
                       <div className="flex justify-between text-[9px] font-bold text-slate-400">
                         <span>Fiado: ${customer.currentDebt.toFixed(0)}</span>
                         <span>Límite: ${customer.creditLimit.toFixed(0)}</span>
                       </div>
-                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div 
                           className={`h-full rounded-full transition-all ${usagePercent > 80 ? 'bg-rose-500' : 'bg-indigo-500'}`} 
                           style={{ width: `${usagePercent}%` }}
@@ -228,10 +227,11 @@ export default function CustomersPage() {
                   )}
                 </div>
 
-                {/* BOTONES ACCIÓN TÁCTIL XL */}
-                <div className="flex gap-1.5 border-t pt-3 border-slate-50 flex-wrap sm:flex-nowrap">
+                {/* BOTONES ACCIÓN TÁCTIL COMPACTOS */}
+                <div className="flex items-center gap-1.5 pt-1">
                   <Button 
-                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] h-9 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
+
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[10px] h-8 px-2 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
                     disabled={customer.currentDebt === 0}
                     onClick={() => handleOpenAbono(customer)}
                     title="Abonar a cuenta"
@@ -239,37 +239,39 @@ export default function CustomersPage() {
                     <DollarSign className="h-3 w-3" /> Abonar
                   </Button>
                   <Button 
-                    className="flex-1 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-650 dark:text-indigo-400 font-extrabold text-[10px] h-9 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-none"
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] h-8 px-2 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
                     onClick={() => handleOpenDeuda(customer)}
                     title="Registrar deuda fuera de ticket"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Fiar (Manual)
+                    <Plus className="h-3 w-3" /> Fiar
                   </Button>
+
                   <Button 
                     variant="outline" 
-                    className="flex-1 text-slate-650 border-slate-205 text-[10px] font-extrabold h-9 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-none"
+                    className="h-8 w-8 p-0 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 text-[10px] font-extrabold rounded-xl active:scale-95 transition-all flex items-center justify-center cursor-pointer shrink-0"
                     onClick={() => handleOpenHistory(customer)}
+                    title="Historial de movimientos"
                   >
-                    <History className="h-3.5 w-3.5" /> Historial
+                    <History className="h-3.5 w-3.5" />
                   </Button>
                   {role === 'ADMIN' && (
                     <>
                       <Button 
                         variant="ghost" 
-                        className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl h-9 w-9 p-0 cursor-pointer shrink-0"
+                        className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl h-8 w-8 p-0 cursor-pointer shrink-0"
                         onClick={() => handleOpenEdit(customer)}
                         title="Editar cliente"
                       >
-                        <Edit3 className="h-4 w-4" />
+                        <Edit3 className="h-3.5 w-3.5" />
                       </Button>
                       <Button 
                         variant="ghost" 
-                        className="text-slate-400 hover:text-rose-550 hover:bg-rose-50 rounded-xl h-9 w-9 p-0 cursor-pointer shrink-0"
+                        className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl h-8 w-8 p-0 cursor-pointer shrink-0"
                         disabled={customer.currentDebt > 0}
                         onClick={() => handleOpenDelete(customer)}
                         title="Eliminar cliente"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </>
                   )}
@@ -277,6 +279,7 @@ export default function CustomersPage() {
               </div>
             );
           })
+
         ) : (
           <div className="py-20 text-center text-slate-400 text-xs col-span-2 animate-pulse">
             No se encontraron clientes registrados.
