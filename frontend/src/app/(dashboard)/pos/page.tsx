@@ -23,14 +23,19 @@ import { TicketPanel } from './components/TicketPanel';
 import { PaymentPanel } from './components/PaymentPanel';
 import { GenericSaleDialog } from './components/GenericSaleDialog';
 import { BulkProductDialog } from './components/BulkProductDialog';
+import { OfflineSyncModal } from './components/OfflineSyncModal';
 import { SuspendCartDialog } from './components/SuspendCartDialog';
 import { SuspendedCartsDialog } from './components/SuspendedCartsDialog';
 import { ShortcutsHelpDialog } from './components/ShortcutsHelpDialog';
 
 export default function POSPage() {
+  const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
+
   const {
     isOnline,
+    isSyncing,
     syncQueueCount,
+    syncErrorCount,
     syncOfflineSales,
     cartItems,
     suspendedCarts,
@@ -132,11 +137,24 @@ export default function POSPage() {
 
               {syncQueueCount > 0 && (
                 <button
-                  onClick={syncOfflineSales}
-                  className="inline-flex items-center gap-1 text-[10px] font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-full border border-indigo-200/30 hover:bg-indigo-100/50 cursor-pointer active:scale-95 transition-all"
-                  title="Presiona para sincronizar ahora"
+                  onClick={() => setIsOfflineSyncModalOpen(true)}
+                  className={`inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full border cursor-pointer active:scale-95 transition-all ${
+                    syncErrorCount > 0
+                      ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200/40 hover:bg-rose-100/60'
+                      : isSyncing
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200/40'
+                        : 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border-indigo-200/30 hover:bg-indigo-100/50'
+                  }`}
+                  title="Ver cola de sincronización"
                 >
-                  <RefreshCw className="h-3 w-3 animate-spin duration-3000" /> {syncQueueCount} por sincronizar
+                  <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>
+                    {isSyncing
+                      ? 'Sincronizando...'
+                      : syncErrorCount > 0
+                        ? `${syncErrorCount} con error (${syncQueueCount})`
+                        : `${syncQueueCount} por sincronizar`}
+                  </span>
                 </button>
               )}
             </div>
@@ -371,6 +389,12 @@ export default function POSPage() {
         onOpenChange={setIsBulkOpen}
         product={selectedBulkProduct}
         onConfirm={handleConfirmBulkAdd}
+      />
+
+      {/* MODAL COLA OFFLINE */}
+      <OfflineSyncModal
+        open={isOfflineSyncModalOpen}
+        onOpenChange={setIsOfflineSyncModalOpen}
       />
 
       <SuspendCartDialog

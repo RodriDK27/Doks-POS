@@ -19,7 +19,7 @@ const SYNONYMS: Record<string, string[]> = {
 
 export function usePOS() {
   const { role } = useAuthStore();
-  const { isOnline, updateSyncQueueCount, syncQueueCount, syncOfflineSales } = useOfflineStore();
+  const { isOnline, isSyncing, syncQueueCount, syncErrorCount, queuedSales, fetchQueuedSales, updateSyncQueueCount, syncOfflineSales } = useOfflineStore();
   const { 
     cartItems, 
     suspendedCarts, 
@@ -214,6 +214,11 @@ export function usePOS() {
       });
     }
   }, [isOnline]);
+
+  // Cargar cola offline al montar
+  useEffect(() => {
+    fetchQueuedSales();
+  }, [fetchQueuedSales]);
 
   // Modal Venta a Granel
   const [isBulkOpen, setIsBulkOpen] = useState(false);
@@ -536,7 +541,10 @@ export function usePOS() {
 
   return {
     isOnline,
+    isSyncing,
     syncQueueCount,
+    syncErrorCount,
+    queuedSales,
     syncOfflineSales,
     cartItems,
     suspendedCarts,

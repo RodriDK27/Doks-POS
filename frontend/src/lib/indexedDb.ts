@@ -90,6 +90,18 @@ class IndexedDBHelper {
       transaction.onerror = () => reject(transaction.error);
     });
   }
+
+  async updateQueuedSale<T extends { tempId: string }>(sale: T): Promise<void> {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('sales_queue', 'readwrite');
+      const store = transaction.objectStore('sales_queue');
+      store.put(sale);
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
 }
 
 export const dbHelper = typeof window !== 'undefined' ? new IndexedDBHelper() : null;
