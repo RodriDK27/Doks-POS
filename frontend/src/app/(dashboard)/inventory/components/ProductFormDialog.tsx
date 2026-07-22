@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Barcode, Package, Scale, Layers } from 'lucide-react';
+import { Barcode, Package, Scale, Layers, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import { Product } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +40,7 @@ export function ProductFormDialog({
   categories,
   barcodeInputRef,
 }: ProductFormDialogProps) {
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -110,20 +112,31 @@ export function ProductFormDialog({
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                 <Barcode className="h-3 w-3" /> Código Barras
               </label>
-              <Input
-                ref={(e) => {
-                  register('barcode').ref(e);
-                  if (barcodeInputRef && 'current' in barcodeInputRef) {
-                    (barcodeInputRef as React.MutableRefObject<HTMLInputElement | null>).current = e;
-                  }
-                }}
-                type="text"
-                placeholder="Escanea o escribe..."
-                className="focus-visible:ring-indigo-500 h-10 text-xs font-mono bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
-                name="barcode"
-                onChange={register('barcode').onChange}
-                onBlur={register('barcode').onBlur}
-              />
+              <div className="flex gap-1.5 items-center">
+                <Input
+                  ref={(e) => {
+                    register('barcode').ref(e);
+                    if (barcodeInputRef && 'current' in barcodeInputRef) {
+                      (barcodeInputRef as React.MutableRefObject<HTMLInputElement | null>).current = e;
+                    }
+                  }}
+                  type="text"
+                  placeholder="Escanea o escribe..."
+                  className="focus-visible:ring-indigo-500 h-10 text-xs font-mono bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl flex-1"
+                  name="barcode"
+                  onChange={register('barcode').onChange}
+                  onBlur={register('barcode').onBlur}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsScannerOpen(true)}
+                  className="h-10 w-10 shrink-0 p-0 border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-955/40 rounded-xl cursor-pointer"
+                  title="Escanear con cámara"
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -258,6 +271,15 @@ export function ProductFormDialog({
             </Button>
           </div>
         </form>
+
+        <BarcodeScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScan={(scannedCode) => {
+            setValue('barcode', scannedCode, { shouldValidate: true });
+          }}
+          title="Escáner para Producto"
+        />
       </DialogContent>
     </Dialog>
   );
