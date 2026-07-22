@@ -255,4 +255,124 @@ export class ProductsService {
       slowMoving,
     };
   }
+
+  // Registrar merma, daño, producto vencido o consumo interno
+  async registerWaste(dto: {
+    productId: string;
+    type: 'CONSUMO_INTERNO' | 'MERMA_ROTO' | 'MERMA_CADUCADO' | 'DEVOLUCION' | 'AJUSTE';
+    quantity: number;
+    responsibleName?: string;
+    notes?: string;
+  }) {
+    const product = await this.findOne(dto.productId);
+
+    if (dto.quantity <= 0) {
+      throw new BadRequestException('La cantidad debe ser mayor a 0');
+    }
+
+    // Calcular cambio de stock (negativo si es merma/consumo, positivo si es devolución)
+    const stockChange = dto.type === 'DEVOLUCION' ? Math.abs(dto.quantity) : -Math.abs(dto.quantity);
+    const newStock = product.stock + stockChange;
+
+    if (newStock < 0) {
+      throw new BadRequestException(`No hay suficiente stock. Stock actual: ${product.stock}`);
+    }
+
+    // Definir etiqueta descriptiva para el motivo
+    const typeLabels: Record<string, string> = {
+      CONSUMO_INTERNO: 'Consumo Interno',
+      MERMA_ROTO: 'Producto Roto / Dañado',
+      MERMA_CADUCADO: 'Producto Vencido / Caducado',
+      DEVOLUCION: 'Devolución a Stock',
+      AJUSTE: 'Ajuste Manual',
+    };
+
+    const label = typeLabels[dto.type] || dto.type;
+    const resp = dto.responsibleName ? ` | Resp: ${dto.responsibleName}` : '';
+    const userNotes = dto.notes ? ` (${dto.notes})` : '';
+    const reason = `[${label}]${resp}${userNotes}`;
+
+    // Actualizar producto y crear StockMovement en transacción
+    const [updatedProduct, movement] = await this.prisma.$transaction([
+      this.prisma.product.update({
+        where: { id: dto.productId },
+        data: { stock: newStock },
+      }),
+      this.prisma.stockMovement.create({
+        data: {
+          productId: dto.productId,
+          type: dto.type,
+          quantity: stockChange,
+          reason,
+        },
+      }),
+    ]);
+
+    return { product: updatedProduct, movement };
+  }
+
+  // Obtener historial global de mermas y consumos internos
+  async getWasteReport(month?: string) {
+    const whereClause: any = {
+      type: {
+        in: ['CONSUMO_INTERNO', 'MERMA_ROTO', 'MERMA_CADUCADO', 'DEVOLUCION'],
+      },
+    };
+
+    if (month) {
+      const [year, m] = month.split('-').map(Number);
+      const startDate = new Date(year, m - 1, 1);
+      const endDate = new Date(year, m, 0, 23, 59, 59, 999);
+      whereClause.createdAt = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+
+    const movements = await this.prisma.stockMovement.findMany({
+      where: whereClause,
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            barcode: true,
+            purchasePrice: true,
+            sellPrice: true,
+            category: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    });
+
+    // Totales financieros a costo y precio venta
+    let totalCostLost = 0;
+    let totalSalesLost = 0;
+
+    const formattedMovements = movements.map((mov) => {
+      const qty = Math.abs(mov.quantity);
+      const cost = (mov.product?.purchasePrice || 0) * qty;
+      const sell = (mov.product?.sellPrice || 0) * qty;
+
+      if (mov.type !== 'DEVOLUCION') {
+        totalCostLost += cost;
+        totalSalesLost += sell;
+      }
+
+      return {
+        ...mov,
+        costValue: cost,
+        sellValue: sell,
+      };
+    });
+
+    return {
+      movements: formattedMovements,
+      totalCostLost,
+      totalSalesLost,
+    };
+  }
 }
+

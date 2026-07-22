@@ -24,6 +24,24 @@ export class ProductsController {
     return this.productsService.importProducts(body.rows);
   }
 
+  /** Registrar merma, caducidad o consumo interno */
+  @Post('waste')
+  registerWaste(@Body() body: {
+    productId: string;
+    type: 'CONSUMO_INTERNO' | 'MERMA_ROTO' | 'MERMA_CADUCADO' | 'DEVOLUCION' | 'AJUSTE';
+    quantity: number;
+    responsibleName?: string;
+    notes?: string;
+  }) {
+    return this.productsService.registerWaste(body);
+  }
+
+  /** Obtener reporte general de mermas y consumos */
+  @Get('waste/report')
+  getWasteReport(@Query('month') month?: string) {
+    return this.productsService.getWasteReport(month);
+  }
+
   @Get()
   findAll(
     @Query('search') search?: string,

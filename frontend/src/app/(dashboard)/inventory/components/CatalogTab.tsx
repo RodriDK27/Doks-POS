@@ -1,0 +1,325 @@
+'use client';
+
+import React from 'react';
+import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { CustomSelect } from '@/components/CustomSelect';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { Product } from '../types';
+import { InventoryMetrics } from './InventoryMetrics';
+
+interface CatalogTabProps {
+  totalProductsCount: number;
+  totalInvestment: number;
+  expectedProfit: number;
+  lowStockCount: number;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (category: string) => void;
+  stockFilter: 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK';
+  setStockFilter: (filter: 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK') => void;
+  categories: string[];
+  filteredProducts: Product[];
+  loading: boolean;
+  selectedProductIds: string[];
+  areAllFilteredSelected: boolean;
+  toggleSelectProduct: (id: string) => void;
+  toggleSelectAllProducts: (products: Product[]) => void;
+  handleOpenAdd: () => void;
+  setIsImportOpen: (open: boolean) => void;
+  handleExportCSV: () => void;
+  handleOpenMovements: (product: Product) => void;
+  handleOpenWaste: (product: Product) => void;
+  handleOpenDuplicate: (product: Product) => void;
+  handleOpenEdit: (product: Product) => void;
+  handleOpenDelete: (product: Product) => void;
+}
+
+export function CatalogTab({
+  totalProductsCount,
+  totalInvestment,
+  expectedProfit,
+  lowStockCount,
+  searchQuery,
+  setSearchQuery,
+  selectedCategory,
+  setSelectedCategory,
+  stockFilter,
+  setStockFilter,
+  categories,
+  filteredProducts,
+  loading,
+  selectedProductIds,
+  areAllFilteredSelected,
+  toggleSelectProduct,
+  toggleSelectAllProducts,
+  handleOpenAdd,
+  setIsImportOpen,
+  handleExportCSV,
+  handleOpenMovements,
+  handleOpenWaste,
+  handleOpenDuplicate,
+  handleOpenEdit,
+  handleOpenDelete,
+}: CatalogTabProps) {
+  return (
+    <>
+      {/* METRICAS */}
+      <InventoryMetrics
+        totalProductsCount={totalProductsCount}
+        totalInvestment={totalInvestment}
+        expectedProfit={expectedProfit}
+        lowStockCount={lowStockCount}
+      />
+
+      {/* FILTROS + ACCIONES */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+        <div className="flex flex-col sm:flex-row gap-2 flex-grow items-stretch sm:items-center">
+          <div className="relative w-full sm:w-[240px] md:w-[280px] lg:w-[320px] xl:w-[360px] shrink-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Buscar producto o código..."
+              className="pl-10 h-10 border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-xl text-xs font-semibold focus-visible:ring-indigo-500"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex shrink-0">
+            <CustomSelect
+              className="w-full sm:w-36 h-10"
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              placeholder="Categorías"
+              options={[
+                { value: '', label: 'Categorías' },
+                ...categories.map((c) => ({ value: c, label: c })),
+              ]}
+            />
+
+            <CustomSelect
+              className="w-full sm:w-36 h-10"
+              value={stockFilter}
+              onChange={(val) => setStockFilter(val as 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK')}
+              options={[
+                { value: 'ALL', label: 'Todo el Stock' },
+                { value: 'CRITICAL', label: 'Stock Bajo' },
+                { value: 'OUT_OF_STOCK', label: 'Agotados' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <div className="shrink-0">
+          <Button 
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            onClick={handleOpenAdd}
+          >
+            <Plus className="h-4 w-4" /> Nuevo Producto
+          </Button>
+        </div>
+      </div>
+
+      {/* TABLA CATÁLOGO */}
+      <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
+        <div className="px-4 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-xs font-bold text-slate-500">
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'producto encontrado' : 'productos encontrados'}
+          </span>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
+              onClick={() => setIsImportOpen(true)}
+            >
+              <Upload className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Importar CSV
+            </Button>
+            <Button
+              className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
+              onClick={handleExportCSV}
+            >
+              <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Exportar CSV
+            </Button>
+          </div>
+        </div>
+        {loading ? (
+          <div className="p-4 space-y-4">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="flex justify-between items-center py-2.5 border-b last:border-0">
+                <div className="space-y-2">
+                  <Skeleton className="h-4.5 w-48" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <div className="flex gap-4 items-center">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-8 w-16 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredProducts.length > 0 ? (
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-b">
+                <TableHead className="w-12 text-center">
+                  <input
+                    type="checkbox"
+                    className="accent-indigo-650 h-4.5 w-4.5 rounded cursor-pointer"
+                    checked={areAllFilteredSelected}
+                    onChange={() => toggleSelectAllProducts(filteredProducts)}
+                  />
+                </TableHead>
+                <TableHead className="text-xs font-bold text-slate-500">Producto</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Stock</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Venta</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-20 hidden sm:table-cell">Margen</TableHead>
+                <TableHead className="w-36 text-center text-xs font-bold text-slate-500">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y">
+              {filteredProducts.map((p) => {
+                const isCritical = p.stock <= p.minStock;
+                const isOut = p.stock === 0;
+                
+                const margin = p.sellPrice > 0 
+                  ? ((p.sellPrice - p.purchasePrice) / p.sellPrice) * 100 
+                  : 0;
+
+                const isSelected = selectedProductIds.includes(p.id);
+
+                return (
+                  <TableRow
+                    key={p.id}
+                    className={cn(
+                      "hover:bg-slate-50/20 border-b transition-all border-l-4",
+                      isOut 
+                        ? "bg-rose-50/40 dark:bg-rose-950/15 border-l-rose-500 text-rose-950 dark:text-rose-250" 
+                        : isCritical 
+                        ? "bg-amber-50/40 dark:bg-amber-950/15 border-l-amber-500 text-amber-950 dark:text-amber-250" 
+                        : "border-l-transparent",
+                      isSelected && "bg-indigo-50/30 dark:bg-indigo-950/10"
+                    )}
+                  >
+                    <TableCell className="text-center py-3">
+                      <input
+                        type="checkbox"
+                        className="accent-indigo-650 h-4 w-4 rounded cursor-pointer"
+                        checked={isSelected}
+                        onChange={() => toggleSelectProduct(p.id)}
+                      />
+                    </TableCell>
+
+                    <TableCell className="py-3">
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">{p.name}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          {p.barcode && (
+                            <span className="text-[9px] text-slate-450 dark:text-slate-400 font-mono flex items-center gap-0.5">
+                              <Barcode className="h-3 w-3" /> {p.barcode}
+                            </span>
+                          )}
+                          {p.category && (
+                            <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold border-none">
+                              {p.category}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell className="text-right font-bold text-xs">
+                      <span className={cn(
+                        isOut ? 'text-rose-600 dark:text-rose-400 font-black' 
+                        : isCritical ? 'text-amber-600 dark:text-amber-400 font-black' 
+                        : 'text-slate-700 dark:text-slate-200'
+                      )}>
+                        {p.stock}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="text-right text-slate-805 dark:text-slate-100 font-black text-xs">
+                      <span className="px-1 py-0.5 text-slate-800 dark:text-slate-100">
+                        ${p.sellPrice.toFixed(2)}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="text-right text-slate-400 text-xs hidden sm:table-cell">
+                      ${p.purchasePrice.toFixed(2)}
+                    </TableCell>
+
+                    <TableCell className="text-right text-emerald-500 font-bold text-xs hidden sm:table-cell">
+                      {margin.toFixed(0)}%
+                    </TableCell>
+
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg"
+                          onClick={() => handleOpenMovements(p)}
+                          title="Ver bitácora de stock"
+                        >
+                          <History className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg"
+                          onClick={() => handleOpenWaste(p)}
+                          title="Registrar Merma o Consumo Interno"
+                        >
+                          <UtensilsCrossed className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg"
+                          onClick={() => handleOpenDuplicate(p)}
+                          title="Duplicar producto"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                          onClick={() => handleOpenEdit(p)}
+                          title="Editar producto"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 rounded-lg"
+                          onClick={() => handleOpenDelete(p)}
+                          title="Eliminar producto"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="py-20 text-center text-slate-400 text-xs">
+            No se encontraron productos en el inventario.
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

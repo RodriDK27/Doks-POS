@@ -27,7 +27,16 @@ interface InlineEdit {
 // ─── Hook ─────────────────────────────────────────────────────────────────
 
 export function useInventory() {
-  const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS' | 'ANALYTICS' | 'REQUESTED'>('CATALOG');
+  const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS' | 'ANALYTICS' | 'REQUESTED' | 'WASTE'>('CATALOG');
+
+  // Modal Merma / Consumo Interno
+  const [isWasteOpen, setIsWasteOpen] = useState(false);
+  const [selectedProductForWaste, setSelectedProductForWaste] = useState<Product | null>(null);
+
+  const handleOpenWaste = (product: Product) => {
+    setSelectedProductForWaste(product);
+    setIsWasteOpen(true);
+  };
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -573,5 +582,12 @@ export function useInventory() {
     // Analíticas
     analytics: swrAnalytics,
     analyticsLoading,
+    // Mermas y Consumos
+    isWasteOpen,
+    setIsWasteOpen,
+    selectedProductForWaste,
+    handleOpenWaste,
+    mutateProducts,
   };
 }
+
