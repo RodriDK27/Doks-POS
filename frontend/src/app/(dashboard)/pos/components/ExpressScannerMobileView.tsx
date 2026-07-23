@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, CameraOff, Search, Mic, ShoppingCart, Trash2, Plus, Minus, ArrowRight, RefreshCw, Package, Check, X } from 'lucide-react';
+import { Camera, CameraOff, Search, Mic, ShoppingCart, Trash2, Plus, Minus, ArrowRight, RefreshCw, Package, Check, X, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
@@ -23,6 +23,8 @@ interface ExpressScannerMobileViewProps {
   cartItems: CartItem[];
   cartItemsCount: number;
   getTotal: () => number;
+  discount: number;
+  setDiscount: (discount: number) => void;
   updateQuantity: (id: string, qty: number) => void;
   removeFromCart: (id: string) => void;
   onClearCart: () => void;
@@ -45,6 +47,8 @@ export function ExpressScannerMobileView({
   cartItems,
   cartItemsCount,
   getTotal,
+  discount,
+  setDiscount,
   updateQuantity,
   removeFromCart,
   onClearCart,
@@ -348,6 +352,23 @@ export function ExpressScannerMobileView({
 
       {/* FOOTER TOTAL Y BOTÓN DE COBRO */}
       <div className="shrink-0 pt-0.5 space-y-1.5">
+        {cartItems.length > 0 && (
+          <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-800/60 p-2 rounded-xl text-xs gap-2">
+            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 shrink-0 flex items-center gap-1">
+              <Tag className="h-3.5 w-3.5 text-amber-500" /> Descuento ($)
+            </span>
+            <Input
+              type="number"
+              min="0"
+              step="any"
+              placeholder="0.00"
+              className="w-28 h-8 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-extrabold text-right text-xs focus-visible:ring-indigo-500"
+              value={discount > 0 ? discount : ''}
+              onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+            />
+          </div>
+        )}
+
         <div className="flex justify-between items-center bg-slate-900 text-white p-2.5 rounded-xl">
           <div className="flex items-center gap-1.5">
             <span className="text-[9px] font-black uppercase text-slate-400">Total Ticket</span>
@@ -355,7 +376,14 @@ export function ExpressScannerMobileView({
               {cartItemsCount} uds
             </span>
           </div>
-          <span className="text-lg font-black text-emerald-400">${currentTotal.toFixed(2)}</span>
+          <div className="text-right">
+            {discount > 0 && (
+              <span className="text-[10px] text-amber-400 font-bold block">
+                Desc. -${discount.toFixed(2)}
+              </span>
+            )}
+            <span className="text-lg font-black text-emerald-400">${currentTotal.toFixed(2)}</span>
+          </div>
         </div>
 
         <Button

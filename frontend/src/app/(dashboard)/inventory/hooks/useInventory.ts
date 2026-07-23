@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -77,6 +77,8 @@ export function useInventory() {
     address: '',
     orderDays: '',
     deliveryDays: '',
+    visitFrequency: 'WEEKLY',
+    expectedPayment: '0',
   });
   const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
 
@@ -100,6 +102,24 @@ export function useInventory() {
   // Modal Detalle Compra
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activePurchaseDetail, setActivePurchaseDetail] = useState<Purchase | null>(null);
+
+  // Tickets Pendientes de Preventa
+  const [pendingTickets, setPendingTickets] = useState<Array<{
+    id: string;
+    amount: number;
+    scheduledDate?: string | null;
+    notes?: string | null;
+    supplier: { id: string; name: string };
+  }>>([]);
+  const [isRegisterTicketOpen, setIsRegisterTicketOpen] = useState(false);
+  const [isPayTicketOpen, setIsPayTicketOpen] = useState(false);
+  const [selectedTicketToPay, setSelectedTicketToPay] = useState<{
+    id: string;
+    amount: number;
+    scheduledDate?: string | null;
+    notes?: string | null;
+    supplier: { id: string; name: string };
+  } | null>(null);
 
   // ─── Inline Edit ─────────────────────────────────────────────────────────
   const [inlineEdit, setInlineEdit] = useState<InlineEdit | null>(null);
@@ -355,7 +375,7 @@ export function useInventory() {
   };
 
   // HANDLERS REGISTRO PROVEEDOR
-  const handleSupplierSubmit = async (e: React.FormEvent) => {
+  const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supplierForm.name.trim()) {
       toast.error('El nombre del proveedor es obligatorio.');
@@ -363,16 +383,21 @@ export function useInventory() {
     }
 
     try {
+      const payload = {
+        ...supplierForm,
+        expectedPayment: parseFloat(supplierForm.expectedPayment) || 0,
+      };
+
       if (editingSupplierId) {
-        await api.put(`/suppliers/${editingSupplierId}`, supplierForm);
+        await api.put(`/suppliers/${editingSupplierId}`, payload);
         toast.success(`Proveedor "${supplierForm.name}" actualizado.`);
       } else {
-        await api.post('/suppliers', supplierForm);
+        await api.post('/suppliers', payload);
         toast.success(`Proveedor "${supplierForm.name}" registrado.`);
       }
       setIsSupplierOpen(false);
       setEditingSupplierId(null);
-      setSupplierForm({ name: '', phone: '', address: '', orderDays: '', deliveryDays: '' });
+      setSupplierForm({ name: '', phone: '', address: '', orderDays: '', deliveryDays: '', visitFrequency: 'WEEKLY', expectedPayment: '0' });
       fetchSuppliersData();
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al guardar proveedor.'));
@@ -387,6 +412,8 @@ export function useInventory() {
       address: supplier.address || '',
       orderDays: supplier.orderDays || '',
       deliveryDays: supplier.deliveryDays || '',
+      visitFrequency: supplier.visitFrequency || 'WEEKLY',
+      expectedPayment: String(supplier.expectedPayment ?? 0),
     });
     setIsSupplierOpen(true);
   };
@@ -398,6 +425,76 @@ export function useInventory() {
       fetchSuppliersData();
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al cambiar estado del proveedor.'));
+    }
+  };
+
+  const [ticketsHistory, setTicketsHistory] = useState<Array<{
+    id: string;
+    amount: number;
+    scheduledDate?: string | null;
+    notes?: string | null;
+    status: string;
+    createdAt: string;
+    supplier: { id: string; name: string };
+  }>>([]);
+
+  // ─── TICKETS PENDIENTES API HANDLERS ─────────────────────────────────────
+  const fetchPendingTickets = async () => {
+    try {
+      const [resActive, resHistory] = await Promise.all([
+        api.get('/suppliers/pending-tickets/active'),
+        api.get('/suppliers/pending-tickets/history'),
+      ]);
+      setPendingTickets(resActive.data);
+      setTicketsHistory(resHistory.data);
+    } catch {
+      // Ignorar silenciosamente
+    }
+  };
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [resActive, resHistory] = await Promise.all([
+          api.get('/suppliers/pending-tickets/active'),
+          api.get('/suppliers/pending-tickets/history'),
+        ]);
+        setPendingTickets(resActive.data);
+        setTicketsHistory(resHistory.data);
+      } catch {
+        // Ignorar silenciosamente
+      }
+    })();
+  }, []);
+
+  const handleSavePendingTicket = async (data: { supplierId: string; amount: number; scheduledDate?: string; notes?: string }) => {
+    try {
+      await api.post('/suppliers/pending-tickets', data);
+      toast.success('Ticket de preventa registrado en la agenda.');
+      fetchPendingTickets();
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al registrar ticket pendiente.'));
+    }
+  };
+
+  const handlePayPendingTicket = async (id: string, payFromRegister: boolean, amountPaid: number) => {
+    try {
+      await api.post(`/suppliers/pending-tickets/${id}/pay`, { payFromRegister, amountPaid });
+      toast.success('Ticket liquidado y pagado correctamente. ¡Salida de caja registrada!');
+      fetchPendingTickets();
+      fetchSuppliersData();
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al liquidar pago de ticket.'));
+    }
+  };
+
+  const handleCancelPendingTicket = async (id: string) => {
+    try {
+      await api.delete(`/suppliers/pending-tickets/${id}`);
+      toast.info('Ticket de preventa cancelado.');
+      fetchPendingTickets();
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al cancelar ticket.'));
     }
   };
 
@@ -531,6 +628,18 @@ export function useInventory() {
     setIsDetailOpen,
     activePurchaseDetail,
     setActivePurchaseDetail,
+    // Tickets Pendientes
+    pendingTickets,
+    ticketsHistory,
+    isRegisterTicketOpen,
+    setIsRegisterTicketOpen,
+    isPayTicketOpen,
+    setIsPayTicketOpen,
+    selectedTicketToPay,
+    setSelectedTicketToPay,
+    handleSavePendingTicket,
+    handlePayPendingTicket,
+    handleCancelPendingTicket,
     totalProductsCount,
     totalInvestment,
     expectedProfit,
@@ -541,7 +650,8 @@ export function useInventory() {
     handleFormSubmit,
     handleOpenDelete,
     handleDeleteSubmit,
-    handleSupplierSubmit,
+    handleSupplierSubmit: handleSaveSupplier,
+    handleSaveSupplier,
     handleOpenEditSupplier,
     handleToggleActiveSupplier,
     editingSupplierId,

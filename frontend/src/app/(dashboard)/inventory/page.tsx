@@ -35,6 +35,8 @@ import { SuppliersTab } from './components/SuppliersTab';
 import { AnalyticsTab } from './components/AnalyticsTab';
 import { SupplierCalendarCard } from './components/SupplierCalendarCard';
 import { MobileInventoryScannerView } from './components/MobileInventoryScannerView';
+import { RegisterPendingTicketModal } from './components/RegisterPendingTicketModal';
+import { PayPendingTicketModal } from './components/PayPendingTicketModal';
 import { Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -135,6 +137,19 @@ export default function InventoryPage() {
     // Analíticas
     analytics,
     analyticsLoading,
+    // Tickets pendientes
+    pendingTickets,
+    ticketsHistory,
+    isRegisterTicketOpen,
+    setIsRegisterTicketOpen,
+    isPayTicketOpen,
+    setIsPayTicketOpen,
+    selectedTicketToPay,
+    setSelectedTicketToPay,
+    handleSavePendingTicket,
+    handlePayPendingTicket,
+    handleCancelPendingTicket,
+
     // Mermas y Consumos
     isWasteOpen,
     setIsWasteOpen,
@@ -350,6 +365,14 @@ export default function InventoryPage() {
           handleToggleActiveSupplier={handleToggleActiveSupplier}
           setActivePurchaseDetail={setActivePurchaseDetail}
           setIsDetailOpen={setIsDetailOpen}
+          pendingTickets={pendingTickets}
+          ticketsHistory={ticketsHistory}
+          onOpenRegisterTicket={() => setIsRegisterTicketOpen(true)}
+          onOpenPayTicket={(ticket) => {
+            setSelectedTicketToPay(ticket);
+            setIsPayTicketOpen(true);
+          }}
+          onCancelPendingTicket={handleCancelPendingTicket}
         />
       ) : activeTab === 'ANALYTICS' ? (
         <AnalyticsTab
@@ -361,6 +384,19 @@ export default function InventoryPage() {
       )}
 
       {/* MODALES Y DIÁLOGOS ADICIONALES */}
+      <RegisterPendingTicketModal
+        open={isRegisterTicketOpen}
+        onOpenChange={setIsRegisterTicketOpen}
+        suppliers={suppliers}
+        onSavePendingTicket={handleSavePendingTicket}
+      />
+
+      <PayPendingTicketModal
+        open={isPayTicketOpen}
+        onOpenChange={setIsPayTicketOpen}
+        ticket={selectedTicketToPay}
+        onConfirmPay={handlePayPendingTicket}
+      />
       <WasteModal
         open={isWasteOpen}
         onOpenChange={setIsWasteOpen}
@@ -403,7 +439,7 @@ export default function InventoryPage() {
           setIsSupplierOpen(open);
           if (!open) {
             setEditingSupplierId(null);
-            setSupplierForm({ name: '', phone: '', address: '', orderDays: '', deliveryDays: '' });
+            setSupplierForm({ name: '', phone: '', address: '', orderDays: '', deliveryDays: '', visitFrequency: 'WEEKLY', expectedPayment: '0' });
           }
         }}
         supplierForm={supplierForm}
@@ -429,6 +465,7 @@ export default function InventoryPage() {
         onPurchaseSubmit={handlePurchaseSubmit}
         isSubmitting={isSubmittingPurchase}
         totalInvoiceSum={totalInvoiceSum}
+        onSavePendingTicket={handleSavePendingTicket}
       />
 
 

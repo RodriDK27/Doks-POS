@@ -1,7 +1,8 @@
 import React from 'react';
-import { ShoppingCart, Minus, Plus, Trash2, User, Pause, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, Trash2, User, Pause, ArrowRight, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Customer } from '../types';
 import { CartItem } from '@/store/useCartStore';
@@ -13,6 +14,8 @@ interface TicketPanelProps {
   selectedCustomerId: string;
   setSelectedCustomerId: (id: string) => void;
   customers: Customer[];
+  discount: number;
+  setDiscount: (discount: number) => void;
   onProceedToPayment: () => void;
   onSuspend: () => void;
   onClearCart: () => void;
@@ -27,6 +30,8 @@ export function TicketPanel({
   selectedCustomerId,
   setSelectedCustomerId,
   customers,
+  discount,
+  setDiscount,
   onProceedToPayment,
   onSuspend,
   onClearCart,
@@ -140,11 +145,33 @@ export function TicketPanel({
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-2.5">
+            <div className="flex justify-between items-center text-slate-500 gap-4 pt-1">
+              <span className="flex items-center gap-1 shrink-0 font-bold"><Tag className="h-3.5 w-3.5 text-amber-500" /> Descuento ($)</span>
+              <div className="w-48 shrink-0">
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="0.00"
+                  className="w-full h-9 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 font-extrabold text-right text-xs focus-visible:ring-indigo-500"
+                  value={discount > 0 ? discount : ''}
+                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800/40">
               <span className="font-black text-slate-850 dark:text-slate-200">Total a Cobrar</span>
-              <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
-                ${currentTotal.toFixed(2)}
-              </span>
+              <div className="text-right">
+                {discount > 0 && (
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold block">
+                    Desc. -${discount.toFixed(2)}
+                  </span>
+                )}
+                <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
+                  ${currentTotal.toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
 

@@ -38,6 +38,8 @@ interface PurchaseDialogProps {
   onPurchaseSubmit: () => void;
   isSubmitting?: boolean;
   totalInvoiceSum: number;
+
+  onSavePendingTicket?: (data: { supplierId: string; amount: number; scheduledDate?: string; notes?: string }) => Promise<void>;
 }
 
 export function PurchaseDialog({
@@ -57,22 +59,126 @@ export function PurchaseDialog({
   onPurchaseSubmit,
   isSubmitting = false,
   totalInvoiceSum,
+  onSavePendingTicket,
 }: PurchaseDialogProps) {
+  const [purchaseType, setPurchaseType] = React.useState<'IMMEDIATE' | 'TICKET'>('IMMEDIATE');
+  const [ticketAmount, setTicketAmount] = React.useState('');
+  const [isSavingTicket, setIsSavingTicket] = React.useState(false);
+
+  const handleTicketSubmit = async () => {
+    if (!selectedSupplierForPurchase || !onSavePendingTicket) return;
+    const numVal = parseFloat(ticketAmount);
+    if (isNaN(numVal) || numVal <= 0) return;
+
+    const scheduledDate = selectedSupplierForPurchase.deliveryDays?.split(',')[0] || selectedSupplierForPurchase.orderDays?.split(',')[0] || 'Próximo';
+
+    try {
+      setIsSavingTicket(true);
+      await onSavePendingTicket({
+        supplierId: selectedSupplierForPurchase.id,
+        amount: numVal,
+        scheduledDate,
+        notes: purchaseNotes.trim() || undefined,
+      });
+      setTicketAmount('');
+      setPurchaseNotes('');
+      onOpenChange(false);
+    } finally {
+      setIsSavingTicket(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[760px] max-h-[96vh] sm:max-h-[90vh] flex flex-col justify-between rounded-3xl p-3.5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[760px] max-h-[96vh] sm:max-h-[90vh] flex flex-col justify-between rounded-3xl p-3.5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-y-auto overflow-x-hidden">
         <DialogHeader className="pb-1 sm:pb-2 shrink-0">
-          <DialogTitle className="text-sm sm:text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span>Ingresar Compra de Mercancía</span>
-          </DialogTitle>
-          <DialogDescription className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
-            Proveedor: <strong className="text-slate-800 dark:text-slate-200 font-bold">{selectedSupplierForPurchase?.name}</strong>. Agrega artículos para surtir stock.
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DialogTitle className="text-sm sm:text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Registrar Compra / Ticket</span>
+            </DialogTitle>
+
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setPurchaseType('IMMEDIATE')}
+                className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  purchaseType === 'IMMEDIATE'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                Pago Directo
+              </button>
+              <button
+                type="button"
+                onClick={() => setPurchaseType('TICKET')}
+                className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  purchaseType === 'TICKET'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                Ticket Previo
+              </button>
+            </div>
+          </div>
+
+          <DialogDescription className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate pt-1">
+            Proveedor: <strong className="text-slate-800 dark:text-slate-200 font-bold">{selectedSupplierForPurchase?.name}</strong>.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-5 py-1 sm:py-3 text-xs md:items-stretch">
+        {purchaseType === 'TICKET' ? (
+          <div className="py-4 space-y-4 text-xs">
+            <div className="bg-indigo-50/50 dark:bg-indigo-950/20 p-3 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+              <span className="font-bold text-slate-700 dark:text-slate-200 block mb-1">Anotar Ticket Previo de Preventa</span>
+              <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                Resguarda el dinero en la agenda para el día de la entrega. No se realiza ningún descuento en la Caja Chica hasta que el repartidor entregue.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase block mb-1">Monto del Ticket ($) *</label>
+              <Input
+                type="number"
+                step="0.50"
+                placeholder="0.00"
+                className="h-10 font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 rounded-xl"
+                value={ticketAmount}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setTicketAmount(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Folio / Observaciones</label>
+              <Input
+                type="text"
+                placeholder="Ej. Folio #4521 - Refrescos"
+                className="h-10 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900"
+                value={purchaseNotes}
+                onChange={(e) => setPurchaseNotes(e.target.value)}
+              />
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-row justify-end gap-2">
+              <Button type="button" variant="outline" className="h-10 rounded-xl font-bold text-xs" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={isSavingTicket || !ticketAmount || parseFloat(ticketAmount) <= 0}
+                onClick={handleTicketSubmit}
+                className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl cursor-pointer"
+              >
+                Guardar Ticket Previo
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-5 py-1 sm:py-3 text-xs md:items-stretch">
           {/* LADO IZQUIERDO: FORMULARIO AGREGAR ARTÍCULO */}
           <div className="md:col-span-5 space-y-2 sm:space-y-3.5 p-3 sm:p-4 border border-slate-200/60 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl flex flex-col justify-between">
             <div className="space-y-2 sm:space-y-3.5">
@@ -254,7 +360,8 @@ export function PurchaseDialog({
             )}
           </Button>
         </DialogFooter>
-
+      </>
+    )}
 
       </DialogContent>
     </Dialog>

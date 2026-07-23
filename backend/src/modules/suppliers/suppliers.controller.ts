@@ -37,6 +37,31 @@ export class SuppliersController {
     return this.suppliersService.update(id, updateSupplierDto);
   }
 
+  @Post('pending-tickets')
+  createPendingTicket(@Body() dto: { supplierId: string; amount: number; scheduledDate?: string; notes?: string }) {
+    return this.suppliersService.createPendingTicket(dto);
+  }
+
+  @Get('pending-tickets/active')
+  findAllPendingTickets() {
+    return this.suppliersService.findAllPendingTickets();
+  }
+
+  @Get('pending-tickets/history')
+  findAllTicketsHistory() {
+    return this.suppliersService.findAllTicketsHistory();
+  }
+
+  @Post('pending-tickets/:id/pay')
+  payPendingTicket(@Param('id') id: string, @Body() dto: { payFromRegister?: boolean; amountPaid?: number }) {
+    return this.suppliersService.payPendingTicket(id, dto);
+  }
+
+  @Delete('pending-tickets/:id')
+  cancelPendingTicket(@Param('id') id: string) {
+    return this.suppliersService.cancelPendingTicket(id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.suppliersService.remove(id);

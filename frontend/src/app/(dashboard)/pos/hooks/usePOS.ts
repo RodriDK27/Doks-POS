@@ -31,7 +31,9 @@ export function usePOS() {
     resumeCart,
     deleteSuspendedCart,
     getTotal,
-    getSubtotal
+    getSubtotal,
+    discount,
+    setDiscount
   } = useCartStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -637,6 +639,8 @@ export function usePOS() {
     handleCheckout,
     handleSuspendCart,
     handleKeypadPress,
+    discount,
+    setDiscount,
     cartItemsCount,
     canCheckout,
     handleResumeCart,

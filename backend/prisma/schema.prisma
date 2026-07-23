@@ -142,14 +142,33 @@ model Supplier {
   name         String     @unique // Nombre único de la empresa (ej. Bimbo, Coca-Cola)
   phone        String?
   address      String?
-  orderDays    String?    // Días de toma de pedido separados por comas (ej: "Martes,Jueves")
-  deliveryDays String?    // Días de entrega separados por comas (ej: "Miércoles,Viernes")
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  purchases    Purchase[]
+  orderDays       String?    // Días de toma de pedido separados por comas (ej: "Martes,Jueves")
+  deliveryDays    String?    // Días de entrega separados por comas (ej: "Miércoles,Viernes")
+  visitFrequency  String     @default("WEEKLY") // WEEKLY, BIWEEKLY_A, BIWEEKLY_B
+  expectedPayment Float      @default(0) // Monto estimado a pagar en cada visita
+  isActive        Boolean    @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  purchases       Purchase[]
+  pendingTickets  SupplierPendingTicket[]
 
   @@index([name])
+}
+
+/// Representa un ticket o nota de preventa pendiente de pagar y surtir
+model SupplierPendingTicket {
+  id             String    @id @default(uuid())
+  supplierId     String
+  supplier       Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  amount         Float     // Monto acordado en el ticket de preventa
+  scheduledDate  String?   // Fecha o día de entrega acordado (ej: "Jueves" o "2026-07-25")
+  notes          String?   // Folio de nota o comentarios (ej: "Nota #4120")
+  status         String    @default("PENDING") // PENDING, PAID, CANCELLED
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([supplierId])
+  @@index([status])
 }
 
 /// Registro de una compra de mercancía facturada a un proveedor

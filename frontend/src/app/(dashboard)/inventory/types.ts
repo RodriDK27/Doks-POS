@@ -20,6 +20,8 @@ export interface Supplier {
   address: string | null;
   orderDays?: string;
   deliveryDays?: string;
+  visitFrequency?: 'WEEKLY' | 'BIWEEKLY_A' | 'BIWEEKLY_B' | string;
+  expectedPayment?: number;
   isActive?: boolean;
   createdAt: string;
   _count?: {

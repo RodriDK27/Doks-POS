@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 
+import { CustomSelect } from '@/components/CustomSelect';
 import { useRegister } from './hooks/useRegister';
 import { ManualTransactionDialog } from './components/ManualTransactionDialog';
 import { TimeClockDialog } from '../components/TimeClockDialog';
@@ -59,6 +60,28 @@ export default function RegisterPage() {
     clockMode,
     handleConfirmOpenBox,
   } = useRegister();
+
+  const [historyPage, setHistoryPage] = React.useState(1);
+  const [historyPerPage, setHistoryPerPage] = React.useState(10);
+  const [selectedMonth, setSelectedMonth] = React.useState<string>(() => new Date().toISOString().substring(0, 7));
+
+  const uniqueMonths = React.useMemo(() => {
+    const months = Array.from(new Set(history.map((h) => h.openedAt.substring(0, 7))));
+    const currentMonthStr = new Date().toISOString().substring(0, 7);
+    if (!months.includes(currentMonthStr)) {
+      months.unshift(currentMonthStr);
+    }
+    return months.sort().reverse();
+  }, [history]);
+
+  const filteredHistory = React.useMemo(() => {
+    return history.filter((h) => h.openedAt.startsWith(selectedMonth));
+  }, [history, selectedMonth]);
+
+  const totalHistoryPages = Math.ceil(filteredHistory.length / historyPerPage) || 1;
+  const paginatedHistory = React.useMemo(() => {
+    return filteredHistory.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage);
+  }, [filteredHistory, historyPage, historyPerPage]);
 
   if (loading) {
     return (
@@ -405,8 +428,38 @@ export default function RegisterPage() {
             </h3>
 
             <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-3xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
-              {history.length > 0 ? (
-                <Table>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/40 p-4 bg-slate-50/30 dark:bg-slate-900/20">
+                <div className="flex items-center gap-3">
+                  <CustomSelect
+                    className="w-44 h-8 text-[11px] font-bold"
+                    value={selectedMonth}
+                    onChange={(val) => {
+                      setSelectedMonth(val);
+                      setHistoryPage(1);
+                    }}
+                    options={uniqueMonths.map((m) => {
+                      const [year, month] = m.split('-');
+                      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+                      const monthName = date.toLocaleString('es-ES', { month: 'long' });
+                      return {
+                        value: m,
+                        label: monthName.charAt(0).toUpperCase() + monthName.slice(1) + ' ' + year,
+                      };
+                    })}
+                  />
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 block uppercase tracking-wider">Total turnos en el mes</span>
+                  <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                    {filteredHistory.length} turno(s)
+                  </span>
+                </div>
+              </div>
+
+              {filteredHistory.length > 0 ? (
+                <>
+                  <Table>
                   <TableHeader className="bg-slate-50/50">
                     <TableRow className="border-b">
                       <TableHead className="text-xs font-bold text-slate-500">Cajero</TableHead>
@@ -419,19 +472,19 @@ export default function RegisterPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y">
-                    {history.map((reg) => {
+                    {paginatedHistory.map((reg) => {
                       const diff = (reg.actualBalance || 0) - reg.expectedBalance;
                       return (
                         <TableRow key={reg.id} className="hover:bg-slate-50/20 border-b">
-                          <TableCell className="font-bold text-xs text-slate-700 py-3">{reg.openedBy}</TableCell>
-                          <TableCell className="text-slate-450 text-xs py-3">
+                          <TableCell className="font-bold text-xs text-slate-700 dark:text-slate-200 py-3">{reg.openedBy}</TableCell>
+                          <TableCell className="text-slate-450 dark:text-slate-400 text-xs py-3">
                             {new Date(reg.openedAt).toLocaleDateString()} {new Date(reg.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </TableCell>
-                          <TableCell className="text-slate-450 text-xs py-3">
+                          <TableCell className="text-slate-450 dark:text-slate-400 text-xs py-3">
                             {reg.closedAt ? `${new Date(reg.closedAt).toLocaleDateString()} ${new Date(reg.closedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : '--'}
                           </TableCell>
-                          <TableCell className="text-right text-slate-650 text-xs py-3">${reg.expectedBalance.toFixed(0)}</TableCell>
-                          <TableCell className="text-right font-bold text-slate-800 text-xs py-3">
+                          <TableCell className="text-right text-slate-650 dark:text-slate-300 text-xs py-3">${reg.expectedBalance.toFixed(0)}</TableCell>
+                          <TableCell className="text-right font-bold text-slate-800 dark:text-slate-100 text-xs py-3">
                             ${reg.actualBalance ? reg.actualBalance.toFixed(0) : '0'}
                           </TableCell>
                           <TableCell className="text-center py-3">
@@ -455,7 +508,7 @@ export default function RegisterPage() {
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="h-8 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 px-2 rounded-lg cursor-pointer"
+                              className="h-8 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 px-2 rounded-lg cursor-pointer"
                               onClick={() => handleDownloadPdf(reg.id)}
                             >
                               PDF
@@ -466,7 +519,58 @@ export default function RegisterPage() {
                     })}
                   </TableBody>
                 </Table>
-              ) : (
+
+                {/* CONTROLES DE PAGINACIÓN DE TURNOS CERRADOS */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/20 text-xs">
+                  <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] text-slate-500 font-bold">Mostrar:</span>
+                      <CustomSelect
+                        className="w-20 h-8 text-xs font-bold"
+                        value={String(historyPerPage)}
+                        onChange={(val) => {
+                          setHistoryPerPage(Number(val));
+                          setHistoryPage(1);
+                        }}
+                        options={[
+                          { value: '10', label: '10' },
+                          { value: '25', label: '25' },
+                          { value: '50', label: '50' },
+                          { value: '100', label: '100' },
+                        ]}
+                      />
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap text-right">
+                      Mostrando {filteredHistory.length > 0 ? (historyPage - 1) * historyPerPage + 1 : 0} - {Math.min(historyPage * historyPerPage, filteredHistory.length)} de {filteredHistory.length}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs font-bold rounded-lg cursor-pointer"
+                      disabled={historyPage <= 1}
+                      onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    >
+                      Anterior
+                    </Button>
+                    <span className="px-2 font-black text-slate-600 dark:text-slate-300 text-xs">
+                      Página {historyPage} de {totalHistoryPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs font-bold rounded-lg cursor-pointer"
+                      disabled={historyPage >= totalHistoryPages}
+                      onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages, p + 1))}
+                    >
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
                 <div className="py-14 text-center text-slate-400 text-xs">
                   No hay turnos cerrados en el historial.
                 </div>

@@ -8,7 +8,12 @@ import { Badge } from '@/components/ui/badge';
 interface SupplierScheduleData {
   todayName: string;
   orderSuppliers: Array<{ id: string; name: string; phone?: string }>;
-  deliverySuppliers: Array<{ id: string; name: string; phone?: string }>;
+  deliverySuppliers: Array<{
+    id: string;
+    name: string;
+    phone?: string;
+    pendingTickets?: Array<{ id: string; amount: number; notes?: string }>;
+  }>;
   lowStockCount: number;
   lowStockProducts: Array<{ id: string; name: string; stock: number; minStock: number }>;
 }
@@ -83,12 +88,26 @@ export function SupplierCalendarCard() {
 
           {deliveryList.length > 0 ? (
             <div className="space-y-1.5">
-              {deliveryList.map((sup) => (
-                <div key={sup.id} className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 px-3 py-2 rounded-lg shadow-2xs">
-                  <span>{sup.name}</span>
-                  <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/40 px-2 py-0.5 rounded-md font-extrabold">Tener Efectivo Listo</span>
-                </div>
-              ))}
+              {deliveryList.map((sup) => {
+                const activeTicket = sup.pendingTickets && sup.pendingTickets.length > 0 ? sup.pendingTickets[0] : null;
+                return (
+                  <div key={sup.id} className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 px-3 py-2 rounded-lg shadow-2xs">
+                    <div className="flex flex-col">
+                      <span>{sup.name}</span>
+                      {activeTicket?.notes && <span className="text-[9.5px] text-slate-400 font-normal">{activeTicket.notes}</span>}
+                    </div>
+                    {activeTicket ? (
+                      <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/40 px-2.5 py-1 rounded-md font-black">
+                        Ticket: ${activeTicket.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md font-bold">
+                        Pago al Entregar
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-[11px] text-slate-400 font-medium italic">Sin entregas programadas para hoy.</p>

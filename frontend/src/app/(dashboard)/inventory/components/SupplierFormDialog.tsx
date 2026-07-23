@@ -14,6 +14,8 @@ interface SupplierFormDialogProps {
     address: string;
     orderDays: string;
     deliveryDays: string;
+    visitFrequency: string;
+    expectedPayment: string;
   };
   setSupplierForm: React.Dispatch<React.SetStateAction<{
     name: string;
@@ -21,6 +23,8 @@ interface SupplierFormDialogProps {
     address: string;
     orderDays: string;
     deliveryDays: string;
+    visitFrequency: string;
+    expectedPayment: string;
   }>>;
   onSubmit: (e: React.FormEvent) => void;
   editingSupplierId?: string | null;
@@ -102,15 +106,63 @@ export function SupplierFormDialog({
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                Dirección / Notas
+                Monto Ticket Previo ($) <span className="text-[9px] font-normal text-slate-400 lowercase">(opcional)</span>
               </label>
               <Input
-                type="text"
-                placeholder="Ej. Ruta oriente..."
-                className="focus-visible:ring-indigo-500 h-11 text-xs font-medium rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-900"
-                value={supplierForm.address}
-                onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
+                type="number"
+                step="0.50"
+                placeholder="0.00 (dejar en 0 si paga al momento)"
+                className="focus-visible:ring-indigo-500 h-11 text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 rounded-xl"
+                value={supplierForm.expectedPayment}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setSupplierForm({ ...supplierForm, expectedPayment: e.target.value })}
               />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Frecuencia de Visitas
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                className={cn(
+                  "h-9 px-2 rounded-xl text-[11px] font-black flex items-center justify-center transition-all cursor-pointer border text-center",
+                  supplierForm.visitFrequency === 'WEEKLY' || !supplierForm.visitFrequency
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                )}
+                onClick={() => setSupplierForm({ ...supplierForm, visitFrequency: 'WEEKLY' })}
+              >
+                <span>Semanal</span>
+              </button>
+
+              <button
+                type="button"
+                className={cn(
+                  "h-9 px-2 rounded-xl text-[11px] font-black flex items-center justify-center transition-all cursor-pointer border text-center",
+                  supplierForm.visitFrequency === 'BIWEEKLY_A'
+                    ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                )}
+                onClick={() => setSupplierForm({ ...supplierForm, visitFrequency: 'BIWEEKLY_A' })}
+              >
+                <span>15d (Sem 1/3)</span>
+              </button>
+
+              <button
+                type="button"
+                className={cn(
+                  "h-9 px-2 rounded-xl text-[11px] font-black flex items-center justify-center transition-all cursor-pointer border text-center",
+                  supplierForm.visitFrequency === 'BIWEEKLY_B'
+                    ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                )}
+                onClick={() => setSupplierForm({ ...supplierForm, visitFrequency: 'BIWEEKLY_B' })}
+              >
+                <span>15d (Sem 2/4)</span>
+              </button>
             </div>
           </div>
 

@@ -71,6 +71,24 @@ export function CatalogTab({
   handleOpenDelete,
 }: CatalogTabProps) {
   const { role } = useAuthStore();
+  const [productsPage, setProductsPage] = React.useState(1);
+  const [productsPerPage, setProductsPerPage] = React.useState(10);
+
+  const [prevSearch, setPrevSearch] = React.useState({ searchQuery, selectedCategory, stockFilter });
+
+  if (
+    prevSearch.searchQuery !== searchQuery ||
+    prevSearch.selectedCategory !== selectedCategory ||
+    prevSearch.stockFilter !== stockFilter
+  ) {
+    setPrevSearch({ searchQuery, selectedCategory, stockFilter });
+    setProductsPage(1);
+  }
+
+  const totalProductsPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
+  const paginatedProducts = React.useMemo(() => {
+    return filteredProducts.slice((productsPage - 1) * productsPerPage, productsPage * productsPerPage);
+  }, [filteredProducts, productsPage, productsPerPage]);
 
   return (
     <>
@@ -200,10 +218,8 @@ export function CatalogTab({
                 <TableHead className="w-44 min-w-[170px] text-center text-xs font-bold text-slate-500">Acciones</TableHead>
 
               </TableRow>
-            </TableHeader>
-
-            <TableBody className="divide-y">
-              {filteredProducts.map((p) => {
+            </TableHeader>            <TableBody className="divide-y">
+              {paginatedProducts.map((p) => {
                 const isCritical = p.stock <= p.minStock;
                 const isOut = p.stock === 0;
                 
@@ -282,7 +298,6 @@ export function CatalogTab({
                     )}
 
                     <TableCell className="text-center">
-
                       <div className="flex items-center justify-center gap-0.5">
                         <Button
                           variant="ghost"
@@ -334,13 +349,62 @@ export function CatalogTab({
                           </>
                         )}
                       </div>
-
                     </TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
+
+          {/* CONTROLES DE PAGINACIÓN ADAPTABLES PARA MÓVIL */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/20 text-xs">
+            <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[11px] text-slate-500 font-bold">Mostrar:</span>
+                <CustomSelect
+                  className="w-20 h-8 text-xs font-bold"
+                  value={String(productsPerPage)}
+                  onChange={(val) => {
+                    setProductsPerPage(Number(val));
+                    setProductsPage(1);
+                  }}
+                  options={[
+                    { value: '10', label: '10' },
+                    { value: '25', label: '25' },
+                    { value: '50', label: '50' },
+                    { value: '100', label: '100' },
+                  ]}
+                />
+              </div>
+              <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap text-right">
+                Mostrando {filteredProducts.length > 0 ? (productsPage - 1) * productsPerPage + 1 : 0} - {Math.min(productsPage * productsPerPage, filteredProducts.length)} de {filteredProducts.length}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer"
+                disabled={productsPage <= 1}
+                onClick={() => setProductsPage((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </Button>
+              <span className="px-2 font-black text-slate-600 dark:text-slate-300 text-xs whitespace-nowrap">
+                Página {productsPage} de {totalProductsPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer"
+                disabled={productsPage >= totalProductsPages}
+                onClick={() => setProductsPage((p) => Math.min(totalProductsPages, p + 1))}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
         </div>
         ) : (
 

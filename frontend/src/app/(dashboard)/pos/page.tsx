@@ -103,6 +103,8 @@ export default function POSPage() {
     handleCheckout,
     handleSuspendCart,
     handleKeypadPress,
+    discount,
+    setDiscount,
     cartItemsCount,
     canCheckout,
     handleResumeCart,
@@ -312,6 +314,8 @@ export default function POSPage() {
             cartItems={cartItems}
             cartItemsCount={cartItemsCount}
             getTotal={getTotal}
+            discount={discount}
+            setDiscount={setDiscount}
             updateQuantity={updateQuantity}
             removeFromCart={removeFromCart}
             onClearCart={handleClearCart}
@@ -423,6 +427,8 @@ export default function POSPage() {
             selectedCustomerId={selectedCustomerId}
             setSelectedCustomerId={setSelectedCustomerId}
             customers={customers}
+            discount={discount}
+            setDiscount={setDiscount}
             onProceedToPayment={() => setIsCheckoutDrawerOpen(true)}
             onSuspend={() => setIsSuspendModalOpen(true)}
             onClearCart={handleClearCart}

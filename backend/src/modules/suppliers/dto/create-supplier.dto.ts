@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, Min } from 'class-validator';
 
 export class CreateSupplierDto {
   @IsString({ message: 'El nombre del proveedor debe ser texto' })
@@ -20,4 +20,13 @@ export class CreateSupplierDto {
   @IsString({ message: 'Los días de entrega deben ser texto' })
   @IsOptional()
   deliveryDays?: string;
+
+  @IsString({ message: 'La frecuencia debe ser texto' })
+  @IsOptional()
+  visitFrequency?: string;
+
+  @IsNumber({}, { message: 'El monto estimado debe ser numérico' })
+  @Min(0, { message: 'El monto estimado no puede ser negativo' })
+  @IsOptional()
+  expectedPayment?: number;
 }
