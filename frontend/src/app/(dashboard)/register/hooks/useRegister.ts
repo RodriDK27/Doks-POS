@@ -32,6 +32,10 @@ export function useRegister() {
   const [countedCash, setCountedCash] = useState<number | null>(null);
   const [closeNotes, setCloseNotes] = useState('');
 
+  // Estados Checador Integrado (Apertura / Cierre)
+  const [isClockOpen, setIsClockOpen] = useState(false);
+  const [clockMode, setClockMode] = useState<'IN' | 'OUT'>('IN');
+
   // CALCULADORA DE BILLETES Y MONEDAS (MXN)
   const [billCounts, setBillCounts] = useState<Record<number, number>>({
     1000: 0,
@@ -106,14 +110,19 @@ export function useRegister() {
       return;
     }
 
+    setClockMode('IN');
+    setIsClockOpen(true);
+  };
+
+  const handleConfirmOpenBox = async () => {
     try {
       await api.post('/register/open', openForm);
-      toast.success('¡Turno de caja abierto correctamente!');
+      toast.success('¡Entrada registrada y Turno de caja abierto correctamente!');
       setOpenForm({ openedBy: '', initialBalance: 0 });
+      setIsClockOpen(false);
       fetchCajaData();
       router.replace('/pos');
     } catch (error) {
-
       toast.error(parseAxiosError(error, 'Error al abrir caja.'));
     }
   };
@@ -187,14 +196,12 @@ export function useRegister() {
       });
 
       fetchCajaData();
-      if (role !== 'ADMIN') {
-        router.replace('/register');
-      } else {
-        setTimeout(() => window.location.reload(), 800);
-      }
-    } catch (error) {
 
-      toast.error(parseAxiosError(error, 'Error al cerrar la caja.'));
+      // Inmediatamente abrir el checador en modo Salida para cerrar el turno laboral
+      setClockMode('OUT');
+      setIsClockOpen(true);
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al cerrar caja.'));
     }
   };
 
@@ -226,5 +233,9 @@ export function useRegister() {
     fetchCajaData,
     cashiers,
     mutateCashiers,
+    isClockOpen,
+    setIsClockOpen,
+    clockMode,
+    handleConfirmOpenBox,
   };
 }

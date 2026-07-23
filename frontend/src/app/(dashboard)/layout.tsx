@@ -21,7 +21,8 @@ import {
   Moon,
   Smartphone,
   Wifi,
-  WifiOff
+  WifiOff,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -29,6 +30,7 @@ import { toast } from 'sonner';
 import GlobalLockScreen from '@/components/GlobalLockScreen';
 import { useOfflineStore } from '@/store/useOfflineStore';
 import { useTheme } from 'next-themes';
+import { TimeClockDialog } from './components/TimeClockDialog';
 import {
   Dialog,
   DialogContent,
@@ -64,6 +66,7 @@ export default function DashboardLayout({
 
   const [isChangePinOpen, setIsChangePinOpen] = useState(false);
   const [isCashiersOpen, setIsCashiersOpen] = useState(false);
+  const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
@@ -239,6 +242,7 @@ export default function DashboardLayout({
     { name: 'Inventario', href: '/inventory', icon: Package },
     { name: 'Clientes', href: '/customers', icon: Users },
     { name: 'Caja', href: '/register', icon: DollarSign },
+    { name: 'Sueldos', href: '/payroll', icon: Clock, adminOnly: true },
   ].filter(item => {
     if (item.adminOnly && role !== 'ADMIN') return false;
     // Si el usuario es Cajero y la caja NO está abierta, ocultar todas las secciones excepto "Caja"
@@ -293,6 +297,15 @@ export default function DashboardLayout({
               <span className="hidden sm:inline">Pendientes: </span>{syncQueueCount}
             </div>
           )}
+
+          <button
+            onClick={() => setIsTimeClockOpen(true)}
+            className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/70 border border-indigo-200/50 dark:border-indigo-900/40 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0"
+            title="Reloj Checador de Asistencia"
+          >
+            <Clock className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+            <span className="hidden sm:inline">Checador</span>
+          </button>
 
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -478,6 +491,12 @@ export default function DashboardLayout({
         onOpenChange={setIsCashiersOpen}
         cashiers={cashiers}
         onCashiersUpdated={mutateCashiers}
+      />
+
+      {/* DIÁLOGO RELOJ CHECADOR DE ASISTENCIA */}
+      <TimeClockDialog
+        isOpen={isTimeClockOpen}
+        onClose={() => setIsTimeClockOpen(false)}
       />
     </div>
   );

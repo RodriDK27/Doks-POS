@@ -26,13 +26,28 @@ export class AuthController {
 
   @Post('cashiers')
   @UseGuards(JwtAuthGuard)
-  async createCashier(@Body('name') name: string) {
-    return this.authService.createCashier(name);
+  async createCashier(
+    @Body('name') name: string,
+    @Body('pin') pin?: string,
+    @Body('hourlyRate') hourlyRate?: number,
+  ) {
+    return this.authService.createCashier(name, pin, hourlyRate);
   }
 
   @Delete('cashiers/:id')
   @UseGuards(JwtAuthGuard)
   async deleteCashier(@Param('id') id: string) {
     return this.authService.deleteCashier(id);
+  }
+
+  @Patch('cashiers/:id')
+  @UseGuards(JwtAuthGuard)
+  async updateCashier(
+    @Param('id') id: string,
+    @Body('name') name?: string,
+    @Body('pin') pin?: string,
+    @Body('hourlyRate') hourlyRate?: number,
+  ) {
+    return this.authService.updateCashier(id, { name, pin, hourlyRate });
   }
 }

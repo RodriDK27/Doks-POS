@@ -2,22 +2,16 @@
 
 import React from 'react';
 import Link from 'next/link';
-import PinLockGuard from '@/components/PinLockGuard';
 import { 
-  DollarSign, 
   Clock, 
-  ArrowDownLeft, 
   Plus, 
   History, 
-  Unlock, 
   Lock, 
   BadgeAlert,
   ChevronRight,
-  FileText,
-  UserCheck
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import { useRegister } from './hooks/useRegister';
 import { ManualTransactionDialog } from './components/ManualTransactionDialog';
+import { TimeClockDialog } from '../components/TimeClockDialog';
 import dynamic from 'next/dynamic';
 
 const CloseRegisterDialog = dynamic(() => import('./components/CloseRegisterDialog').then(mod => mod.CloseRegisterDialog), {
@@ -59,6 +54,10 @@ export default function RegisterPage() {
     handleCloseRegister,
     handleDownloadPdf,
     cashiers,
+    isClockOpen,
+    setIsClockOpen,
+    clockMode,
+    handleConfirmOpenBox,
   } = useRegister();
 
   if (loading) {
@@ -499,6 +498,18 @@ export default function RegisterPage() {
           applyCalculatedToClose={applyCalculatedToClose}
           onCloseRegister={handleCloseRegister}
           activeRegisterExpected={activeRegister ? activeRegister.expectedBalance : 0}
+        />
+
+        {/* RELOJ CHECADOR DE ASISTENCIA INTEGRADO EN APERTURA Y CIERRE */}
+        <TimeClockDialog
+          isOpen={isClockOpen}
+          onClose={() => setIsClockOpen(false)}
+          defaultMode={clockMode}
+          onClockSuccess={() => {
+            if (clockMode === 'IN') {
+              handleConfirmOpenBox();
+            }
+          }}
         />
 
       </div>

@@ -84,19 +84,22 @@ export class AuthService implements OnModuleInit {
         id: true,
         name: true,
         role: true,
+        hourlyRate: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'asc' },
     });
   }
 
-  async createCashier(name: string) {
-    const cajeroPinHash = await bcrypt.hash('0000', 10);
+  async createCashier(name: string, pin?: string, hourlyRate?: number) {
+    const pinToHash = pin && pin.length === 4 ? pin : '0000';
+    const cajeroPinHash = await bcrypt.hash(pinToHash, 10);
     return this.prisma.user.create({
       data: {
         name,
         role: 'CAJERO',
         pin: cajeroPinHash,
+        hourlyRate: hourlyRate || 0,
       },
       select: {
         id: true,
@@ -113,5 +116,29 @@ export class AuthService implements OnModuleInit {
     if (user.role === 'ADMIN') throw new UnauthorizedException('No se puede eliminar la cuenta de Administrador.');
     await this.prisma.user.delete({ where: { id } });
     return { message: 'Cajero eliminado con éxito.' };
+  }
+
+  async updateCashier(id: string, data: { name?: string; pin?: string; hourlyRate?: number }) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new UnauthorizedException('Cajero no encontrado.');
+
+    const updateData: any = {};
+    if (data.name) updateData.name = data.name;
+    if (data.hourlyRate !== undefined) updateData.hourlyRate = data.hourlyRate;
+    if (data.pin && data.pin.length === 4) {
+      updateData.pin = await bcrypt.hash(data.pin, 10);
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        hourlyRate: true,
+        createdAt: true,
+      },
+    });
   }
 }

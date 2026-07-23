@@ -311,6 +311,27 @@ export function usePOS() {
   }, [catalogProducts, searchQuery, activeCategory]);
 
 
+  const handleBarcodeScanned = useCallback((barcode: string) => {
+    const code = barcode.trim();
+    if (!code) return;
+
+    const product = catalogProducts.find(p => p.barcode === code || p.id === code);
+    if (product) {
+      if (product.unitType === 'WEIGHT') {
+        setSelectedBulkProduct(product);
+        setIsBulkOpen(true);
+        return;
+      }
+      if (product.stock <= 0) {
+        toast.warning(`"${product.name}" no tiene existencias en inventario.`);
+      }
+      addToCart(product, 1);
+      toast.success(`+1 ${product.name}`, { id: 'pos-add-toast' });
+    } else {
+      toast.error(`Producto no encontrado (${code})`);
+    }
+  }, [catalogProducts, addToCart]);
+
   const handleSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
     const query = value.trim();
@@ -627,6 +648,7 @@ export function usePOS() {
     isListening,
     toggleVoiceSearch,
     handleSearchSubmit,
-    handleSearchQueryChange
+    handleSearchQueryChange,
+    handleBarcodeScanned
   };
 }

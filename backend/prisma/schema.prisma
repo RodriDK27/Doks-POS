@@ -27,6 +27,7 @@ model Product {
   minStock       Float      @default(0) // Umbral mínimo para alertas de stock bajo
   unitType       String     @default("PIECE") // "PIECE" (Unidad/Pieza) | "WEIGHT" (A Granel / Peso kg)
   category       String?    // Categoría del producto (ej. Abarrotes, Lácteos, etc.)
+  expirationDate DateTime?  // Fecha opcional de caducidad
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   saleItems      SaleItem[]
@@ -197,12 +198,31 @@ model StockMovement {
 
 /// Representa un usuario o empleado del sistema con acceso por PIN
 model User {
-  id        String   @id @default(uuid())
-  name      String   // Nombre completo del cajero/administrador
-  pin       String   // PIN encriptado con bcryptjs
-  role      String   // Rol de acceso: "ADMIN" o "CAJERO"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String       @id @default(uuid())
+  name        String       // Nombre completo del cajero/administrador
+  pin         String       // PIN encriptado con bcryptjs
+  role        String       // Rol de acceso: "ADMIN" o "CAJERO"
+  hourlyRate  Float?       @default(0) // Tarifa por hora para sueldos
+  dailySalary Float?       @default(0) // O salario fijo diario
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attendances Attendance[]
+}
+
+/// Registra las entradas y salidas de empleados (Reloj Checador)
+model Attendance {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clockIn     DateTime  @default(now())
+  clockOut    DateTime?
+  hoursWorked Float?    @default(0)
+  payAmount   Float?    @default(0)
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([clockIn])
 }
 
 /// Registra artículos solicitados por clientes que no existen en el catálogo

@@ -33,6 +33,7 @@ import { WasteReportTab } from './components/WasteReportTab';
 import { CatalogTab } from './components/CatalogTab';
 import { SuppliersTab } from './components/SuppliersTab';
 import { AnalyticsTab } from './components/AnalyticsTab';
+import { SupplierCalendarCard } from './components/SupplierCalendarCard';
 import dynamic from 'next/dynamic';
 
 const PurchaseDialog = dynamic(() => import('./components/PurchaseDialog').then(mod => mod.PurchaseDialog), {
@@ -269,6 +270,9 @@ export default function InventoryPage() {
           </div>
 
         </div>
+
+        {/* TARJETA DE CALENDARIO DE PROVEEDORES */}
+        <SupplierCalendarCard />
 
         {/* CONTENIDO SEGÚN PESTAÑA */}
 

@@ -22,6 +22,11 @@ export class SuppliersController {
     return this.suppliersService.findAll();
   }
 
+  @Get('schedule/today')
+  getTodaySchedule() {
+    return this.suppliersService.getTodaySchedule();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.suppliersService.findOne(id);

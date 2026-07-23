@@ -13,6 +13,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { BackupModule } from './modules/backup/backup.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RequestedProductsModule } from './modules/requested-products/requested-products.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RequestedProductsModule } from './modules/requested-products/requested-
     BackupModule,
     ReportsModule,
     RequestedProductsModule,
+    AttendanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

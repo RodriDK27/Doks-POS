@@ -76,4 +76,32 @@ export class SuppliersService {
       where: { id },
     });
   }
+
+  async getTodaySchedule() {
+    const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const todayName = daysMap[new Date().getDay()];
+
+    const allSuppliers = await this.prisma.supplier.findMany({
+      where: { isActive: true },
+    });
+
+    const todayOrders = allSuppliers.filter((s) => s.orderDays?.includes(todayName));
+    const todayDeliveries = allSuppliers.filter((s) => s.deliveryDays?.includes(todayName));
+
+    // Obtener productos con stock crítico o bajo de estos proveedores
+    const lowStockProducts = await this.prisma.product.findMany({
+      where: {
+        stock: { lte: this.prisma.product.fields.minStock },
+      },
+      take: 10,
+    });
+
+    return {
+      todayName,
+      orderSuppliers: todayOrders,
+      deliverySuppliers: todayDeliveries,
+      lowStockCount: lowStockProducts.length,
+      lowStockProducts,
+    };
+  }
 }

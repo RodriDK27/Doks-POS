@@ -11,11 +11,15 @@ import {
   Keyboard,
   Package,
   Search,
-  Mic
+  Mic,
+  Camera,
+  Zap,
+  Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
+import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 
 import { usePOS } from './hooks/usePOS';
 import { ProductCard } from './components/ProductCard';
@@ -27,9 +31,26 @@ import { OfflineSyncModal } from './components/OfflineSyncModal';
 import { SuspendCartDialog } from './components/SuspendCartDialog';
 import { SuspendedCartsDialog } from './components/SuspendedCartsDialog';
 import { ShortcutsHelpDialog } from './components/ShortcutsHelpDialog';
+import { ExpressScannerMobileView } from './components/ExpressScannerMobileView';
 
 export default function POSPage() {
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  const [mobileMode, setMobileMode] = useState<'STANDARD' | 'EXPRESS'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem('doks_pos_mobile_mode');
+      if (savedMode === 'EXPRESS' || savedMode === 'STANDARD') {
+        return savedMode;
+      }
+      return window.innerWidth < 768 ? 'EXPRESS' : 'STANDARD';
+    }
+    return 'STANDARD';
+  });
+
+  const changeMobileMode = (mode: 'STANDARD' | 'EXPRESS') => {
+    setMobileMode(mode);
+    localStorage.setItem('doks_pos_mobile_mode', mode);
+  };
 
   const {
     isOnline,
@@ -94,6 +115,7 @@ export default function POSPage() {
     toggleVoiceSearch,
     handleSearchSubmit,
     handleSearchQueryChange,
+    handleBarcodeScanned,
   } = usePOS();
 
   const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
@@ -109,15 +131,45 @@ export default function POSPage() {
     <div className="flex flex-col h-[calc(100vh-10.8rem)] md:h-[calc(100vh-12rem)] overflow-hidden gap-2 sm:gap-4 select-none pb-1 sm:pb-0">
 
 
-      {/* HEADER DE LA PÁGINA */}
-      <div className="flex flex-col gap-0.5 shrink-0">
-        <span className="text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
-          Operaciones de Caja
-        </span>
-        <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-          Vender Productos
-        </h1>
+      {/* HEADER DE LA PÁGINA CON BOTONES DE MODO DE VISTA */}
+      <div className="flex items-center justify-between shrink-0">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
+            Operaciones de Caja
+          </span>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+            Vender Productos
+          </h1>
+        </div>
+
+        {/* BOTONES DE CAMBIO DE MODO (SÓLO ÍCONOS EN MÓVIL) */}
+        <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/60 p-1 rounded-2xl border dark:border-slate-800">
+          <Button
+            variant={mobileMode === 'STANDARD' ? 'default' : 'ghost'}
+            className={`h-8 sm:h-9 px-2 sm:px-3 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'STANDARD'
+              ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs'
+              : 'text-slate-500 hover:bg-slate-50/20'
+              }`}
+            onClick={() => changeMobileMode('STANDARD')}
+            title="Modo Pestañas"
+          >
+            <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span className="hidden sm:inline ml-1.5">Pestañas</span>
+          </Button>
+          <Button
+            variant={mobileMode === 'EXPRESS' ? 'default' : 'ghost'}
+            className={`h-8 sm:h-9 px-2 sm:px-3 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'EXPRESS'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-500 hover:bg-slate-50/20'
+              }`}
+            onClick={() => changeMobileMode('EXPRESS')}
+            title="Escáner Express"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline ml-1.5">Express</span>
+          </Button>
+        </div>
       </div>
 
 
@@ -223,37 +275,57 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* SELECTOR DE PESTAÑA TÁCTIL EN TABLET VERTICAL / MÓVIL */}
-      <div className="flex bg-slate-100/80 dark:bg-slate-800/40 p-1 rounded-2xl md:hidden w-full shrink-0 border dark:border-slate-800/60">
-        <Button
-          variant={posTab === 'CATALOG' ? 'default' : 'ghost'}
-          className={`flex-1 h-10 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CATALOG' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
-            }`}
-          onClick={() => setPosTab('CATALOG')}
-        >
-          <Package className="h-4 w-4 mr-1.5 text-indigo-650 dark:text-indigo-400" /> Catálogo
-        </Button>
-        <Button
-          variant={posTab === 'CART' ? 'default' : 'ghost'}
-          className={`flex-1 h-10 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CART' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
-            }`}
-          onClick={() => setPosTab('CART')}
-        >
-          <ShoppingCart className="h-4 w-4 mr-1.5 text-indigo-655 dark:text-indigo-400" /> Ticket ({cartItemsCount})
-        </Button>
-        <Button
-          variant={posTab === 'PAYMENT' ? 'default' : 'ghost'}
-          disabled={cartItems.length === 0}
-          className={`flex-1 h-10 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'PAYMENT' ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-505 hover:bg-slate-50/20'
-            }`}
-          onClick={() => setPosTab('PAYMENT')}
-        >
-          <ShoppingCart className="h-4 w-4 mr-1.5 text-indigo-655 dark:text-indigo-400" /> Cobro
-        </Button>
-      </div>
+      {/* PESTAÑAS CATÁLOGO / TICKET EN MÓVIL (SÓLO SI ESTÁ ACTIVO MODO ESTÁNDAR) */}
+      {mobileMode === 'STANDARD' && (
+        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-2xl md:hidden w-full shrink-0 border border-slate-200 dark:border-slate-800">
+          <Button
+            variant={posTab === 'CATALOG' ? 'default' : 'ghost'}
+            className={`flex-1 h-9 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CATALOG' ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300' : 'text-slate-500'
+              }`}
+            onClick={() => setPosTab('CATALOG')}
+          >
+            <Package className="h-4 w-4 mr-1.5" /> Catálogo
+          </Button>
+          <Button
+            variant={posTab === 'CART' ? 'default' : 'ghost'}
+            className={`flex-1 h-9 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CART' ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300' : 'text-slate-500'
+              }`}
+            onClick={() => setPosTab('CART')}
+          >
+            <ShoppingCart className="h-4 w-4 mr-1.5" /> Ticket ({cartItemsCount})
+          </Button>
+        </div>
+      )}
 
-      {/* CUERPO DEL POS (DISEÑO A 2 COLUMNAS ORIENTADO A TABLET LANDSCAPE / ESCRITORIO) */}
-      <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden min-h-0">
+      {/* VISTA ESCÁNER EXPRESS EN MÓVIL */}
+      {mobileMode === 'EXPRESS' && (
+        <div className="flex md:hidden flex-col flex-1 h-full min-h-0 overflow-hidden">
+          <ExpressScannerMobileView
+            searchQuery={searchQuery}
+            onSearchQueryChange={handleSearchQueryChange}
+            onSearchSubmit={handleSearchSubmit}
+            searchInputRef={searchInputRef}
+            onBarcodeScanned={handleBarcodeScanned}
+            onToggleVoice={toggleVoiceSearch}
+            isListening={isListening}
+            activeCategory={activeCategory}
+            onCategoryChange={setActiveCategory}
+            categories={categories}
+            cartItems={cartItems}
+            cartItemsCount={cartItemsCount}
+            getTotal={getTotal}
+            updateQuantity={updateQuantity}
+            removeFromCart={removeFromCart}
+            onClearCart={handleClearCart}
+            onProceedToPayment={() => setIsCheckoutDrawerOpen(true)}
+            filteredCatalog={filteredCatalog}
+            onAddProduct={handleTouchAdd}
+          />
+        </div>
+      )}
+
+      {/* CUERPO DEL POS (DISEÑO A 2 COLUMNAS ORIENTADO A TABLET LANDSCAPE / ESCRITORIO / PESTAÑAS) */}
+      <div className={`flex-1 flex-col md:flex-row gap-4 overflow-hidden min-h-0 ${mobileMode === 'STANDARD' ? 'flex' : 'hidden md:flex'}`}>
 
         {/* COLUMNA IZQUIERDA: CATÁLOGO TÁCTIL */}
         <div className={`md:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden h-full ${posTab === 'CATALOG' ? 'flex' : 'hidden md:flex'
@@ -280,8 +352,17 @@ export default function POSPage() {
               </div>
               <Button
                 type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                className="h-11 w-11 sm:w-auto px-3.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-95 transition-all shrink-0 shadow-xs"
+                title="Escanear con Cámara"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="hidden sm:inline">Cámara</span>
+              </Button>
+              <Button
+                type="button"
                 onClick={toggleVoiceSearch}
-                className="h-11 w-11 sm:w-52 rounded-xl flex items-center justify-center gap-2 font-black text-xs bg-indigo-50 dark:bg-indigo-955/40 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100/70 border border-indigo-100/50 dark:border-indigo-900/30 cursor-pointer active:scale-95 transition-all shrink-0 shadow-none"
+                className="h-11 w-11 sm:w-auto px-3.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs bg-indigo-50 dark:bg-indigo-955/40 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100/70 border border-indigo-100/50 dark:border-indigo-900/30 cursor-pointer active:scale-95 transition-all shrink-0 shadow-none"
               >
                 <Mic className="h-4 w-4" />
                 <span className="hidden sm:inline">Buscar por voz</span>
@@ -335,65 +416,21 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* COLUMNA DERECHA: TICKET / PAGO UNIFICADO */}
-        <div className={`md:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 h-full ${posTab === 'CART' || posTab === 'PAYMENT' ? 'flex' : 'hidden md:flex'
-          }`}>
-          {/* Vista Móvil / Tablet Vertical (Se alternan las pestañas) */}
-          <div className="flex md:hidden flex-col flex-1 h-full min-h-0 overflow-hidden gap-3.5">
-
-            {posTab !== 'PAYMENT' ? (
-              <TicketPanel
-                cartItems={cartItems}
-                cartItemsCount={cartItemsCount}
-                getTotal={getTotal}
-                selectedCustomerId={selectedCustomerId}
-                setSelectedCustomerId={setSelectedCustomerId}
-                customers={customers}
-                onProceedToPayment={() => setPosTab('PAYMENT')}
-                onSuspend={() => setIsSuspendModalOpen(true)}
-                onClearCart={handleClearCart}
-                updateQuantity={updateQuantity}
-                removeFromCart={removeFromCart}
-              />
-            ) : (
-              <PaymentPanel
-                getTotal={getTotal}
-                selectedCustomerId={selectedCustomerId}
-                setSelectedCustomerId={setSelectedCustomerId}
-                customers={customers}
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                amountPaid={amountPaid}
-                setAmountPaid={setAmountPaid}
-                isSubmitting={isSubmitting}
-                changeAmount={changeAmount}
-                amountPaidInputRef={amountPaidInputRef}
-                confirmButtonRef={confirmButtonRef}
-                canCheckout={canCheckout}
-                onCheckout={handleCheckout}
-                onBackToTicket={() => setPosTab('CART')}
-                isUnified={false}
-              />
-
-            )}
-          </div>
-
-          {/* Vista Escritorio / Tablet Horizontal (Limpio y con activación de drawer) */}
-          <div className="hidden md:flex flex-col flex-1 min-h-0">
-            <TicketPanel
-              cartItems={cartItems}
-              cartItemsCount={cartItemsCount}
-              getTotal={getTotal}
-              selectedCustomerId={selectedCustomerId}
-              setSelectedCustomerId={setSelectedCustomerId}
-              customers={customers}
-              onProceedToPayment={() => setIsCheckoutDrawerOpen(true)}
-              onSuspend={() => setIsSuspendModalOpen(true)}
-              onClearCart={handleClearCart}
-              updateQuantity={updateQuantity}
-              removeFromCart={removeFromCart}
-            />
-          </div>
+        {/* COLUMNA DERECHA: TICKET PANEL */}
+        <div className={`md:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 h-full ${posTab === 'CART' ? 'flex' : 'hidden md:flex'}`}>
+          <TicketPanel
+            cartItems={cartItems}
+            cartItemsCount={cartItemsCount}
+            getTotal={getTotal}
+            selectedCustomerId={selectedCustomerId}
+            setSelectedCustomerId={setSelectedCustomerId}
+            customers={customers}
+            onProceedToPayment={() => setIsCheckoutDrawerOpen(true)}
+            onSuspend={() => setIsSuspendModalOpen(true)}
+            onClearCart={handleClearCart}
+            updateQuantity={updateQuantity}
+            removeFromCart={removeFromCart}
+          />
         </div>
 
       </div>
@@ -447,16 +484,10 @@ export default function POSPage() {
         onOpenChange={setIsShortcutsHelpOpen}
       />
 
-      {/* DRAWER DESLIZABLE DE COBRO (SLIDE-OVER DE DERECHA A IZQUIERDA) */}
+      {/* MODAL CENTRAL DE COBRO (DESKTOP Y MÓVIL) */}
       {isCheckoutDrawerOpen && (
-        <>
-          {/* Backdrop oscuro */}
-          <div
-            className="fixed inset-0 z-[60] bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-200"
-            onClick={() => setIsCheckoutDrawerOpen(false)}
-          />
-          {/* Contenedor del Drawer */}
-          <div className="fixed top-0 right-0 z-[70] h-full w-full sm:max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl p-5 flex flex-col justify-between animate-in slide-in-from-right duration-200">
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg sm:max-w-xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <PaymentPanel
               getTotal={getTotal}
               selectedCustomerId={selectedCustomerId}
@@ -472,12 +503,12 @@ export default function POSPage() {
               canCheckout={canCheckout}
               onCheckout={() => {
                 handleCheckout();
-                setIsCheckoutDrawerOpen(false); // Cerrar al terminar
+                setIsCheckoutDrawerOpen(false);
               }}
               onBackToTicket={() => setIsCheckoutDrawerOpen(false)}
             />
           </div>
-        </>
+        </div>
       )}
 
       {/* OVERLAY DE BÚSQUEDA POR VOZ PARA ACCESIBILIDAD */}
@@ -502,6 +533,19 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL DE ESCÁNER DE CÓDIGO DE BARRAS CON CÁMARA */}
+      <BarcodeScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScan={(barcode) => {
+          setSearchQuery(barcode);
+          handleSearchQueryChange(barcode);
+          handleSearchSubmit();
+          setIsCameraScannerOpen(false);
+        }}
+        title="Escanear Producto para Cobro"
+      />
     </div>
   );
 }
