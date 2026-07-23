@@ -56,8 +56,8 @@ async function bootstrap() {
   // Validar variables de entorno de forma estricta antes de levantar el servidor
   validateEnv();
 
-  // Sincronizar esquema de base de datos automáticamente en producción/servidor remoto
-  if (process.env.DATABASE_URL) {
+  // Sincronizar esquema de base de datos automáticamente SÓLO en producción/Railway
+  if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
     try {
       const { execSync } = require('child_process');
       console.log('[DB AUTO-MIGRATION] Sincronizando esquema de base de datos...');

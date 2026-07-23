@@ -191,6 +191,7 @@ export function ProductFormDialog({
                 step="any"
                 placeholder="0.00"
                 className={`focus-visible:ring-indigo-500 h-10 text-xs font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl ${errors.purchasePrice ? 'border-rose-500' : ''}`}
+                onFocus={(e) => e.target.select()}
                 {...register('purchasePrice', { valueAsNumber: true })}
               />
             </div>
@@ -204,6 +205,7 @@ export function ProductFormDialog({
                 step="any"
                 placeholder="0.00"
                 className={`focus-visible:ring-indigo-500 h-10 text-xs font-black text-indigo-600 dark:text-indigo-400 bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 rounded-xl ${errors.sellPrice ? 'border-rose-500' : ''}`}
+                onFocus={(e) => e.target.select()}
                 {...register('sellPrice', { valueAsNumber: true })}
               />
             </div>
@@ -220,6 +222,7 @@ export function ProductFormDialog({
                 step="any"
                 placeholder={unitType === 'WEIGHT' ? 'Ej. 10.5' : 'Ej. 24'}
                 className="focus-visible:ring-indigo-500 h-10 text-xs font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
+                onFocus={(e) => e.target.select()}
                 {...register('stock', { valueAsNumber: true })}
               />
             </div>
@@ -233,6 +236,7 @@ export function ProductFormDialog({
                 step="any"
                 placeholder="Ej. 5"
                 className="focus-visible:ring-indigo-500 h-10 text-xs font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
+                onFocus={(e) => e.target.select()}
                 {...register('minStock', { valueAsNumber: true })}
               />
             </div>

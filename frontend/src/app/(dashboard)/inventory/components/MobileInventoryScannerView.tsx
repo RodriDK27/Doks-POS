@@ -45,7 +45,16 @@ export function MobileInventoryScannerView({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [auditStock, setAuditStock] = useState<number>(0);
-  const [prodForm, setProdForm] = useState({
+  const [prodForm, setProdForm] = useState<{
+    name: string;
+    barcode: string;
+    sellPrice: string;
+    purchasePrice: string;
+    stock: string;
+    minStock: string;
+    category: string;
+    unitType: 'PIECE' | 'WEIGHT';
+  }>({
     name: '',
     barcode: '',
     sellPrice: '',
@@ -53,6 +62,7 @@ export function MobileInventoryScannerView({
     stock: '',
     minStock: '5',
     category: '',
+    unitType: 'PIECE',
   });
 
   const [wasteQty, setWasteQty] = useState<number>(1);
@@ -63,6 +73,29 @@ export function MobileInventoryScannerView({
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const lastScannedRef = useRef<{ code: string; time: number } | null>(null);
   const viewportId = 'inventory-mobile-inline-viewport';
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedProduct(null);
+    setScannedBarcode('');
+    setSearchQuery('');
+    setAuditStock(0);
+    setProdForm({
+      name: '',
+      barcode: '',
+      sellPrice: '',
+      purchasePrice: '',
+      stock: '',
+      minStock: '5',
+      category: '',
+      unitType: 'PIECE',
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      handleClearSelection();
+    }
+  }, [open, handleClearSelection]);
 
   const playBeep = useCallback(() => {
     try {
@@ -102,6 +135,7 @@ export function MobileInventoryScannerView({
         stock: String(found.stock),
         minStock: String(found.minStock || 5),
         category: found.category || '',
+        unitType: (found.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
       });
 
       if (mobileTab === 'SUPPLIER') {
@@ -129,6 +163,7 @@ export function MobileInventoryScannerView({
         stock: '1',
         minStock: '5',
         category: '',
+        unitType: 'PIECE',
       });
       toast.info(`Código nuevo no registrado: ${code}`);
     }
@@ -247,6 +282,7 @@ export function MobileInventoryScannerView({
         stock: parseFloat(prodForm.stock) || 0,
         minStock: parseFloat(prodForm.minStock) || 5,
         category: prodForm.category.trim() || null,
+        unitType: prodForm.unitType || 'PIECE',
       };
 
       if (selectedProduct) {

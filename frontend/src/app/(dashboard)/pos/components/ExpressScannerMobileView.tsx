@@ -220,14 +220,14 @@ export function ExpressScannerMobileView({
         )}
       </div>
 
-      {/* BARRA DE BÚSQUEDA TECLADO / VOZ */}
-      <div className="flex gap-1.5 items-center shrink-0">
+      {/* BARRA DE BÚSQUEDA TECLADO / VOZ CON RESULTADOS FLOTANTES */}
+      <div className="relative shrink-0 flex gap-1.5 items-center z-30">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
             ref={searchInputRef}
             type="text"
-            placeholder="Buscar por nombre o categoría..."
+            placeholder="Buscar producto sin código por nombre..."
             className="pl-8 pr-7 h-9 border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl text-xs font-bold focus-visible:ring-indigo-500 w-full"
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
@@ -257,150 +257,92 @@ export function ExpressScannerMobileView({
         >
           <Mic className={`h-4 w-4 ${isListening ? 'text-rose-500 animate-pulse' : ''}`} />
         </Button>
-      </div>
 
-      {/* SUB-SELECTOR: TICKET vs CATÁLOGO / RESULTADOS */}
-      <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl shrink-0">
-        <button
-          type="button"
-          className={`flex-1 py-1 rounded-lg text-[10.5px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-            effectiveTab === 'TICKET'
-              ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs'
-              : 'text-slate-500'
-          }`}
-          onClick={() => {
-            onSearchQueryChange('');
-            setExpressTab('TICKET');
-          }}
-        >
-          <ShoppingCart className="h-3 w-3 text-indigo-500" />
-          <span>Ticket en Vivo ({cartItemsCount})</span>
-        </button>
-
-        <button
-          type="button"
-          className={`flex-1 py-1 rounded-lg text-[10.5px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-            effectiveTab === 'CATALOG'
-              ? 'bg-indigo-600 text-white shadow-2xs'
-              : 'text-slate-500'
-          }`}
-          onClick={() => setExpressTab('CATALOG')}
-        >
-          <Package className="h-3 w-3" />
-          <span>{searchQuery ? `Resultados (${filteredCatalog.length})` : 'Buscar en Catálogo'}</span>
-        </button>
-      </div>
-
-      {/* CONTENEDOR DINÁMICO: MOSTRAR TICKET EN VIVO O BÚSQUEDA DE CATÁLOGO */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-1 space-y-1 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
-        
-        {/* OPCCIÓN 1: VISTA DE CATÁLOGO / RESULTADOS DE BÚSQUEDA */}
-        {effectiveTab === 'CATALOG' ? (
-          filteredCatalog.length > 0 ? (
-            filteredCatalog.map((prod) => {
-              const inCart = cartItems.find((item) => item.id === prod.id);
-
-              return (
+        {/* LISTA DESPLEGABLE FLOTANTE DE RESULTADOS DE BÚSQUEDA */}
+        {searchQuery.trim() && (
+          <div className="absolute left-0 right-10 top-10 z-50 max-h-48 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1 divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in duration-150">
+            {filteredCatalog.length > 0 ? (
+              filteredCatalog.map((prod) => (
                 <div
                   key={prod.id}
-                  onClick={() => handleSelectSearchResult(prod)}
-                  className="flex justify-between items-center p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800/60 shadow-2xs gap-2 active:scale-98 transition-all cursor-pointer hover:border-indigo-200"
+                  onClick={() => {
+                    onAddProduct(prod);
+                    onSearchQueryChange('');
+                  }}
+                  className="p-2 hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer flex justify-between items-center rounded-xl transition-all"
                 >
                   <div className="min-w-0 flex-1">
-                    <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs block truncate">
-                      {prod.name}
-                    </span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                        ${prod.sellPrice.toFixed(2)}
-                      </span>
-                      <span className="text-[9.5px] text-slate-400 font-bold">
-                        Stock: {prod.stock}
-                      </span>
-                    </div>
+                    <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 block truncate">{prod.name}</span>
+                    <span className="text-[9.5px] text-slate-400 font-bold block">${prod.sellPrice.toFixed(2)} | Stock: {prod.stock}</span>
                   </div>
+                  <Button type="button" size="sm" className="h-7 px-2.5 bg-indigo-600 text-white font-black text-xs rounded-lg">
+                    + Añadir
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <div className="p-3 text-center text-xs text-slate-400 font-bold">
+                No se encontraron productos con &quot;{searchQuery}&quot;.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-                  <Button
+      {/* CONTENEDOR PRINCIPAL: TICKET EN VIVO DE ARTÍCULOS REGISTRADOS */}
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-1 space-y-1 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
+        {cartItems.length > 0 ? (
+          cartItems.map((item) => (
+            <div
+              key={item.id}
+              className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800/60 shadow-2xs gap-2"
+            >
+              <div className="min-w-0 flex-1">
+                <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs block truncate">
+                  {item.name}
+                </span>
+
+                <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-900 h-6.5 w-fit mt-1 select-none overflow-hidden">
+                  <button
                     type="button"
-                    size="sm"
-                    className="h-8 px-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-600 hover:text-white font-black text-xs rounded-lg cursor-pointer flex items-center gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectSearchResult(prod);
-                    }}
+                    className="h-full px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Añadir</span>
-                    {inCart && (
-                      <span className="ml-1 bg-indigo-600 text-white px-1.5 py-0.2 rounded-full text-[9px]">
-                        {inCart.quantity}
-                      </span>
-                    )}
-                  </Button>
-                </div>
-              );
-            })
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-              <Package className="h-7 w-7 text-slate-300 dark:text-slate-700 mb-1" />
-              <p className="text-xs font-bold">No se encontraron productos con &quot;{searchQuery}&quot;.</p>
-            </div>
-          )
-        ) : (
-          /* OPCIÓN 2: LISTA DE ARTÍCULOS EN TICKET EN VIVO */
-          cartItems.length > 0 ? (
-            cartItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800/60 shadow-2xs gap-2"
-              >
-                <div className="min-w-0 flex-1">
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs block truncate">
-                    {item.name}
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="h-full px-2 font-black text-xs flex items-center justify-center text-slate-800 dark:text-slate-100">
+                    {item.quantity}
                   </span>
-
-                  <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-900 h-6.5 w-fit mt-1 select-none overflow-hidden">
-                    <button
-                      type="button"
-                      className="h-full px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="h-full px-2 font-black text-xs flex items-center justify-center text-slate-800 dark:text-slate-100">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      className="h-full px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0 flex items-center gap-1.5">
-                  <span className="text-xs font-black text-slate-800 dark:text-slate-100">
-                    ${(item.sellPrice * item.quantity).toFixed(2)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                    onClick={() => removeFromCart(item.id)}
+                  <button
+                    type="button"
+                    className="h-full px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                    <Plus className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center py-6 text-slate-400">
-              <ShoppingCart className="h-7 w-7 text-slate-300 dark:text-slate-700 mb-1 animate-bounce" />
-              <p className="text-xs font-bold text-center">Escribe el nombre de un producto o apunta la cámara al código.</p>
+
+              <div className="text-right shrink-0 flex items-center gap-1.5">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-100">
+                  ${(item.sellPrice * item.quantity).toFixed(2)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                  onClick={() => removeFromCart(item.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
-          )
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-6 text-slate-400">
+            <ShoppingCart className="h-7 w-7 text-slate-300 dark:text-slate-700 mb-1 animate-bounce" />
+            <p className="text-xs font-bold text-center">Escribe el nombre de un producto o apunta la cámara al código.</p>
+          </div>
         )}
       </div>
 

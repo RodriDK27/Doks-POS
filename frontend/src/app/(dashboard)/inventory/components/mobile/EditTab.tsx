@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Save } from 'lucide-react';
+import { Save, Package, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Product } from '../../types';
@@ -16,6 +16,7 @@ interface EditTabProps {
     stock: string;
     minStock: string;
     category: string;
+    unitType: 'PIECE' | 'WEIGHT';
   };
   setProdForm: React.Dispatch<React.SetStateAction<{
     name: string;
@@ -25,6 +26,7 @@ interface EditTabProps {
     stock: string;
     minStock: string;
     category: string;
+    unitType: 'PIECE' | 'WEIGHT';
   }>>;
   isSubmitting: boolean;
   onSaveProductForm: (e: React.FormEvent) => void;
@@ -55,6 +57,37 @@ export function EditTab({
       </div>
 
       <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Tipo de Venta *</label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={`h-9 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+              prodForm.unitType === 'PIECE'
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+            }`}
+            onClick={() => setProdForm({ ...prodForm, unitType: 'PIECE' })}
+          >
+            <Package className="h-3.5 w-3.5" />
+            <span>Pieza / Unidad</span>
+          </button>
+
+          <button
+            type="button"
+            className={`h-9 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+              prodForm.unitType === 'WEIGHT'
+                ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                : 'bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+            }`}
+            onClick={() => setProdForm({ ...prodForm, unitType: 'WEIGHT' })}
+          >
+            <Scale className="h-3.5 w-3.5" />
+            <span>A Granel (Kg)</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
         <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Código de Barras</label>
         <Input
           type="text"
@@ -74,18 +107,22 @@ export function EditTab({
             placeholder="0.00"
             className="h-10 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200"
             value={prodForm.purchasePrice}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setProdForm({ ...prodForm, purchasePrice: e.target.value })}
           />
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase block mb-1">Precio Venta ($) *</label>
+          <label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase block mb-1">
+            {prodForm.unitType === 'WEIGHT' ? 'Precio x Kg ($) *' : 'Precio Venta ($) *'}
+          </label>
           <Input
             type="number"
             step="0.50"
             placeholder="0.00"
             className="h-10 text-xs font-black rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 focus-visible:ring-indigo-500"
             value={prodForm.sellPrice}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setProdForm({ ...prodForm, sellPrice: e.target.value })}
           />
         </div>
@@ -93,12 +130,15 @@ export function EditTab({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Stock Inicial</label>
+          <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">
+            {prodForm.unitType === 'WEIGHT' ? 'Stock Inicial (Kg)' : 'Stock Inicial'}
+          </label>
           <Input
             type="number"
             placeholder="0"
             className="h-10 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200"
             value={prodForm.stock}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setProdForm({ ...prodForm, stock: e.target.value })}
           />
         </div>
