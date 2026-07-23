@@ -114,9 +114,10 @@ export function ExpressScannerMobileView({
         { facingMode: 'environment' },
         {
           fps: 15,
+          aspectRatio: 1.7777778,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
             const width = Math.floor(viewfinderWidth * 0.85);
-            const height = Math.floor(Math.min(viewfinderHeight * 0.6, 140));
+            const height = Math.floor(Math.min(viewfinderHeight * 0.75, 120));
             return { width, height };
           },
         },
@@ -180,9 +181,12 @@ export function ExpressScannerMobileView({
   return (
     <div className="flex flex-col flex-1 h-full min-h-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden p-3 gap-2">
       
-      {/* CÁMARA EN VIVO INTEGRADA */}
+      {/* CÁMARA EN VIVO INTEGRADA (PERFECTAMENTE CENTRADA) */}
       <div className="relative shrink-0 w-full bg-slate-950 dark:bg-black rounded-2xl overflow-hidden shadow-md border border-slate-900 aspect-video max-h-40 flex items-center justify-center">
-        <div id={viewportId} className="w-full h-full object-cover overflow-hidden" />
+        <div
+          id={viewportId}
+          className="w-full h-full object-cover overflow-hidden flex items-center justify-center [&_video]:object-cover [&_video]:w-full [&_video]:h-full [&_video]:my-auto [&_div]:my-auto [&_#express-inline-viewport__scan_region]:my-auto [&_#express-inline-viewport__scan_region]:mx-auto"
+        />
 
         {isCameraActive && (
           <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
