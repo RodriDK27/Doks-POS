@@ -143,11 +143,11 @@ export default function POSPage() {
           </h1>
         </div>
 
-        {/* BOTONES DE CAMBIO DE MODO (SÓLO ÍCONOS EN MÓVIL) */}
-        <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/60 p-1 rounded-2xl border dark:border-slate-800">
+        {/* BOTONES DE CAMBIO DE MODO (SÓLO VISIBLES EN MÓVIL `md:hidden`) */}
+        <div className="flex md:hidden items-center bg-slate-100/90 dark:bg-slate-800/60 p-1 rounded-2xl border dark:border-slate-800">
           <Button
             variant={mobileMode === 'STANDARD' ? 'default' : 'ghost'}
-            className={`h-8 sm:h-9 px-2 sm:px-3 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'STANDARD'
+            className={`h-8 px-2 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'STANDARD'
               ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs'
               : 'text-slate-500 hover:bg-slate-50/20'
               }`}
@@ -155,11 +155,10 @@ export default function POSPage() {
             title="Modo Pestañas"
           >
             <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span className="hidden sm:inline ml-1.5">Pestañas</span>
           </Button>
           <Button
             variant={mobileMode === 'EXPRESS' ? 'default' : 'ghost'}
-            className={`h-8 sm:h-9 px-2 sm:px-3 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'EXPRESS'
+            className={`h-8 px-2 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'EXPRESS'
               ? 'bg-indigo-600 text-white shadow-xs'
               : 'text-slate-500 hover:bg-slate-50/20'
               }`}
@@ -167,7 +166,6 @@ export default function POSPage() {
             title="Escáner Express"
           >
             <Zap className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline ml-1.5">Express</span>
           </Button>
         </div>
       </div>
