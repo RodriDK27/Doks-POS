@@ -56,6 +56,18 @@ async function bootstrap() {
   // Validar variables de entorno de forma estricta antes de levantar el servidor
   validateEnv();
 
+  // Sincronizar esquema de base de datos automáticamente en producción/servidor remoto
+  if (process.env.DATABASE_URL) {
+    try {
+      const { execSync } = require('child_process');
+      console.log('[DB AUTO-MIGRATION] Sincronizando esquema de base de datos...');
+      execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+      console.log('[DB AUTO-MIGRATION] Base de datos sincronizada correctamente.');
+    } catch (dbErr) {
+      console.error('[DB AUTO-MIGRATION WARNING] Error al auto-sincronizar base de datos:', dbErr);
+    }
+  }
+
   // Instanciar el logger de archivo y consola
   const logger = new FileLoggerService();
 

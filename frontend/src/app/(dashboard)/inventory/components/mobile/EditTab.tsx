@@ -67,18 +67,6 @@ export function EditTab({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Precio Venta ($) *</label>
-          <Input
-            type="number"
-            step="0.50"
-            placeholder="0.00"
-            className="h-10 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200"
-            value={prodForm.sellPrice}
-            onChange={(e) => setProdForm({ ...prodForm, sellPrice: e.target.value })}
-          />
-        </div>
-
-        <div>
           <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Precio Compra ($)</label>
           <Input
             type="number"
@@ -87,6 +75,18 @@ export function EditTab({
             className="h-10 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200"
             value={prodForm.purchasePrice}
             onChange={(e) => setProdForm({ ...prodForm, purchasePrice: e.target.value })}
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase block mb-1">Precio Venta ($) *</label>
+          <Input
+            type="number"
+            step="0.50"
+            placeholder="0.00"
+            className="h-10 text-xs font-black rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 focus-visible:ring-indigo-500"
+            value={prodForm.sellPrice}
+            onChange={(e) => setProdForm({ ...prodForm, sellPrice: e.target.value })}
           />
         </div>
       </div>
