@@ -35,7 +35,7 @@ export function GenericSaleDialog({
               <label className="text-[9px] font-black text-slate-400 dark:text-slate-505 uppercase tracking-wider">Concepto</label>
               <Input
                 type="text"
-                placeholder="Ej. Bolillo, Dulces..."
+                placeholder="Artículo Común"
                 className="h-11 focus-visible:ring-indigo-500 text-xs font-bold dark:bg-slate-900"
                 value={genericName}
                 onChange={(e) => setGenericName(e.target.value)}
@@ -44,11 +44,29 @@ export function GenericSaleDialog({
             <div className="space-y-1.5">
               <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Precio ($)</label>
               <Input
-                type="text"
-                readOnly
+                type="number"
+                step="any"
+                min="0"
+                inputMode="none"
                 placeholder="0.00"
-                className="h-11 text-right font-black text-lg text-indigo-650 dark:text-indigo-400 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                className="h-11 text-right font-black text-lg text-indigo-650 dark:text-indigo-400 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-950 focus-visible:ring-indigo-500"
                 value={genericPrice}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || !isNaN(parseFloat(val))) {
+                    handleKeypadPress('C');
+                    if (val !== '') {
+                      val.split('').forEach(char => handleKeypadPress(char));
+                    }
+                  }
+                }}
+                onFocus={(e) => {
+                  // Al hacer clic/touch deliberado en el campo de texto, activar el teclado del dispositivo
+                  e.target.removeAttribute('inputmode');
+                }}
+                onBlur={(e) => {
+                  e.target.setAttribute('inputmode', 'none');
+                }}
               />
             </div>
           </div>

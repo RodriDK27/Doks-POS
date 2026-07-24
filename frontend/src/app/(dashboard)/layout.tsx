@@ -202,8 +202,8 @@ export default function DashboardLayout({
       if (role !== 'NONE') {
         const activeReg = await checkActiveRegister();
 
-        // Para roles que no son ADMIN (ej. Cajero):
-        if (role !== 'ADMIN') {
+        // Únicamente para el rol CAJERO estricto:
+        if (role === 'CAJERO') {
           if (!activeReg) {
             // Si la caja NO está abierta, forzar ir a Caja (/register) para que abra el turno
             if (pathname !== '/register') {
@@ -218,6 +218,9 @@ export default function DashboardLayout({
         }
       } else {
         setActiveRegister(null);
+        if (pathname !== '/register') {
+          router.replace('/register');
+        }
       }
     });
   }, [pathname, role, router]);
@@ -232,9 +235,9 @@ export default function DashboardLayout({
   }
 
 
-  if (role === 'NONE') {
-    return <GlobalLockScreen />;
-  }
+  // if (role === 'NONE') {
+  //   return <GlobalLockScreen />;
+  // }
 
   const navItems = [
     { name: 'Inicio', href: '/', icon: LayoutDashboard, adminOnly: true },
@@ -244,9 +247,13 @@ export default function DashboardLayout({
     { name: 'Caja', href: '/register', icon: DollarSign },
     { name: 'Sueldos', href: '/payroll', icon: Clock, adminOnly: true },
   ].filter(item => {
+    // Si no ha ingresado/iniciado sesión con PIN o Admin, SOLO mostrar 'Caja'
+    if (role === 'NONE' && item.href !== '/register') {
+      return false;
+    }
     if (item.adminOnly && role !== 'ADMIN') return false;
-    // Si el usuario es Cajero y la caja NO está abierta, ocultar todas las secciones excepto "Caja"
-    if (role !== 'ADMIN' && !activeRegister && item.href !== '/register') {
+    // Si el usuario es CAJERO estricto y la caja NO está abierta, ocultar todas las secciones excepto "Caja"
+    if (role === 'CAJERO' && !activeRegister && item.href !== '/register') {
       return false;
     }
     return true;
@@ -298,14 +305,7 @@ export default function DashboardLayout({
             </div>
           )}
 
-          <button
-            onClick={() => setIsTimeClockOpen(true)}
-            className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100/70 border border-indigo-200/50 dark:border-indigo-900/40 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0"
-            title="Reloj Checador de Asistencia"
-          >
-            <Clock className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
-            <span className="hidden sm:inline">Checador</span>
-          </button>
+
 
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -336,23 +336,26 @@ export default function DashboardLayout({
               <button
                 onClick={() => {
                   logout();
-                  toast.info('Acceso de Administrador bloqueado (Modo Cajero).');
+                  router.push('/register');
+                  toast.info('Sesión finalizada. Regresando a la pantalla de caja.');
                 }}
                 className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                title="Bloquear a Modo Cajero"
+                title="Cerrar Sesión e Ir a Caja"
               >
                 <Lock className="h-3 w-3" />
-                <span className="hidden sm:inline">Bloquear Admin</span>
+                <span className="hidden sm:inline">Cerrar Sesión</span>
               </button>
             </div>
           ) : (
             <button
               onClick={() => {
-                logout();
-                toast.info('Introduce el PIN de Administrador.');
+                const adminAccount = cashiers.find(c => c.role === 'ADMIN');
+                const adminName = adminAccount ? adminAccount.name : 'Administrador';
+                const event = new CustomEvent('openAdminPinModal', { detail: { name: adminName } });
+                window.dispatchEvent(event);
               }}
               className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer shrink-0"
-              title="Ingresar PIN de Administrador"
+              title="Ingresar como Administrador"
             >
               <Unlock className="h-3 w-3" />
               <span className="hidden sm:inline">Modo Admin</span>

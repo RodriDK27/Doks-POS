@@ -22,9 +22,8 @@ if (
 async function main() {
   console.log('Iniciando sembrado de base de datos (seeding)...');
 
-  // 1. Sembrar Usuarios por defecto si no existen
+  // 1. Sembrar Usuario Administrador por defecto si no existe
   const adminPinHash = await bcrypt.hash('1234', 10);
-  const cajeroPinHash = await bcrypt.hash('0000', 10);
 
   const existingAdmin = await prisma.user.findFirst({ where: { name: 'Administrador' } });
   if (!existingAdmin) {
@@ -33,17 +32,6 @@ async function main() {
         name: 'Administrador',
         pin: adminPinHash,
         role: 'ADMIN',
-      },
-    });
-  }
-
-  const existingCajero = await prisma.user.findFirst({ where: { name: 'Cajero Principal' } });
-  if (!existingCajero) {
-    await prisma.user.create({
-      data: {
-        name: 'Cajero Principal',
-        pin: cajeroPinHash,
-        role: 'CAJERO',
       },
     });
   }

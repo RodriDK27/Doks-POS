@@ -320,11 +320,12 @@ export class SalesService {
     if (startDate || endDate) {
       whereClause.createdAt = {};
       if (startDate) {
-        whereClause.createdAt.gte = new Date(startDate);
+        // Asegurar que abarque desde el inicio del día local
+        const start = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00`);
+        whereClause.createdAt.gte = start;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
+        const end = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`);
         whereClause.createdAt.lte = end;
       }
     }

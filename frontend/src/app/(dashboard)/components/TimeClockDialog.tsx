@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Clock, LogIn, LogOut, CheckCircle2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface TimeClockDialogProps {
   isOpen: boolean;
@@ -62,6 +63,29 @@ export function TimeClockDialog({ isOpen, onClose, onSuccess, onClockSuccess, de
     try {
       const res = await axios.post(endpoint, { pin, notes });
       const user = res.data?.user;
+
+      // Autenticar la sesión en Zustand utilizando la respuesta o verify-pin
+      try {
+        const verifyRes = await axios.post(`${apiBase}/auth/verify-pin`, { pin });
+        if (verifyRes.data?.role === 'ADMIN') {
+          setError('El rol Administrador no registra asistencia en el reloj checador.');
+          setLoading(false);
+          return;
+        }
+        if (verifyRes.data?.role && verifyRes.data?.token) {
+          useAuthStore.getState().setRole(verifyRes.data.role, verifyRes.data.token);
+        }
+      } catch {
+        if (user?.role === 'ADMIN') {
+          setError('El rol Administrador no registra asistencia en el reloj checador.');
+          setLoading(false);
+          return;
+        }
+        if (user?.role) {
+          useAuthStore.getState().setRole(user.role, null);
+        }
+      }
+
       setSuccessMsg(
         mode === 'IN'
           ? `¡Entrada registrada para ${user?.name || 'Empleado'}!`
@@ -74,7 +98,7 @@ export function TimeClockDialog({ isOpen, onClose, onSuccess, onClockSuccess, de
       setTimeout(() => {
         setSuccessMsg(null);
         onClose();
-      }, 2000);
+      }, 1500);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || 'Error al registrar la asistencia.');

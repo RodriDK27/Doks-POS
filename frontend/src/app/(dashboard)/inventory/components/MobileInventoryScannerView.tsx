@@ -25,6 +25,7 @@ interface MobileInventoryScannerViewProps {
   categories: string[];
   suppliers: Supplier[];
   onRefresh: () => void;
+  initialTab?: 'AUDIT' | 'EDIT' | 'WASTE' | 'SUPPLIER';
 }
 
 export function MobileInventoryScannerView({
@@ -34,8 +35,17 @@ export function MobileInventoryScannerView({
   categories,
   suppliers,
   onRefresh,
+  initialTab = 'AUDIT',
 }: MobileInventoryScannerViewProps) {
-  const [mobileTab, setMobileTab] = useState<'AUDIT' | 'EDIT' | 'WASTE' | 'SUPPLIER'>('AUDIT');
+  const [mobileTab, setMobileTab] = useState<'AUDIT' | 'EDIT' | 'WASTE' | 'SUPPLIER'>(initialTab);
+
+  useEffect(() => {
+    if (open && initialTab && initialTab !== 'AUDIT') {
+      Promise.resolve().then(() => {
+        setMobileTab(initialTab);
+      });
+    }
+  }, [open, initialTab]);
 
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -93,9 +103,40 @@ export function MobileInventoryScannerView({
 
   useEffect(() => {
     if (!open) {
-      handleClearSelection();
+      Promise.resolve().then(() => {
+        handleClearSelection();
+      });
     }
   }, [open, handleClearSelection]);
+
+  useEffect(() => {
+    const handleOpenMobileAddFromRequested = (e: Event) => {
+      // Verificar si la pantalla es móvil (< 640px)
+      if (window.innerWidth < 640) {
+        const detail = (e as CustomEvent<{ id: string; name: string; sellPrice: number }>).detail;
+        if (detail) {
+          setSelectedProduct(null);
+          setProdForm({
+            name: detail.name,
+            barcode: '',
+            sellPrice: detail.sellPrice ? String(detail.sellPrice) : '',
+            purchasePrice: '',
+            stock: '1',
+            minStock: '5',
+            category: 'VARIOS',
+            unitType: 'PIECE',
+          });
+          setMobileTab('EDIT');
+          onOpenChange(true);
+        }
+      }
+    };
+
+    window.addEventListener('open-add-product-from-requested', handleOpenMobileAddFromRequested);
+    return () => {
+      window.removeEventListener('open-add-product-from-requested', handleOpenMobileAddFromRequested);
+    };
+  }, [onOpenChange]);
 
   const playBeep = useCallback(() => {
     try {
@@ -227,29 +268,42 @@ export function MobileInventoryScannerView({
   }, [handleBarcodeScanned, playBeep]);
 
   const stopCamera = useCallback(async () => {
-    if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
+    if (html5QrcodeRef.current) {
       try {
-        await html5QrcodeRef.current.stop();
-        html5QrcodeRef.current.clear();
-      } catch (err) {
-        console.error('Error al pausar cámara:', err);
+        if (html5QrcodeRef.current.isScanning) {
+          await html5QrcodeRef.current.stop();
+        }
+        await html5QrcodeRef.current.clear();
+      } catch {
+        // Ignorar excepciones silenciosamente durante la limpieza de la cámara
+      } finally {
+        html5QrcodeRef.current = null;
       }
     }
     setIsCameraActive(false);
   }, []);
 
   useEffect(() => {
+    if (!open) {
+      Promise.resolve().then(() => {
+        void stopCamera();
+      });
+      return;
+    }
+
     let isMounted = true;
     const timer = setTimeout(() => {
-      if (isMounted) startCamera();
-    }, 100);
+      if (isMounted) {
+        void startCamera();
+      }
+    }, 150);
 
     return () => {
       isMounted = false;
       clearTimeout(timer);
-      stopCamera();
+      void stopCamera();
     };
-  }, [startCamera, stopCamera]);
+  }, [open, startCamera, stopCamera]);
 
   const handleSaveAuditStock = async () => {
     if (!selectedProduct) return;

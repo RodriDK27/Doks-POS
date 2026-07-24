@@ -12,14 +12,14 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'GERENTE')
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
   }
 
   /** Importación masiva desde CSV — recibe un array de filas de producto */
   @Post('import')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'GERENTE')
   importProducts(@Body() body: { rows: CreateProductDto[] }) {
     return this.productsService.importProducts(body.rows);
   }
@@ -82,13 +82,13 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'GERENTE')
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     return this.productsService.update(id, updateProductDto);
   }
 
   @Delete(':id')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'GERENTE')
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
   }

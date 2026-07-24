@@ -93,6 +93,52 @@ export class AttendanceService {
     });
   }
 
+  async clockOutByName(employeeName: string, notes?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { name: employeeName },
+    });
+
+    if (!user) return null;
+
+    const activeSession = await this.prisma.attendance.findFirst({
+      where: {
+        userId: user.id,
+        clockOut: null,
+      },
+    });
+
+    if (!activeSession) return null;
+
+    const now = new Date();
+    const diffMs = now.getTime() - new Date(activeSession.clockIn).getTime();
+    const hoursWorked = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+
+    const hourlyRate = user.hourlyRate || 0;
+    const dailySalary = user.dailySalary || 0;
+    let payAmount = 0;
+
+    if (hourlyRate > 0) {
+      payAmount = Math.round(hoursWorked * hourlyRate * 100) / 100;
+    } else if (dailySalary > 0 && hoursWorked >= 4) {
+      payAmount = dailySalary;
+    }
+
+    return this.prisma.attendance.update({
+      where: { id: activeSession.id },
+      data: {
+        clockOut: now,
+        hoursWorked,
+        payAmount,
+        notes: notes ? `${activeSession.notes || ''} ${notes}`.trim() : activeSession.notes,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, role: true, hourlyRate: true, dailySalary: true },
+        },
+      },
+    });
+  }
+
   async getActiveSessions() {
     return this.prisma.attendance.findMany({
       where: { clockOut: null },

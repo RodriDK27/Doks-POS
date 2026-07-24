@@ -111,7 +111,7 @@ export function SuppliersTab({
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
             <Truck className="h-4 w-4 text-indigo-650" /> Directorio de Proveedores
           </h3>
-          {role === 'ADMIN' && (
+          {(role === 'ADMIN' || role === 'GERENTE') && (
             <Button 
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
               onClick={() => setIsSupplierOpen(true)}
@@ -204,32 +204,32 @@ export function SuppliersTab({
                                 {activeTicket ? 'Compra' : 'Registrar Compra / Ticket'}
                               </Button>
                             )}
+                        {(role === 'ADMIN' || role === 'GERENTE') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-650 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                            onClick={() => handleOpenEditSupplier(supplier)}
+                            title="Editar"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         {role === 'ADMIN' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-650 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-                              onClick={() => handleOpenEditSupplier(supplier)}
-                              title="Editar"
-                            >
-                              <Edit3 className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                "h-7 w-7 rounded-lg cursor-pointer",
-                                supplier.isActive === false
-                                  ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20"
-                                  : "text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20"
-                              )}
-                              onClick={() => handleToggleActiveSupplier(supplier)}
-                              title={supplier.isActive === false ? 'Activar' : 'Desactivar'}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-7 w-7 rounded-lg cursor-pointer",
+                              supplier.isActive === false
+                                ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20"
+                                : "text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20"
+                            )}
+                            onClick={() => handleToggleActiveSupplier(supplier)}
+                            title={supplier.isActive === false ? 'Activar' : 'Desactivar'}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         )}
                       </div>
                     );

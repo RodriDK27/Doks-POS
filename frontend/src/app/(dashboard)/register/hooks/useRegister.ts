@@ -32,9 +32,8 @@ export function useRegister() {
   const [countedCash, setCountedCash] = useState<number | null>(null);
   const [closeNotes, setCloseNotes] = useState('');
 
-  // Estados Checador Integrado (Apertura / Cierre)
-  const [isClockOpen, setIsClockOpen] = useState(false);
-  const [clockMode, setClockMode] = useState<'IN' | 'OUT'>('IN');
+  // Estados Modal PIN Apertura
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
 
   // CALCULADORA DE BILLETES Y MONEDAS (MXN)
   const [billCounts, setBillCounts] = useState<Record<number, number>>({
@@ -52,19 +51,22 @@ export function useRegister() {
   });
 
   // SWR queries
-  const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading } = useSWR<CashRegister | null>(role !== 'NONE' ? '/register/active' : null);
+  const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading } = useSWR<CashRegister | null>('/register/active');
+  const { data: swrLastClosed, mutate: mutateLastClosed } = useSWR<CashRegister | null>('/register/last-closed');
   const { data: swrHistory, mutate: mutateHistory, isLoading: historyLoading } = useSWR<CashRegister[]>(role === 'ADMIN' ? '/register' : null);
-  const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>(role !== 'NONE' ? '/auth/cashiers' : null);
+  const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>('/auth/cashiers');
 
 
   const loading = activeRegisterLoading || historyLoading;
 
   const activeRegister = swrActiveRegister ?? null;
+  const lastClosedRegister = swrLastClosed ?? null;
   const history = swrHistory ? swrHistory.filter((c) => c.status === 'CERRADO') : [];
   const cashiers = swrCashiers || [];
 
   const fetchCajaData = async () => {
     mutateActiveRegister();
+    mutateLastClosed();
     mutateHistory();
     mutateCashiers();
   };
@@ -105,21 +107,27 @@ export function useRegister() {
       toast.error('El nombre del cajero es obligatorio.');
       return;
     }
+    
+    const selectedUser = cashiers.find(c => c.name === openForm.openedBy);
+    if (selectedUser && selectedUser.role !== 'ADMIN' && (openForm.initialBalance === undefined || openForm.initialBalance === null || openForm.initialBalance <= 0)) {
+      toast.error('El fondo inicial de caja es obligatorio para empleados (Gerentes y Cajeros).');
+      return;
+    }
+
     if (openForm.initialBalance < 0) {
       toast.error('El fondo inicial de caja no puede ser negativo.');
       return;
     }
 
-    setClockMode('IN');
-    setIsClockOpen(true);
+    setIsPinModalOpen(true);
   };
 
   const handleConfirmOpenBox = async () => {
     try {
       await api.post('/register/open', openForm);
-      toast.success('¡Entrada registrada y Turno de caja abierto correctamente!');
+      toast.success('¡Turno de caja abierto correctamente!');
       setOpenForm({ openedBy: '', initialBalance: 0 });
-      setIsClockOpen(false);
+      setIsPinModalOpen(false);
       fetchCajaData();
       router.replace('/pos');
     } catch (error) {
@@ -167,6 +175,16 @@ export function useRegister() {
       });
 
       if (active) {
+        // Registrar salida automática en el Reloj Checador de Asistencia para el empleado del turno que está cerrando
+        try {
+          await api.post('/attendance/clock-out-by-name', {
+            employeeName: active.openedBy,
+            notes: 'Salida automática al realizar el corte de caja chica',
+          });
+        } catch {
+          // Continuar sin interrumpir el cierre de caja si no se requiere o ya cerró
+        }
+
         const diff = countedCash - active.expectedBalance;
         if (diff === 0) {
           toast.success('Caja cerrada con éxito. ¡Todo cuadra perfecto!');
@@ -196,10 +214,6 @@ export function useRegister() {
       });
 
       fetchCajaData();
-
-      // Inmediatamente abrir el checador en modo Salida para cerrar el turno laboral
-      setClockMode('OUT');
-      setIsClockOpen(true);
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al cerrar caja.'));
     }
@@ -233,9 +247,9 @@ export function useRegister() {
     fetchCajaData,
     cashiers,
     mutateCashiers,
-    isClockOpen,
-    setIsClockOpen,
-    clockMode,
+    isPinModalOpen,
+    setIsPinModalOpen,
     handleConfirmOpenBox,
+    lastClosedRegister,
   };
 }

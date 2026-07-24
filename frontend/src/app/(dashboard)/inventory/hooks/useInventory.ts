@@ -230,8 +230,8 @@ export function useInventory() {
   // ─── SWR Queries ─────────────────────────────────────────────────────────
   const { data: swrProducts, mutate: mutateProducts, isLoading: loading } = useSWR<Product[]>('/products');
   const { data: swrCategories } = useSWR<string[]>('/products/categories');
-  const { data: swrSuppliers, mutate: mutateSuppliers, isLoading: suppliersLoading } = useSWR<Supplier[]>(activeTab === 'SUPPLIERS' ? '/suppliers' : null);
-  const { data: swrPurchases, mutate: mutatePurchases } = useSWR<Purchase[]>(activeTab === 'SUPPLIERS' ? '/purchases' : null);
+  const { data: swrSuppliers, mutate: mutateSuppliers, isLoading: suppliersLoading } = useSWR<Supplier[]>('/suppliers');
+  const { data: swrPurchases, mutate: mutatePurchases } = useSWR<Purchase[]>('/purchases');
   const { data: swrAnalytics, isLoading: analyticsLoading } = useSWR<{
     topSelling: Array<{ id: string; name: string; stock: number; sellPrice: number; category: string | null; quantitySold: number; totalRevenue: number }>;
     slowMoving: Array<{ id: string; name: string; stock: number; sellPrice: number; category: string | null; quantitySold: number; totalRevenue: number }>;
@@ -301,20 +301,22 @@ export function useInventory() {
       const detail = (e as CustomEvent<{ id: string; name: string; sellPrice: number }>).detail;
       if (detail) {
         setPendingRequestedId(detail.id);
-        setEditingProduct({
-          id: '',
-          name: detail.name,
-          barcode: null,
-          category: 'VARIOS',
-          purchasePrice: 0,
-          sellPrice: detail.sellPrice,
-          stock: 1,
-          minStock: 5,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        setIsFormOpen(true);
-        setTimeout(() => barcodeInputRef.current?.focus(), 150);
+        if (window.innerWidth >= 640) {
+          setEditingProduct({
+            id: '',
+            name: detail.name,
+            barcode: null,
+            category: 'VARIOS',
+            purchasePrice: 0,
+            sellPrice: detail.sellPrice,
+            stock: 1,
+            minStock: 5,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          setIsFormOpen(true);
+          setTimeout(() => barcodeInputRef.current?.focus(), 150);
+        }
       }
     };
 

@@ -17,24 +17,16 @@ export class AuthService implements OnModuleInit {
   private async seedUsers() {
     const userCount = await this.prisma.user.count();
     if (userCount === 0) {
-      console.log('Sembrando usuarios por defecto (ADMIN y CAJERO)...');
+      console.log('Sembrando usuario Administrador por defecto...');
       
       const adminPinHash = await bcrypt.hash('1234', 10);
-      const cajeroPinHash = await bcrypt.hash('0000', 10);
 
-      await this.prisma.user.createMany({
-        data: [
-          {
-            name: 'Administrador',
-            role: 'ADMIN',
-            pin: adminPinHash,
-          },
-          {
-            name: 'Cajero Principal',
-            role: 'CAJERO',
-            pin: cajeroPinHash,
-          },
-        ],
+      await this.prisma.user.create({
+        data: {
+          name: 'Administrador',
+          role: 'ADMIN',
+          pin: adminPinHash,
+        },
       });
       console.log('Sembrado completado con éxito.');
     }
@@ -91,13 +83,15 @@ export class AuthService implements OnModuleInit {
     });
   }
 
-  async createCashier(name: string, pin?: string, hourlyRate?: number) {
+  async createCashier(name: string, pin?: string, hourlyRate?: number, role?: string) {
     const pinToHash = pin && pin.length === 4 ? pin : '0000';
     const cajeroPinHash = await bcrypt.hash(pinToHash, 10);
+    const assignedRole = role === 'GERENTE' ? 'GERENTE' : 'CAJERO';
+
     return this.prisma.user.create({
       data: {
         name,
-        role: 'CAJERO',
+        role: assignedRole,
         pin: cajeroPinHash,
         hourlyRate: hourlyRate || 0,
       },
@@ -118,13 +112,18 @@ export class AuthService implements OnModuleInit {
     return { message: 'Cajero eliminado con éxito.' };
   }
 
-  async updateCashier(id: string, data: { name?: string; pin?: string; hourlyRate?: number }) {
+  async updateCashier(id: string, data: { name?: string; pin?: string; hourlyRate?: number; role?: string }) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new UnauthorizedException('Cajero no encontrado.');
 
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.hourlyRate !== undefined) updateData.hourlyRate = data.hourlyRate;
+    if (data.role && user.role !== 'ADMIN') {
+      if (['GERENTE', 'CAJERO'].includes(data.role)) {
+        updateData.role = data.role;
+      }
+    }
     if (data.pin && data.pin.length === 4) {
       updateData.pin = await bcrypt.hash(data.pin, 10);
     }

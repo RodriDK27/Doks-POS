@@ -15,6 +15,11 @@ export class AttendanceController {
     return this.attendanceService.clockOut(body.pin, body.notes);
   }
 
+  @Post('clock-out-by-name')
+  async clockOutByName(@Body() body: { employeeName: string; notes?: string }) {
+    return this.attendanceService.clockOutByName(body.employeeName, body.notes);
+  }
+
   @Get('active')
   async getActiveSessions() {
     return this.attendanceService.getActiveSessions();

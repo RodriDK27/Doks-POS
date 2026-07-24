@@ -39,6 +39,14 @@ export class RegisterService {
     });
   }
 
+  // Obtener la última caja cerrada
+  async getLastClosed() {
+    return this.prisma.cashRegister.findFirst({
+      where: { status: 'CERRADO' },
+      orderBy: { closedAt: 'desc' },
+    });
+  }
+
   // Cerrar la sesión de caja activa
   async close(dto: CloseRegisterDto) {
     const activeRegister = await this.getActive();

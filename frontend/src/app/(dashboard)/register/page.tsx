@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CustomSelect } from '@/components/CustomSelect';
 import { useRegister } from './hooks/useRegister';
 import { ManualTransactionDialog } from './components/ManualTransactionDialog';
-import { TimeClockDialog } from '../components/TimeClockDialog';
+import { OpenRegisterPinModal } from './components/OpenRegisterPinModal';
 import dynamic from 'next/dynamic';
 
 const CloseRegisterDialog = dynamic(() => import('./components/CloseRegisterDialog').then(mod => mod.CloseRegisterDialog), {
@@ -55,10 +55,10 @@ export default function RegisterPage() {
     handleCloseRegister,
     handleDownloadPdf,
     cashiers,
-    isClockOpen,
-    setIsClockOpen,
-    clockMode,
+    isPinModalOpen,
+    setIsPinModalOpen,
     handleConfirmOpenBox,
+    lastClosedRegister,
   } = useRegister();
 
   const [historyPage, setHistoryPage] = React.useState(1);
@@ -77,6 +77,17 @@ export default function RegisterPage() {
   const filteredHistory = React.useMemo(() => {
     return history.filter((h) => h.openedAt.startsWith(selectedMonth));
   }, [history, selectedMonth]);
+
+  const [adminPinModalState, setAdminPinModalState] = React.useState({ isOpen: false, name: '' });
+
+  React.useEffect(() => {
+    const handleOpenAdminPin = (e: Event) => {
+      const customEv = e as CustomEvent<{ name: string }>;
+      setAdminPinModalState({ isOpen: true, name: customEv.detail?.name || 'Administrador' });
+    };
+    window.addEventListener('openAdminPinModal', handleOpenAdminPin);
+    return () => window.removeEventListener('openAdminPinModal', handleOpenAdminPin);
+  }, []);
 
   const totalHistoryPages = Math.ceil(filteredHistory.length / historyPerPage) || 1;
   const paginatedHistory = React.useMemo(() => {
@@ -155,9 +166,9 @@ export default function RegisterPage() {
                   Cajero Operador *
                 </label>
                 
-                {cashiers.filter(c => c.role === 'CAJERO').length > 0 ? (
+                {cashiers.filter(c => c.role !== 'ADMIN').length > 0 ? (
                   <div className="grid grid-cols-2 gap-3">
-                    {cashiers.filter(c => c.role === 'CAJERO').map((c) => {
+                    {cashiers.filter(c => c.role !== 'ADMIN').map((c) => {
                       const isSelected = openForm.openedBy === c.name;
                       const initial = c.name.charAt(0).toUpperCase();
 
@@ -185,7 +196,7 @@ export default function RegisterPage() {
                           <div className="min-w-0 flex-1">
                             <span className="truncate block font-extrabold text-xs leading-tight">{c.name}</span>
                             <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 block mt-0.5 uppercase tracking-wider">
-                              {isSelected ? 'Seleccionado' : 'Cajero'}
+                              {c.role === 'GERENTE' ? 'Gerente' : 'Cajero'}
                             </span>
                           </div>
 
@@ -197,14 +208,14 @@ export default function RegisterPage() {
                     })}
                   </div>
                 ) : (
-                  <Input
-                    type="text"
-                    required
-                    placeholder="Ej. Sra. María, Carlos..."
-                    className="focus-visible:ring-indigo-500 h-11 text-xs font-bold rounded-xl"
-                    value={openForm.openedBy}
-                    onChange={(e) => setOpenForm({ ...openForm, openedBy: e.target.value })}
-                  />
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 rounded-2xl text-center space-y-2">
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                      No hay empleados registrados (Gerentes o Cajeros).
+                    </p>
+                    <p className="text-[11px] text-amber-700/80 dark:text-amber-400">
+                      Utiliza el botón superior <strong className="font-extrabold">&quot;Modo Admin&quot;</strong> para ingresar como Administrador y dar de alta a tus empleados desde el panel de <strong className="font-extrabold">&quot;Cajeros&quot;</strong>.
+                    </p>
+                  </div>
                 )}
               </div>
 
@@ -221,22 +232,36 @@ export default function RegisterPage() {
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">$</span>
                   <Input
                     type="number"
-                    required
+                    min="0"
                     placeholder="0.00"
                     className="focus-visible:ring-indigo-500 pl-8 h-12 text-sm font-black text-slate-800 dark:text-slate-100 rounded-2xl bg-slate-50/50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800"
-                    value={openForm.initialBalance || ''}
-                    onChange={(e) => setOpenForm({ ...openForm, initialBalance: parseFloat(e.target.value) || 0 })}
+                    value={openForm.initialBalance === 0 ? '' : openForm.initialBalance}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const parsed = parseFloat(val);
+                      setOpenForm({ ...openForm, initialBalance: isNaN(parsed) ? 0 : parsed });
+                    }}
                   />
                 </div>
 
                 {/* Botones rápidos de fondo */}
                 <div className="flex gap-1.5 pt-1">
+                  {lastClosedRegister && typeof lastClosedRegister.actualBalance === 'number' && lastClosedRegister.actualBalance > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setOpenForm({ ...openForm, initialBalance: lastClosedRegister.actualBalance || 0 })}
+                      className="flex-1 py-1.5 px-2 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/70 dark:bg-indigo-950/30 hover:bg-indigo-100 text-[10px] font-black text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer truncate"
+                      title={`Turno anterior (${lastClosedRegister.openedBy}): $${lastClosedRegister.actualBalance.toFixed(2)}`}
+                    >
+                      Turno anterior: ${lastClosedRegister.actualBalance.toFixed(0)}
+                    </button>
+                  )}
                   {[200, 500, 1000].map((amt) => (
                     <button
                       key={amt}
                       type="button"
                       onClick={() => setOpenForm({ ...openForm, initialBalance: amt })}
-                      className="flex-1 py-1.5 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] font-black text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+                      className="py-1.5 px-3 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] font-black text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
                     >
                       ${amt}
                     </button>
@@ -604,15 +629,23 @@ export default function RegisterPage() {
           activeRegisterExpected={activeRegister ? activeRegister.expectedBalance : 0}
         />
 
-        {/* RELOJ CHECADOR DE ASISTENCIA INTEGRADO EN APERTURA Y CIERRE */}
-        <TimeClockDialog
-          isOpen={isClockOpen}
-          onClose={() => setIsClockOpen(false)}
-          defaultMode={clockMode}
-          onClockSuccess={() => {
-            if (clockMode === 'IN') {
-              handleConfirmOpenBox();
-            }
+        {/* MODAL CONFIRMAR PIN AL ABRIR CAJA */}
+        <OpenRegisterPinModal
+          isOpen={isPinModalOpen}
+          onClose={() => setIsPinModalOpen(false)}
+          employeeName={openForm.openedBy}
+          onPinVerified={() => {
+            handleConfirmOpenBox();
+          }}
+        />
+
+        {/* MODAL ACCESO DIRECTO MODO ADMIN */}
+        <OpenRegisterPinModal
+          isOpen={adminPinModalState.isOpen}
+          onClose={() => setAdminPinModalState({ isOpen: false, name: '' })}
+          employeeName={adminPinModalState.name}
+          onPinVerified={() => {
+            // El token y rol de admin se guardan automáticamente en Zustand al validar PIN
           }}
         />
 

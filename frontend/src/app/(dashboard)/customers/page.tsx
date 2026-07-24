@@ -254,7 +254,7 @@ export default function CustomersPage() {
                   >
                     <History className="h-3.5 w-3.5" />
                   </Button>
-                  {role === 'ADMIN' && (
+                  {(role === 'ADMIN' || role === 'GERENTE') && (
                     <>
                       <Button 
                         variant="ghost" 

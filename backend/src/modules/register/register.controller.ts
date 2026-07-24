@@ -22,6 +22,11 @@ export class RegisterController {
     return this.registerService.getActive();
   }
 
+  @Get('last-closed')
+  getLastClosed() {
+    return this.registerService.getLastClosed();
+  }
+
   @Post('close')
   close(@Body() closeRegisterDto: CloseRegisterDto) {
     return this.registerService.close(closeRegisterDto);

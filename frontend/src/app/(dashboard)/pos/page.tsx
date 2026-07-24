@@ -501,12 +501,13 @@ export default function POSPage() {
               setPaymentMethod={setPaymentMethod}
               amountPaid={amountPaid}
               setAmountPaid={setAmountPaid}
+              isSubmitting={isSubmitting}
               changeAmount={changeAmount}
               amountPaidInputRef={amountPaidInputRef}
               confirmButtonRef={confirmButtonRef}
               canCheckout={canCheckout}
-              onCheckout={() => {
-                handleCheckout();
+              onCheckout={async () => {
+                await handleCheckout();
                 setIsCheckoutDrawerOpen(false);
               }}
               onBackToTicket={() => setIsCheckoutDrawerOpen(false)}

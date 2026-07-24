@@ -54,7 +54,7 @@ export function usePOS() {
   // Modal Venta Genérica / Libre
   const [isGenericOpen, setIsGenericOpen] = useState(false);
   const [genericPrice, setGenericPrice] = useState<string>('');
-  const [genericName, setGenericName] = useState<string>('Artículo Común');
+  const [genericName, setGenericName] = useState<string>('');
 
   // Estados de cobro
   const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'FIADO'>('EFECTIVO');
@@ -268,7 +268,7 @@ export function usePOS() {
     toast.success(`Añadido: ${mockProduct.name} - $${price.toFixed(2)}`);
     setIsGenericOpen(false);
     setGenericPrice('');
-    setGenericName('Artículo Común');
+    setGenericName('');
     
     // Auto cambiar a la pestaña de carrito si es táctil para ver el cobro
     setPosTab('CART');

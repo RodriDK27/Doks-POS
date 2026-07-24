@@ -78,8 +78,13 @@ export class SuppliersService {
   }
 
   async getTodaySchedule() {
-    const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const todayName = daysMap[new Date().getDay()];
+    // Obtener el día actual respetando la zona horaria de México (America/Mexico_City)
+    const formatter = new Intl.DateTimeFormat('es-MX', {
+      timeZone: 'America/Mexico_City',
+      weekday: 'long',
+    });
+    const rawDayName = formatter.format(new Date());
+    const todayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1);
 
     const allSuppliers = await this.prisma.supplier.findMany({
       where: { isActive: true },

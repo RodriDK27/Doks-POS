@@ -139,7 +139,7 @@ export function CatalogTab({
           </div>
         </div>
 
-        {role === 'ADMIN' && (
+        {(role === 'ADMIN' || role === 'GERENTE') && (
           <div className="shrink-0">
             <Button 
               className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
@@ -159,7 +159,7 @@ export function CatalogTab({
           </span>
           
           <div className="flex items-center gap-2">
-            {role === 'ADMIN' && (
+            {(role === 'ADMIN' || role === 'GERENTE') && (
               <Button
                 className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
                 onClick={() => setIsImportOpen(true)}
@@ -209,16 +209,16 @@ export function CatalogTab({
                 <TableHead className="text-xs font-bold text-slate-500 min-w-[140px]">Producto</TableHead>
                 <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Stock</TableHead>
                 <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Venta</TableHead>
-                {role === 'ADMIN' && (
+                {(role === 'ADMIN' || role === 'GERENTE') && (
                   <>
                     <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
                     <TableHead className="text-right text-xs font-bold text-slate-500 w-20 hidden sm:table-cell">Margen</TableHead>
                   </>
                 )}
                 <TableHead className="w-44 min-w-[170px] text-center text-xs font-bold text-slate-500">Acciones</TableHead>
-
               </TableRow>
-            </TableHeader>            <TableBody className="divide-y">
+            </TableHeader>
+            <TableBody className="divide-y">
               {paginatedProducts.map((p) => {
                 const isCritical = p.stock <= p.minStock;
                 const isOut = p.stock === 0;
@@ -285,7 +285,7 @@ export function CatalogTab({
                       </span>
                     </TableCell>
 
-                    {role === 'ADMIN' && (
+                    {(role === 'ADMIN' || role === 'GERENTE') && (
                       <>
                         <TableCell className="text-right text-slate-400 text-xs hidden sm:table-cell">
                           ${p.purchasePrice.toFixed(2)}
@@ -317,7 +317,7 @@ export function CatalogTab({
                         >
                           <UtensilsCrossed className="h-3.5 w-3.5" />
                         </Button>
-                        {role === 'ADMIN' && (
+                        {(role === 'ADMIN' || role === 'GERENTE') && (
                           <>
                             <Button
                               variant="ghost"

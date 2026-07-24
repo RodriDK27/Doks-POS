@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { ProfitReportData } from '../types';
@@ -21,7 +22,7 @@ export function useReports() {
     today.setHours(0, 0, 0, 0);
 
     let start: Date;
-    let end = new Date();
+    const end = new Date();
 
     switch (selectedPeriod) {
       case 'TODAY':
@@ -41,16 +42,17 @@ export function useReports() {
         };
     }
 
-    const formatDate = (d: Date) => {
+    const formatDate = (d: Date, endOfDay = false) => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const dateStr = `${year}-${month}-${day}`;
+      return endOfDay ? `${dateStr}T23:59:59` : `${dateStr}T00:00:00`;
     };
 
     return {
-      startDate: formatDate(start),
-      endDate: formatDate(end),
+      startDate: formatDate(start, false),
+      endDate: formatDate(end, true),
     };
   };
 
@@ -61,8 +63,8 @@ export function useReports() {
       
       const response = await api.get('/sales/profit-report', { params });
       setReport(response.data);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status !== 401) {
         console.error('Error loading profit report:', error);
         toast.error('No se pudo cargar el reporte de utilidades.');
       }
@@ -73,7 +75,9 @@ export function useReports() {
 
   useEffect(() => {
     if (period !== 'CUSTOM') {
-      loadReport(period);
+      Promise.resolve().then(() => {
+        loadReport(period);
+      });
     }
   }, [period]);
 

@@ -30,8 +30,9 @@ export class AuthController {
     @Body('name') name: string,
     @Body('pin') pin?: string,
     @Body('hourlyRate') hourlyRate?: number,
+    @Body('role') role?: string,
   ) {
-    return this.authService.createCashier(name, pin, hourlyRate);
+    return this.authService.createCashier(name, pin, hourlyRate, role);
   }
 
   @Delete('cashiers/:id')
@@ -47,7 +48,8 @@ export class AuthController {
     @Body('name') name?: string,
     @Body('pin') pin?: string,
     @Body('hourlyRate') hourlyRate?: number,
+    @Body('role') role?: string,
   ) {
-    return this.authService.updateCashier(id, { name, pin, hourlyRate });
+    return this.authService.updateCashier(id, { name, pin, hourlyRate, role });
   }
 }
