@@ -31,25 +31,10 @@ if (
     );
   });
 } else {
-  // EN PRODUCCIÓN: Configuración estándar de caché offline
-  const CACHE_NAME = 'doks-pos-cache-v1';
-  const ASSETS_TO_CACHE = [
-    '/',
-    '/pos',
-    '/register',
-    '/inventory',
-    '/customers',
-    '/reports',
-    '/tickets',
-    '/favicon.ico',
-  ];
+  // EN PRODUCCIÓN: Configuración de caché Network-First con fallback Offline
+  const CACHE_NAME = 'doks-pos-cache-v2';
 
-  self.addEventListener('install', (event) => {
-    event.waitUntil(
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-    );
+  self.addEventListener('install', () => {
     self.skipWaiting();
   });
 
@@ -71,7 +56,7 @@ if (
   self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
 
-    // Ignorar APIs y desarrollo de Next.js
+    // Ignorar APIs y peticiones dinámicas de Next.js
     if (
       event.request.url.includes('/api/') ||
       event.request.url.includes('/_next/') ||
@@ -80,30 +65,29 @@ if (
       return;
     }
 
+    // Estrategia Network-First: intenta cargar de la red para estar al día, y guarda en caché para soporte offline
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request)
-          .then((networkResponse) => {
-            if (!networkResponse || networkResponse.status !== 200) {
-              return networkResponse;
-            }
-
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
             });
-
-            return networkResponse;
-          })
-          .catch(() => {
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Si falla la red (offline), servir del caché local
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
             if (event.request.mode === 'navigate') {
-              return caches.match('/');
+              return caches.match('/register') || caches.match('/');
             }
           });
-      })
+        })
     );
   });
 }
