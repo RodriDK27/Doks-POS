@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   ShoppingCart,
   Wifi,
@@ -14,7 +15,8 @@ import {
   Mic,
   Camera,
   Zap,
-  Layers
+  Layers,
+  Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -228,6 +230,17 @@ export default function POSPage() {
               </Button>
             )}
 
+            <Link href="/tickets">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-black text-[10px] h-8 rounded-lg flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer"
+                title="Historial de Tickets"
+              >
+                <Receipt className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Tickets
+              </Button>
+            </Link>
+
             <Button
               variant="outline"
               size="sm"
@@ -254,6 +267,15 @@ export default function POSPage() {
               </span>
             </Button>
           )}
+
+          <Link href="/tickets">
+            <Button
+              variant="outline"
+              className="border-slate-200 dark:border-slate-800 text-slate-655 dark:text-slate-350 font-extrabold text-xs h-10 rounded-xl flex items-center gap-1.5 px-3.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <Receipt className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Tickets
+            </Button>
+          </Link>
 
           <Button
             variant="outline"
@@ -320,6 +342,7 @@ export default function POSPage() {
             removeFromCart={removeFromCart}
             onClearCart={handleClearCart}
             onProceedToPayment={() => setIsCheckoutDrawerOpen(true)}
+            onSuspend={() => setIsSuspendModalOpen(true)}
             filteredCatalog={filteredCatalog}
             onAddProduct={handleTouchAdd}
           />

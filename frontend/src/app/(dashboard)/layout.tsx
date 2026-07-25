@@ -201,17 +201,14 @@ export default function DashboardLayout({
       setMounted(true);
       if (role !== 'NONE') {
         const activeReg = await checkActiveRegister();
-
-        // Únicamente para el rol CAJERO estricto:
-        if (role === 'CAJERO') {
+        // Si NO es Administrador y la caja NO está abierta, forzar ir a Caja (/register)
+        if (role !== 'ADMIN') {
           if (!activeReg) {
-            // Si la caja NO está abierta, forzar ir a Caja (/register) para que abra el turno
             if (pathname !== '/register') {
               router.replace('/register');
             }
           } else {
-            // Si la caja SÍ está abierta e intenta entrar a raíz ('/') o reportes ('/reports'), mandarlo a ventas (/pos)
-            if (pathname === '/' || pathname === '/reports') {
+            if (role === 'CAJERO' && (pathname === '/' || pathname === '/reports')) {
               router.replace('/pos');
             }
           }
@@ -246,16 +243,12 @@ export default function DashboardLayout({
     { name: 'Clientes', href: '/customers', icon: Users },
     { name: 'Caja', href: '/register', icon: DollarSign },
     { name: 'Sueldos', href: '/payroll', icon: Clock, adminOnly: true },
-  ].filter(item => {
-    // Si no ha ingresado/iniciado sesión con PIN o Admin, SOLO mostrar 'Caja'
-    if (role === 'NONE' && item.href !== '/register') {
+  ].filter((item) => {
+    // Si NO es Administrador y no se ha abierto turno (caja cerrada), ocultar todas las secciones excepto "Caja"
+    if (role !== 'ADMIN' && !activeRegister && item.href !== '/register') {
       return false;
     }
     if (item.adminOnly && role !== 'ADMIN') return false;
-    // Si el usuario es CAJERO estricto y la caja NO está abierta, ocultar todas las secciones excepto "Caja"
-    if (role === 'CAJERO' && !activeRegister && item.href !== '/register') {
-      return false;
-    }
     return true;
   });
 

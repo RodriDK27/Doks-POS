@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Product, Supplier } from '../types';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import api from '@/lib/api';
+import { mutate } from 'swr';
 import { toast } from 'sonner';
 import { parseAxiosError } from '@/lib/errorMapper';
 
@@ -79,6 +80,7 @@ export function MobileInventoryScannerView({
   const [wasteReason, setWasteReason] = useState<string>('CADUCADO');
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [receivedItems, setReceivedItems] = useState<Array<{ product: Product; quantity: number; costPrice: number }>>([]);
+  const [pendingRequestedId, setPendingRequestedId] = useState<string | null>(null);
 
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const lastScannedRef = useRef<{ code: string; time: number } | null>(null);
@@ -111,11 +113,17 @@ export function MobileInventoryScannerView({
 
   useEffect(() => {
     const handleOpenMobileAddFromRequested = (e: Event) => {
-      // Verificar si la pantalla es móvil (< 640px)
       if (window.innerWidth < 640) {
-        const detail = (e as CustomEvent<{ id: string; name: string; sellPrice: number }>).detail;
-        if (detail) {
+        const customEv = e as CustomEvent<{ id: string; name: string; sellPrice?: number }>;
+        if (customEv.detail) {
+          const detail = customEv.detail;
+          if (detail.id && !detail.id.startsWith('quick-')) {
+            setPendingRequestedId(detail.id);
+          } else {
+            setPendingRequestedId(null);
+          }
           setSelectedProduct(null);
+          setAuditStock(1);
           setProdForm({
             name: detail.name,
             barcode: '',
@@ -345,9 +353,22 @@ export function MobileInventoryScannerView({
       } else {
         await api.post('/products', payload);
         toast.success(`Nuevo producto "${prodForm.name}" creado en inventario.`);
+
+        // Si provenía de una solicitud pendiente existente, actualizar el estado a COMPRADO
+        if (pendingRequestedId && !pendingRequestedId.startsWith('quick-')) {
+          try {
+            await api.put(`/requested-products/${pendingRequestedId}`, { status: 'COMPRADO' });
+            mutate('/requested-products');
+          } catch {
+            // Ignorar en silencio si el registro no existía en base de datos
+          } finally {
+            setPendingRequestedId(null);
+          }
+        }
       }
 
       onRefresh();
+      onOpenChange(false);
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al guardar producto.'));
     } finally {
@@ -417,7 +438,7 @@ export function MobileInventoryScannerView({
       <DialogContent className="sm:max-w-[480px] w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-3.5 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl gap-2.5">
 
         {/* HEADER MÓVIL EN DIALOG */}
-        <DialogHeader className="shrink-0 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+        <DialogHeader className="shrink-0 pb-1.5">
           <DialogTitle className="font-black text-sm flex items-center gap-1.5 text-slate-800 dark:text-slate-100">
             Escáner Móvil de Inventario
           </DialogTitle>

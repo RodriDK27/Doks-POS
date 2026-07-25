@@ -16,8 +16,8 @@ interface DashboardStatsProps {
   handleSaveGoal: (e: React.FormEvent) => void;
 }
 
-export function DashboardStatsGrid({ 
-  activeRegister, 
+export function DashboardStatsGrid({
+  activeRegister,
   stats,
   todayEarnings,
   goalPercentage,
@@ -37,7 +37,7 @@ export function DashboardStatsGrid({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-      
+
       {/* CARD 1: VENTAS DE HOY */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-3xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.04)] transition-all duration-300 flex flex-col justify-between h-32 relative overflow-hidden group">
         <div className="flex justify-between items-start">
@@ -47,23 +47,22 @@ export function DashboardStatsGrid({
               ${todayEarnings.toFixed(2)}
             </span>
           </div>
-          
+
           {/* MEDIDOR RADIAL EN MINIATURA */}
           <div className="relative flex items-center justify-center shrink-0 ml-2 group-hover:scale-105 transition-transform duration-300">
             <svg className="w-10 h-10 transform -rotate-90">
               <circle cx="20" cy="20" r="16" className="stroke-slate-100 dark:stroke-slate-850" strokeWidth="2.5" fill="transparent" />
-              <circle 
-                cx="20" 
-                cy="20" 
-                r="16" 
-                className={`transition-all duration-1000 ease-out ${
-                  goalPercentage >= 100 
-                    ? 'stroke-emerald-500' 
-                    : goalPercentage >= 50 
-                    ? 'stroke-indigo-650 dark:stroke-indigo-400' 
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                className={`transition-all duration-1000 ease-out ${goalPercentage >= 100
+                  ? 'stroke-emerald-500'
+                  : goalPercentage >= 50
+                    ? 'stroke-indigo-650 dark:stroke-indigo-400'
                     : 'stroke-amber-500'
-                }`}
-                strokeWidth="3" 
+                  }`}
+                strokeWidth="3"
                 fill="transparent"
                 strokeDasharray={2 * Math.PI * 16}
                 strokeDashoffset={2 * Math.PI * 16 * (1 - goalPercentage / 100)}
@@ -90,11 +89,11 @@ export function DashboardStatsGrid({
         </div>
 
         {/* Meta editable en pie de tarjeta */}
-        <div className="pt-2.5 border-t border-slate-100/60 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-450 dark:text-slate-500 min-h-[22px]">
+        <div className="pt-2.5 flex items-center justify-between text-[10px] text-slate-450 dark:text-slate-500 min-h-[22px]">
           {isEditingGoal ? (
             <form onSubmit={handleSaveGoal} className="flex items-center gap-1 w-full justify-between">
               <span className="text-[9px] font-bold">Meta:</span>
-              <input 
+              <input
                 type="number"
                 value={goalInput}
                 onChange={(e) => setGoalInput(e.target.value)}
@@ -134,7 +133,7 @@ export function DashboardStatsGrid({
             <DollarSign className="h-4.5 w-4.5" />
           </div>
         </div>
-        <div className="flex justify-between items-center pt-3 border-t border-slate-100/60 dark:border-slate-800/80 text-[10px]">
+        <div className="flex justify-between items-center pt-3 text-[10px]">
           <span className="text-slate-400 truncate max-w-[65%]">Cajero: <strong className="text-slate-700 dark:text-slate-300 font-bold">{activeRegister ? activeRegister.openedBy : 'Ninguno'}</strong></span>
           <Badge variant="outline" className={`text-[8px] font-bold border-none px-2 py-0.5 rounded-lg shrink-0 ${activeRegister ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'}`}>
             {activeRegister ? 'Abierto' : 'Cerrado'}
@@ -155,7 +154,7 @@ export function DashboardStatsGrid({
             <Users className="h-4.5 w-4.5" />
           </div>
         </div>
-        <div className="pt-3 border-t border-slate-100/60 dark:border-slate-800/80 text-[10px] text-slate-400 dark:text-slate-500">
+        <div className="pt-3 text-[10px] text-slate-400 dark:text-slate-500">
           <span>{stats?.debtorCustomers || 0} clientes con deuda activa</span>
         </div>
       </div>
@@ -173,7 +172,7 @@ export function DashboardStatsGrid({
             <Package className="h-4.5 w-4.5" />
           </div>
         </div>
-        <div className="pt-3 border-t border-slate-100/60 dark:border-slate-800/80 text-[10px] text-slate-400 dark:text-slate-500">
+        <div className="pt-3 text-[10px] text-slate-400 dark:text-slate-500">
           <span>Artículos por agotarse pronto</span>
         </div>
       </div>

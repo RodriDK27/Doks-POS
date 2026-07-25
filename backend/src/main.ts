@@ -79,8 +79,23 @@ async function bootstrap() {
   app.enableCors({
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type,Accept,Authorization',
+    allowedHeaders: 'Content-Type,Accept,Authorization,Cache-Control,Pragma',
     credentials: true,
+  });
+
+  // Desactivar ETag para evitar respuestas 304 automáticas en proxies/CDNs (Railway Edge)
+  const expressApp = app.getHttpAdapter().getInstance();
+  if (expressApp && typeof expressApp.set === 'function') {
+    expressApp.set('etag', false);
+  }
+
+  // Middleware global para asegurar que los navegadores y CDN no almacenen caché de las APIs
+  app.use((req: any, res: any, next: any) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    next();
   });
 
   // Configurar prefijo global para las rutas de la API

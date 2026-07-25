@@ -54,58 +54,27 @@ export function CloseRegisterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] rounded-3xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl flex flex-col">
-        {/* HEADER CON PESTAÑAS DE MODO */}
-        <DialogHeader className="space-y-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black shrink-0">
-                <Scale className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <DialogTitle className="font-black text-base text-slate-800 dark:text-slate-100 leading-none">
-                  Cierre de Caja
-                </DialogTitle>
-                <DialogDescription className="text-[10px] text-slate-400 dark:text-slate-400 mt-0.5">
-                  Arqueo de efectivo final de turno
-                </DialogDescription>
-              </div>
+      <DialogContent className="sm:max-w-[560px] rounded-3xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh] overflow-y-auto">
+        {/* HEADER */}
+        <DialogHeader className="space-y-1 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black shrink-0">
+              <Scale className="h-4.5 w-4.5" />
             </div>
-
-            {/* TAB SELECTOR */}
-            <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab('DIRECT')}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer",
-                  activeTab === 'DIRECT' 
-                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs" 
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                )}
-              >
-                Monto Directo
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('CALCULATOR')}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer flex items-center gap-1",
-                  activeTab === 'CALCULATOR' 
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs" 
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                )}
-              >
-                <Calculator className="h-3 w-3" />
-                Desglose
-              </button>
+            <div>
+              <DialogTitle className="font-black text-base text-slate-800 dark:text-slate-100 leading-none">
+                Cierre de Caja
+              </DialogTitle>
+              <DialogDescription className="text-[10px] text-slate-400 dark:text-slate-400 mt-0.5">
+                Ingresa el efectivo total o desgiosa billetes/monedas
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-3 py-2 flex-1">
-          
-          {/* COMPARATIVA RESUMIDO EN 2 COLUMNAS */}
+        <div className="space-y-3.5 py-2 flex-1">
+
+          {/* COMPARATIVA EN 2 COLUMNAS */}
           <div className="grid grid-cols-2 gap-2.5">
             <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/50 dark:border-slate-800">
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Sistema (Esperado)</span>
@@ -116,16 +85,16 @@ export function CloseRegisterDialog({
 
             <div className={cn(
               "p-3 rounded-2xl border transition-colors",
-              diff === null 
+              diff === null
                 ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200/50 dark:border-slate-800"
-                : diff === 0 
+                : diff === 0
                   ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40"
-                  : diff < 0 
+                  : diff < 0
                     ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40"
                     : "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40"
             )}>
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                {diff === null ? 'Diferencia' : diff === 0 ? 'Resultado' : diff < 0 ? 'Faltante' : 'Sobrante'}
+                {diff === null ? 'Diferencia' : diff === 0 ? 'Resultado Cuadrado' : diff < 0 ? 'Faltante' : 'Sobrante'}
               </span>
               <span className={cn(
                 "text-base font-black block mt-0.5",
@@ -136,71 +105,65 @@ export function CloseRegisterDialog({
             </div>
           </div>
 
-          {/* MODO 1: MONTO DIRECTO */}
-          {activeTab === 'DIRECT' && (
-            <div className="space-y-2 animate-in fade-in duration-200">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
-                  Efectivo Físico en Cajón ($) *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base font-black text-indigo-600 dark:text-indigo-400">$</span>
+          {/* MONTO TOTAL DIRECTO */}
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Efectivo Físico en Cajón ($) *
+              </label>
+              {calculatedSum > 0 && (
+                <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400">
+                  Desglose: ${calculatedSum.toFixed(2)}
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base font-black text-indigo-600 dark:text-indigo-400">$</span>
+              <Input
+                type="number"
+                step="any"
+                required
+                placeholder="0.00"
+                className="focus-visible:ring-indigo-500 pl-8 h-11 text-base font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl"
+                value={countedCash !== null ? countedCash : ''}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setCountedCash(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          </div>
+
+          {/* SECCIÓN DESGLOSE OPCIONAL RÁPIDO */}
+          <div className="bg-slate-50/70 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+            <span className="text-[9.5px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Desglose Opcional de Billetes y Monedas
+            </span>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto pr-1 scrollbar-none">
+              {denominations.map((d) => (
+                <div key={d.val} className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded-xl border border-slate-200/50 dark:border-slate-800">
+                  <span className="font-extrabold text-[10px] text-slate-600 dark:text-slate-300">{d.label}</span>
                   <Input
                     type="number"
-                    step="any"
-                    required
-                    placeholder="0.00"
-                    className="focus-visible:ring-indigo-500 pl-8 h-12 text-lg font-black bg-slate-50/50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl"
-                    value={countedCash !== null ? countedCash : ''}
-                    onChange={(e) => setCountedCash(parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                    className="h-6 w-11 text-center text-xs font-black p-0 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg"
+                    value={billCounts[d.val] || ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      const nextCounts = { ...billCounts, [d.val]: val };
+                      setBillCounts(nextCounts);
+
+                      const nextSum = Object.entries(nextCounts).reduce(
+                        (acc, [denom, count]) => acc + parseFloat(denom) * (count || 0),
+                        0
+                      );
+                      setCountedCash(nextSum);
+                    }}
                   />
                 </div>
-              </div>
+              ))}
             </div>
-          )}
-
-          {/* MODO 2: CALCULADORA DESGLOSE */}
-          {activeTab === 'CALCULATOR' && (
-            <div className="space-y-2 animate-in fade-in duration-200">
-              <div className="bg-slate-50/70 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                    Conteo de Billetes / Monedas
-                  </span>
-                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">Total: ${calculatedSum.toFixed(2)}</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-none">
-                  {denominations.map((d) => (
-                    <div key={d.val} className="flex justify-between items-center bg-white dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-200/50 dark:border-slate-800">
-                      <span className="font-extrabold text-[10px] text-slate-600 dark:text-slate-300">{d.label}</span>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        className="h-6 w-12 text-center text-xs font-black p-0 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                        value={billCounts[d.val] || ''}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value) || 0;
-                          setBillCounts((prev) => ({ ...prev, [d.val]: val }));
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <Button
-                  type="button"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-8 rounded-xl cursor-pointer shadow-xs"
-                  onClick={() => {
-                    applyCalculatedToClose();
-                    setActiveTab('DIRECT');
-                  }}
-                >
-                  Aplicar Suma (${calculatedSum.toFixed(0)}) a Arqueo
-                </Button>
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* NOTAS */}
           <div className="space-y-1">
@@ -218,7 +181,7 @@ export function CloseRegisterDialog({
         </div>
 
         {/* ACCIONES FOOTER */}
-        <div className="flex items-center gap-2 pt-2">
+        <div className="flex items-center gap-2 pt-2 shrink-0">
           <Button
             type="button"
             variant="outline"

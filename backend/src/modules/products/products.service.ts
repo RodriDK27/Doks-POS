@@ -239,14 +239,15 @@ export class ProductsService {
       };
     });
 
-    // Separar los más vendidos (top 10 ordenados por cantidad vendida desc)
+    // Separar los más vendidos (top 10 con 5 o más ventas ordenados desc)
     const topSelling = [...analytics]
-      .filter(p => p.quantitySold > 0)
+      .filter(p => p.quantitySold >= 5)
       .sort((a, b) => b.quantitySold - a.quantitySold)
       .slice(0, 10);
 
-    // Separar los menos vendidos o sin ventas (menos cantidad vendida asc)
+    // Separar los menos vendidos (artículos con baja rotación: entre 1 y 4 ventas acumuladas, excluyendo 0 ventas)
     const slowMoving = [...analytics]
+      .filter(p => p.quantitySold >= 1 && p.quantitySold < 5)
       .sort((a, b) => a.quantitySold - b.quantitySold)
       .slice(0, 10);
 

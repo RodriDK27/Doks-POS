@@ -7,7 +7,7 @@ import { parseAxiosError } from '@/lib/errorMapper';
 
 export function useRequestedProducts() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDIENTE' | 'COMPRADO' | 'CANCELADO'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDIENTE' | 'COMPRADO' | 'CANCELADO'>('PENDIENTE');
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const { data: swrProducts, mutate, isLoading: loading } = useSWR<RequestedProduct[]>('/requested-products');
@@ -26,7 +26,7 @@ export function useRequestedProducts() {
 
   const handleUpdateStatus = async (id: string, name: string, status: 'PENDIENTE' | 'COMPRADO' | 'CANCELADO') => {
     try {
-      await api.patch(`/requested-products/${id}`, { status });
+      await api.put(`/requested-products/${id}`, { status });
       toast.success(`Artículo "${name}" marcado como ${status.toLowerCase()}.`);
       mutate();
     } catch (error) {

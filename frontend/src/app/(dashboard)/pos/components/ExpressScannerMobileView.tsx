@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, CameraOff, Search, Mic, ShoppingCart, Trash2, Plus, Minus, ArrowRight, RefreshCw, Package, Check, X, Tag } from 'lucide-react';
+import { Camera, CameraOff, Search, Mic, ShoppingCart, Trash2, Plus, Minus, ArrowRight, RefreshCw, Package, Check, X, Tag, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
@@ -29,6 +29,7 @@ interface ExpressScannerMobileViewProps {
   removeFromCart: (id: string) => void;
   onClearCart: () => void;
   onProceedToPayment: () => void;
+  onSuspend: () => void;
   filteredCatalog: Product[];
   onAddProduct: (product: Product) => void;
 }
@@ -53,6 +54,7 @@ export function ExpressScannerMobileView({
   removeFromCart,
   onClearCart,
   onProceedToPayment,
+  onSuspend,
   filteredCatalog,
   onAddProduct,
 }: ExpressScannerMobileViewProps) {
@@ -386,15 +388,29 @@ export function ExpressScannerMobileView({
           </div>
         </div>
 
-        <Button
-          type="button"
-          disabled={cartItems.length === 0}
-          onClick={onProceedToPayment}
-          className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-        >
-          <span>Cobrar ${currentTotal.toFixed(2)}</span>
-          <ArrowRight className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={cartItems.length === 0}
+            onClick={onSuspend}
+            className="h-11 px-3.5 border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 bg-amber-50/40 dark:bg-amber-955/10 font-black text-xs rounded-xl flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
+            title="Suspender Venta en Espera"
+          >
+            <Pause className="h-4 w-4" />
+            <span>Pausar</span>
+          </Button>
+
+          <Button
+            type="button"
+            disabled={cartItems.length === 0}
+            onClick={onProceedToPayment}
+            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <span>Cobrar ${currentTotal.toFixed(2)}</span>
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

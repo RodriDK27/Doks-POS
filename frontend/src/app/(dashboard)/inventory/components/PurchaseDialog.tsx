@@ -61,7 +61,7 @@ export function PurchaseDialog({
   totalInvoiceSum,
   onSavePendingTicket,
 }: PurchaseDialogProps) {
-  const [purchaseType, setPurchaseType] = React.useState<'IMMEDIATE' | 'TICKET'>('IMMEDIATE');
+  const [purchaseType, setPurchaseType] = React.useState<'TICKET' | 'IMMEDIATE'>('TICKET');
   const [ticketAmount, setTicketAmount] = React.useState('');
   const [isSavingTicket, setIsSavingTicket] = React.useState(false);
 
@@ -101,17 +101,6 @@ export function PurchaseDialog({
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
               <button
                 type="button"
-                onClick={() => setPurchaseType('IMMEDIATE')}
-                className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                  purchaseType === 'IMMEDIATE'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                Pago Directo
-              </button>
-              <button
-                type="button"
                 onClick={() => setPurchaseType('TICKET')}
                 className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   purchaseType === 'TICKET'
@@ -120,6 +109,17 @@ export function PurchaseDialog({
                 }`}
               >
                 Ticket Previo
+              </button>
+              <button
+                type="button"
+                onClick={() => setPurchaseType('IMMEDIATE')}
+                className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  purchaseType === 'IMMEDIATE'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                Pago Directo
               </button>
             </div>
           </div>

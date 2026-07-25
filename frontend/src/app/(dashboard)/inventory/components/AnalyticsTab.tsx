@@ -126,7 +126,7 @@ export function AnalyticsTab({ analytics, analyticsLoading }: AnalyticsTabProps)
           ) : (
             <div className="py-20 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
               <Inbox className="h-8 w-8 text-slate-350" />
-              <span>No hay productos registrados en el inventario.</span>
+              <span>No hay productos registrados con baja salida (entre 1 y 4 ventas).</span>
             </div>
           )}
         </div>

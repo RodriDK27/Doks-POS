@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -9,32 +10,41 @@ export function useTickets() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDateFilter, setSelectedDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK'>('ALL');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK'>('TODAY');
+  
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Modal de previsualización de ticket
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
 
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/sales');
       setSales(response.data);
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status !== 401) {
         console.error('Error fetching sales history:', error);
         toast.error('No se pudo cargar el historial de ventas.');
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (role !== 'NONE') {
-      fetchSales();
+      void fetchSales();
     }
-  }, [role]);
+  }, [role, fetchSales]);
+
+  // Resetear a página 1 cuando cambia la búsqueda o filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDateFilter]);
 
   const handlePrint = () => {
     window.print();
@@ -59,10 +69,12 @@ export function useTickets() {
     const weekAgo = new Date(today);
     weekAgo.setDate(today.getDate() - 7);
 
+    const activeDateFilter = role === 'ADMIN' ? selectedDateFilter : 'TODAY';
+
     let matchesDate = true;
-    if (selectedDateFilter === 'TODAY') {
+    if (activeDateFilter === 'TODAY') {
       matchesDate = saleDate >= today;
-    } else if (selectedDateFilter === 'YESTERDAY') {
+    } else if (activeDateFilter === 'YESTERDAY') {
       matchesDate = saleDate >= yesterday && saleDate < today;
     } else if (selectedDateFilter === 'WEEK') {
       matchesDate = saleDate >= weekAgo;
@@ -70,6 +82,12 @@ export function useTickets() {
 
     return matchesSearch && matchesDate;
   });
+
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage) || 1;
+  const paginatedSales = filteredSales.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return {
     sales,
@@ -83,6 +101,12 @@ export function useTickets() {
     isTicketOpen,
     setIsTicketOpen,
     handlePrint,
-    filteredSales
+    filteredSales,
+    paginatedSales,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    totalPages
   };
 }

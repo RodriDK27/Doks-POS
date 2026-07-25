@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Product, Supplier, Purchase } from '../types';
@@ -300,7 +300,11 @@ export function useInventory() {
     const handleOpenFromRequested = (e: Event) => {
       const detail = (e as CustomEvent<{ id: string; name: string; sellPrice: number }>).detail;
       if (detail) {
-        setPendingRequestedId(detail.id);
+        if (detail.id && !detail.id.startsWith('quick-')) {
+          setPendingRequestedId(detail.id);
+        } else {
+          setPendingRequestedId(null);
+        }
         if (window.innerWidth >= 640) {
           setEditingProduct({
             id: '',
@@ -344,10 +348,12 @@ export function useInventory() {
         // Si provenía de un pedido / venta rápida pendiente, marcarlo automáticamente como COMPRADO
         if (pendingRequestedId) {
           try {
-            await api.patch(`/requested-products/${pendingRequestedId}`, { status: 'COMPRADO' });
-            setPendingRequestedId(null);
+            await api.put(`/requested-products/${pendingRequestedId}`, { status: 'COMPRADO' });
+            mutate('/requested-products');
           } catch (err) {
             console.error('Error al actualizar estado del pedido pendiente:', err);
+          } finally {
+            setPendingRequestedId(null);
           }
         }
       }

@@ -9,13 +9,27 @@ const api = axios.create({
   },
 });
 
-// Interceptor de peticiones para inyectar el token JWT
+// Interceptor de peticiones para inyectar el token JWT y prevenir respuestas 304 en CDN
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (config.headers) {
+      config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      config.headers['Pragma'] = 'no-cache';
+    }
+
+    // Para peticiones GET, agregar un parámetro timestamp '_t' para forzar respuesta fresca (Evita 304 en Railway Edge)
+    if (config.method?.toLowerCase() === 'get') {
+      config.params = {
+        ...config.params,
+        _t: Date.now(),
+      };
+    }
+
     return config;
   },
   (error) => {

@@ -14,10 +14,12 @@ import Link from 'next/link';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Skeleton } from '@/components/ui/skeleton';
 
+import { useAuthStore } from '@/store/useAuthStore';
 import { useTickets } from './hooks/useTickets';
 import { TicketDetailsDialog } from './components/TicketDetailsDialog';
 
 export default function TicketsPage() {
+  const { role } = useAuthStore();
   const {
     loading,
     searchQuery,
@@ -29,7 +31,13 @@ export default function TicketsPage() {
     isTicketOpen,
     setIsTicketOpen,
     handlePrint,
-    filteredSales
+    filteredSales,
+    paginatedSales,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    totalPages
   } = useTickets();
 
   return (
@@ -72,31 +80,43 @@ export default function TicketsPage() {
         </div>
       </div>
 
-      {/* FILTROS Y BÚSQUEDA */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Buscar por Folio, Cliente o método..."
-            className="pl-9 h-11 border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+      {/* FILTROS Y BÚSQUEDA (SÓLO ADMIN TIENE ACCESO A BÚSQUEDA E HISTORIAL COMPLETO) */}
+      {role === 'ADMIN' ? (
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Buscar por Folio, Cliente o método..."
+              className="pl-9 h-11 border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <CustomSelect
+            className="w-44"
+            value={selectedDateFilter}
+            onChange={(val) => setSelectedDateFilter(val as 'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK')}
+            options={[
+              { value: 'ALL', label: 'Todas las Ventas' },
+              { value: 'TODAY', label: 'Solo Hoy' },
+              { value: 'YESTERDAY', label: 'Ayer' },
+              { value: 'WEEK', label: 'Últimos 7 Días' },
+            ]}
           />
         </div>
-
-        <CustomSelect
-          className="w-44"
-          value={selectedDateFilter}
-          onChange={(val) => setSelectedDateFilter(val as 'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK')}
-          options={[
-            { value: 'ALL', label: 'Todas las Ventas' },
-            { value: 'TODAY', label: 'Solo Hoy' },
-            { value: 'YESTERDAY', label: 'Ayer' },
-            { value: 'WEEK', label: 'Últimos 7 Días' },
-          ]}
-        />
-      </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex items-center justify-between">
+          <span className="text-xs font-black text-slate-700 dark:text-slate-200 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            Ventas del Día de Hoy
+          </span>
+          <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+            Turno Activo
+          </Badge>
+        </div>
+      )}
 
       {/* TABLA DE HISTORIAL (RESPONSIVA) */}
       <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
@@ -114,54 +134,106 @@ export default function TicketsPage() {
             ))}
           </div>
         ) : filteredSales.length > 0 ? (
-          <Table>
-            <TableHeader className="bg-slate-50/50">
-              <TableRow className="border-b">
-                <TableHead className="text-xs font-bold text-slate-500 w-24">Folio</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500">Fecha y Hora</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500">Cliente</TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 w-28">Método</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Monto Cobrado</TableHead>
-                <TableHead className="w-24 text-center text-xs font-bold text-slate-500">Acción</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y">
-              {filteredSales.map((sale) => (
-                <TableRow key={sale.id} className="hover:bg-slate-50/20 border-b">
-                  <TableCell className="font-bold text-slate-800 text-xs">
-                    #{sale.id}
-                  </TableCell>
-                  <TableCell className="text-slate-455 text-xs">
-                    {new Date(sale.createdAt).toLocaleDateString()} {new Date(sale.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                  </TableCell>
-                  <TableCell className="font-bold text-xs text-slate-600">
-                    {sale.customer?.name || 'Público General'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[9px] font-bold tracking-wide uppercase px-2 py-0.5 border-slate-200">
-                      {sale.paymentMethod === 'FIADO' ? 'Fiado (Crédito)' : sale.paymentMethod.toLowerCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-black text-slate-800 text-xs">
-                    ${sale.total.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 text-[10px] font-extrabold text-indigo-650 hover:bg-indigo-50 px-2.5 rounded-lg flex items-center gap-1 mx-auto cursor-pointer"
-                      onClick={() => {
-                        setSelectedSale(sale);
-                        setIsTicketOpen(true);
-                      }}
-                    >
-                      <Eye className="h-3.5 w-3.5" /> Ver Ticket
-                    </Button>
-                  </TableCell>
+          <>
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="border-b">
+                  <TableHead className="text-xs font-bold text-slate-500 w-24">Folio</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500">Fecha y Hora</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500">Cliente</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-500 w-28">Método</TableHead>
+                  <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Monto Cobrado</TableHead>
+                  <TableHead className="w-24 text-center text-xs font-bold text-slate-500">Acción</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="divide-y">
+                {paginatedSales.map((sale) => (
+                  <TableRow key={sale.id} className="hover:bg-slate-50/20 border-b">
+                    <TableCell className="font-bold text-slate-800 text-xs">
+                      #{sale.id}
+                    </TableCell>
+                    <TableCell className="text-slate-455 text-xs">
+                      {new Date(sale.createdAt).toLocaleDateString()} {new Date(sale.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </TableCell>
+                    <TableCell className="font-bold text-xs text-slate-600">
+                      {sale.customer?.name || 'Público General'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[9px] font-bold tracking-wide uppercase px-2 py-0.5 border-slate-200">
+                        {sale.paymentMethod === 'FIADO' ? 'Fiado (Crédito)' : sale.paymentMethod.toLowerCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-black text-slate-800 text-xs">
+                      ${sale.total.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-[10px] font-extrabold text-indigo-650 hover:bg-indigo-50 px-2.5 rounded-lg flex items-center gap-1 mx-auto cursor-pointer"
+                        onClick={() => {
+                          setSelectedSale(sale);
+                          setIsTicketOpen(true);
+                        }}
+                      >
+                        <Eye className="h-3.5 w-3.5" /> Ver Ticket
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* CONTROLES DE PAGINACIÓN */}
+            <div className="p-4 border-t border-slate-200/60 dark:border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/30 dark:bg-slate-900/50">
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">Mostrar</span>
+                  <CustomSelect
+                    className="w-20 h-8 text-xs font-bold"
+                    value={String(itemsPerPage)}
+                    onChange={(val) => {
+                      setItemsPerPage(Number(val));
+                      setCurrentPage(1);
+                    }}
+                    options={[
+                      { value: '10', label: '10' },
+                      { value: '25', label: '25' },
+                      { value: '50', label: '50' },
+                      { value: '100', label: '100' },
+                    ]}
+                  />
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                  Mostrando {filteredSales.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredSales.length)} de {filteredSales.length}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </Button>
+                <span className="px-2 font-black text-slate-600 dark:text-slate-300 text-xs whitespace-nowrap">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="py-20 text-center text-slate-400 text-xs">
             No se encontraron tickets en el historial.
