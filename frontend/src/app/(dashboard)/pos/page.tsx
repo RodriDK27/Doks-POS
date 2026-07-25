@@ -147,8 +147,8 @@ export default function POSPage() {
           </h1>
         </div>
 
-        {/* BOTONES DE CAMBIO DE MODO (SÓLO VISIBLES EN MÓVIL `md:hidden`) */}
-        <div className="flex md:hidden items-center bg-slate-100/90 dark:bg-slate-800/60 p-1 rounded-2xl border dark:border-slate-800">
+        {/* BOTONES DE CAMBIO DE MODO (VISIBLES EN MÓVIL Y TABLETS EN VERTICAL `lg:hidden`) */}
+        <div className="flex lg:hidden items-center bg-slate-100/90 dark:bg-slate-800/60 p-1 rounded-2xl border dark:border-slate-800">
           <Button
             variant={mobileMode === 'STANDARD' ? 'default' : 'ghost'}
             className={`h-8 px-2 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'STANDARD'
@@ -297,9 +297,9 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* PESTAÑAS CATÁLOGO / TICKET EN MÓVIL (SÓLO SI ESTÁ ACTIVO MODO ESTÁNDAR) */}
+      {/* PESTAÑAS CATÁLOGO / TICKET EN MÓVIL Y TABLETS (SÓLO SI ESTÁ ACTIVO MODO ESTÁNDAR) */}
       {mobileMode === 'STANDARD' && (
-        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-2xl md:hidden w-full shrink-0 border border-slate-200 dark:border-slate-800">
+        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-2xl lg:hidden w-full shrink-0 border border-slate-200 dark:border-slate-800">
           <Button
             variant={posTab === 'CATALOG' ? 'default' : 'ghost'}
             className={`flex-1 h-9 font-extrabold text-xs rounded-xl transition-all cursor-pointer ${posTab === 'CATALOG' ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300' : 'text-slate-500'
@@ -319,9 +319,9 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* VISTA ESCÁNER EXPRESS EN MÓVIL */}
+      {/* VISTA ESCÁNER EXPRESS EN MÓVIL Y TABLETS */}
       {mobileMode === 'EXPRESS' && (
-        <div className="flex md:hidden flex-col flex-1 h-full min-h-0 overflow-hidden">
+        <div className="flex lg:hidden flex-col flex-1 h-full min-h-0 overflow-hidden">
           <ExpressScannerMobileView
             searchQuery={searchQuery}
             onSearchQueryChange={handleSearchQueryChange}
@@ -350,10 +350,10 @@ export default function POSPage() {
       )}
 
       {/* CUERPO DEL POS (DISEÑO A 2 COLUMNAS ORIENTADO A TABLET LANDSCAPE / ESCRITORIO / PESTAÑAS) */}
-      <div className={`flex-1 flex-col md:flex-row gap-4 overflow-hidden min-h-0 ${mobileMode === 'STANDARD' ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`flex-1 flex-col lg:flex-row gap-4 overflow-hidden min-h-0 ${mobileMode === 'STANDARD' ? 'flex' : 'hidden lg:flex'}`}>
 
         {/* COLUMNA IZQUIERDA: CATÁLOGO TÁCTIL */}
-        <div className={`md:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden h-full ${posTab === 'CATALOG' ? 'flex' : 'hidden md:flex'
+        <div className={`lg:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden h-full ${posTab === 'CATALOG' ? 'flex' : 'hidden lg:flex'
           }`}>
           {/* BUSCADOR */}
           <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0">
@@ -442,7 +442,7 @@ export default function POSPage() {
         </div>
 
         {/* COLUMNA DERECHA: TICKET PANEL */}
-        <div className={`md:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 h-full ${posTab === 'CART' ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`lg:flex-[0.8] xl:flex-[0.75] flex flex-col gap-3.5 overflow-hidden min-w-0 h-full ${posTab === 'CART' ? 'flex' : 'hidden lg:flex'}`}>
           <TicketPanel
             cartItems={cartItems}
             cartItemsCount={cartItemsCount}

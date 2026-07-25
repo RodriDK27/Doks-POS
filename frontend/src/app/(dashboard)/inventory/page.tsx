@@ -202,11 +202,11 @@ export default function InventoryPage() {
             <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Inventario de Tienda</h1>
           </div>
 
-          {/* BOTÓN MÓVIL SÓLO EN CELULARES (`sm:hidden`) */}
+          {/* BOTÓN MÓVIL/TABLET VERTICAL (`lg:hidden`) */}
           <Button
             type="button"
             onClick={() => setIsMobileScannerOpen(true)}
-            className="sm:hidden h-8 px-2.5 rounded-xl font-black text-[11px] flex items-center gap-1 cursor-pointer transition-all bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+            className="lg:hidden h-8 px-2.5 rounded-xl font-black text-[11px] flex items-center gap-1 cursor-pointer transition-all bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
           >
             <Zap className="h-3.5 w-3.5" />
             <span>Escáner</span>
@@ -223,8 +223,8 @@ export default function InventoryPage() {
           onRefresh={mutateProducts}
         />
 
-        {/* MÓVIL: SELECT DESPLEGABLE LIMPIO */}
-        <div className="w-full sm:hidden shrink-0">
+        {/* MÓVIL Y TABLET VERTICAL: SELECT DESPLEGABLE LIMPIO */}
+        <div className="w-full lg:hidden shrink-0">
           <CustomSelect
             value={activeTab}
             onChange={(val: string) => setActiveTab(val as typeof activeTab)}
@@ -238,8 +238,8 @@ export default function InventoryPage() {
           />
         </div>
 
-        {/* ESCRITORIO / TABLET: BOTONES CONTINUOS */}
-        <div className="hidden sm:flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl shrink-0 border border-slate-200/40 dark:border-slate-800/40 gap-1">
+        {/* ESCRITORIO / TABLET HORIZONTAL: BOTONES CONTINUOS */}
+        <div className="hidden lg:flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl shrink-0 border border-slate-200/40 dark:border-slate-800/40 gap-1">
           <Button
             variant="ghost"
             className={cn(
