@@ -191,6 +191,14 @@ export function useInventory() {
 
   // ─── Duplicar Producto ───────────────────────────────────────────────────
   const handleOpenDuplicate = (product: Product) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      window.dispatchEvent(
+        new CustomEvent('open-mobile-edit-product', {
+          detail: { product, isDuplicate: true },
+        })
+      );
+      return;
+    }
     // Al duplicar configuramos editingProduct a un objeto con la información existente,
     // pero con ID nulo o un flag para indicar que es un registro nuevo (duplicado)
     setEditingProduct({
@@ -289,6 +297,14 @@ export function useInventory() {
   };
 
   const handleOpenEdit = (product: Product) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      window.dispatchEvent(
+        new CustomEvent('open-mobile-edit-product', {
+          detail: { product, isDuplicate: false },
+        })
+      );
+      return;
+    }
     setEditingProduct(product);
     setIsFormOpen(true);
     setTimeout(() => barcodeInputRef.current?.focus(), 150);

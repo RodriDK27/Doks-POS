@@ -113,36 +113,70 @@ export function MobileInventoryScannerView({
 
   useEffect(() => {
     const handleOpenMobileAddFromRequested = (e: Event) => {
-      if (window.innerWidth < 640) {
-        const customEv = e as CustomEvent<{ id: string; name: string; sellPrice?: number }>;
-        if (customEv.detail) {
-          const detail = customEv.detail;
-          if (detail.id && !detail.id.startsWith('quick-')) {
-            setPendingRequestedId(detail.id);
-          } else {
-            setPendingRequestedId(null);
-          }
-          setSelectedProduct(null);
-          setAuditStock(1);
-          setProdForm({
-            name: detail.name,
-            barcode: '',
-            sellPrice: detail.sellPrice ? String(detail.sellPrice) : '',
-            purchasePrice: '',
-            stock: '1',
-            minStock: '5',
-            category: 'VARIOS',
-            unitType: 'PIECE',
-          });
-          setMobileTab('EDIT');
-          onOpenChange(true);
+      const customEv = e as CustomEvent<{ id: string; name: string; sellPrice?: number }>;
+      if (customEv.detail) {
+        const detail = customEv.detail;
+        if (detail.id && !detail.id.startsWith('quick-')) {
+          setPendingRequestedId(detail.id);
+        } else {
+          setPendingRequestedId(null);
         }
+        setSelectedProduct(null);
+        setAuditStock(1);
+        setProdForm({
+          name: detail.name,
+          barcode: '',
+          sellPrice: detail.sellPrice ? String(detail.sellPrice) : '',
+          purchasePrice: '',
+          stock: '1',
+          minStock: '5',
+          category: 'VARIOS',
+          unitType: 'PIECE',
+        });
+        setMobileTab('EDIT');
+        onOpenChange(true);
+      }
+    };
+
+    const handleOpenMobileEditProduct = (e: Event) => {
+      const customEv = e as CustomEvent<{ product: Product; isDuplicate?: boolean }>;
+      if (customEv.detail && customEv.detail.product) {
+        const { product, isDuplicate } = customEv.detail;
+        if (isDuplicate) {
+          setSelectedProduct(null);
+          setProdForm({
+            name: `${product.name} (Copia)`,
+            barcode: '',
+            sellPrice: String(product.sellPrice),
+            purchasePrice: String(product.purchasePrice),
+            stock: String(product.stock),
+            minStock: String(product.minStock || 5),
+            category: product.category || '',
+            unitType: (product.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
+          });
+        } else {
+          setSelectedProduct(product);
+          setProdForm({
+            name: product.name,
+            barcode: product.barcode || '',
+            sellPrice: String(product.sellPrice),
+            purchasePrice: String(product.purchasePrice),
+            stock: String(product.stock),
+            minStock: String(product.minStock || 5),
+            category: product.category || '',
+            unitType: (product.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
+          });
+        }
+        setMobileTab('EDIT');
+        onOpenChange(true);
       }
     };
 
     window.addEventListener('open-add-product-from-requested', handleOpenMobileAddFromRequested);
+    window.addEventListener('open-mobile-edit-product', handleOpenMobileEditProduct);
     return () => {
       window.removeEventListener('open-add-product-from-requested', handleOpenMobileAddFromRequested);
+      window.removeEventListener('open-mobile-edit-product', handleOpenMobileEditProduct);
     };
   }, [onOpenChange]);
 
@@ -171,6 +205,18 @@ export function MobileInventoryScannerView({
     if (!code) return;
 
     setScannedBarcode(code);
+
+    // Si estamos expresamente en la pestaña EDIT y ya tenemos un producto seleccionado para Editar o Duplicar,
+    // simplemente asignamos el nuevo código de barras al producto que se está editando sin reemplazar los datos.
+    if (mobileTab === 'EDIT' && selectedProduct) {
+      setProdForm((prev) => ({
+        ...prev,
+        barcode: code,
+      }));
+      toast.success(`Código asignado a "${selectedProduct.name}": ${code}`);
+      return;
+    }
+
     const found = products.find((p) => p.barcode === code || p.id === code);
 
     if (found) {
@@ -213,7 +259,7 @@ export function MobileInventoryScannerView({
       }));
       toast.info(`Código asignado: ${code}`);
     }
-  }, [products, mobileTab]);
+  }, [products, mobileTab, selectedProduct]);
 
   const startCamera = useCallback(async () => {
     setCameraError(null);
