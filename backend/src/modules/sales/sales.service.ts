@@ -342,6 +342,13 @@ export class SalesService {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Mapeo de precios de compra de todos los productos por ID y por nombre en minúsculas
+    const allProducts = await this.prisma.product.findMany();
+    const productNameCostMap = new Map<string, number>();
+    for (const prod of allProducts) {
+      productNameCostMap.set(prod.name.toLowerCase().trim(), prod.purchasePrice);
+    }
+
     let totalRevenue = 0;
     let totalCost = 0;
     let totalDiscount = 0;
@@ -361,7 +368,17 @@ export class SalesService {
       paymentDistribution[sale.paymentMethod] = (paymentDistribution[sale.paymentMethod] || 0) + sale.total;
 
       for (const item of sale.items) {
-        const purchasePrice = item.product ? item.product.purchasePrice : 0;
+        let purchasePrice = 0;
+        if (item.product) {
+          purchasePrice = item.product.purchasePrice;
+        } else {
+          // Si no tiene product vinculado, buscar si el producto ya fue dado de alta por nombre
+          const matchCost = productNameCostMap.get(item.productName.toLowerCase().trim());
+          if (matchCost !== undefined) {
+            purchasePrice = matchCost;
+          }
+        }
+
         const itemCost = purchasePrice * item.quantity;
         const itemProfit = item.total - itemCost;
 
