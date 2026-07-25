@@ -204,17 +204,14 @@ export function MobileInventoryScannerView({
     } else {
       setSelectedProduct(null);
       setAuditStock(0);
-      setProdForm({
-        name: '',
+      setProdForm((prev) => ({
+        ...prev,
         barcode: code,
-        sellPrice: '',
-        purchasePrice: '',
-        stock: '1',
-        minStock: '5',
-        category: '',
-        unitType: 'PIECE',
-      });
-      toast.info(`Código nuevo no registrado: ${code}`);
+        stock: prev.stock || '1',
+        minStock: prev.minStock || '5',
+        unitType: prev.unitType || 'PIECE',
+      }));
+      toast.info(`Código asignado: ${code}`);
     }
   }, [products, mobileTab]);
 
