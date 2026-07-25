@@ -192,8 +192,8 @@ export default function InventoryPage() {
     <div className="space-y-6 w-full pb-20 relative">
 
       {/* HEADER PRINCIPAL Y TABS SELECTOR */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
-        <div className="flex items-center justify-between w-full sm:w-auto">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-2">
+        <div className="flex items-center justify-between w-full lg:w-auto">
           <div className="flex flex-col gap-0.5">
             <span className="text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
@@ -223,8 +223,8 @@ export default function InventoryPage() {
           onRefresh={mutateProducts}
         />
 
-        {/* MÓVIL Y TABLET VERTICAL: SELECT DESPLEGABLE LIMPIO */}
-        <div className="w-full lg:hidden shrink-0">
+        {/* MÓVIL Y TABLET VERTICAL: SELECT DESPLEGABLE LIMPIO (ABAJO) */}
+        <div className="w-full lg:hidden shrink-0 pt-1">
           <CustomSelect
             value={activeTab}
             onChange={(val: string) => setActiveTab(val as typeof activeTab)}
