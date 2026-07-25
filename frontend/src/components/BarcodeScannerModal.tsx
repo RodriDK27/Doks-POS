@@ -94,13 +94,22 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       html5QrcodeRef.current = html5Qrcode;
 
       const config = {
-        fps: 15,
+        fps: 25,
         qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const width = Math.floor(viewfinderWidth * 0.85);
-          const height = Math.floor(Math.min(viewfinderHeight * 0.5, 180));
+          const width = Math.floor(viewfinderWidth * 0.9);
+          const height = Math.floor(Math.min(viewfinderHeight * 0.6, 200));
           return { width, height };
         },
         aspectRatio: 1.333333,
+        videoConstraints: {
+          ...(typeof cameraIdOrConfig === 'string' ? { deviceId: { exact: cameraIdOrConfig } } : cameraIdOrConfig),
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          advanced: [
+            { focusMode: 'continuous' } as MediaTrackConstraintSet,
+            { zoom: 1.2 } as MediaTrackConstraintSet,
+          ],
+        },
       };
 
       const onScanSuccess = (decodedText: string) => {
@@ -117,12 +126,40 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         cameraIdOrConfig,
         config,
         onScanSuccess,
-        () => {
-          // Frame sin código detectado
-        }
+        () => {}
       );
 
       setIsScanning(true);
+
+      // Si Chrome admite la API nativa acelerada BarcodeDetector, activar inspección rápida paralela en el elemento video
+      if ('BarcodeDetector' in window) {
+        try {
+          const barcodeDetector = new (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (src: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector({
+            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
+          });
+
+          const videoEl = document.querySelector(`#${scannerContainerId} video`) as HTMLVideoElement | null;
+          if (videoEl) {
+            const detectInterval = setInterval(async () => {
+              if (!html5QrcodeRef.current?.isScanning || videoEl.paused || videoEl.ended) {
+                clearInterval(detectInterval);
+                return;
+              }
+              try {
+                const barcodes = await barcodeDetector.detect(videoEl);
+                if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                  clearInterval(detectInterval);
+                  onScanSuccess(barcodes[0].rawValue);
+                }
+              } catch {
+                // ignorar errores frame a frame
+              }
+            }, 100);
+          }
+        } catch {
+          // fallback suave a html5qrcode
+        }
+      }
 
       // Comprobar soporte de linterna/torch
       try {
@@ -251,20 +288,27 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
         {/* Visor de Cámara */}
         <div className="relative bg-black flex items-center justify-center min-h-[280px] sm:min-h-[340px] overflow-hidden">
-          <div id={scannerContainerId} className="w-full h-full [&>video]:w-full [&>video]:h-full [&>video]:object-cover" />
+          <div id={scannerContainerId} className="w-full h-full [&>video]:w-full [&>video]:h-full [&>video]:object-cover [&_#barcode-scanner-viewport__scan_region_border]:!border-none [&_#barcode-scanner-viewport__shaded_region]:!hidden" />
 
           {/* Guía visual del lector */}
           {isScanning && !errorMsg && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="relative w-[82%] h-[160px] border-2 border-indigo-500/60 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
-                {/* Esquinas destacadas */}
-                <div className="absolute -top-0.5 -left-0.5 w-5 h-5 border-t-4 border-l-4 border-indigo-400 rounded-tl-lg" />
-                <div className="absolute -top-0.5 -right-0.5 w-5 h-5 border-t-4 border-r-4 border-indigo-400 rounded-tr-lg" />
-                <div className="absolute -bottom-0.5 -left-0.5 w-5 h-5 border-b-4 border-l-4 border-indigo-400 rounded-bl-lg" />
-                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 border-b-4 border-r-4 border-indigo-400 rounded-br-lg" />
+              <div className="relative w-[85%] h-[170px] border-2 border-red-500/70 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] overflow-hidden">
+                {/* Esquinas destacadas en rojo brillante */}
+                <div className="absolute -top-0.5 -left-0.5 w-6 h-6 border-t-4 border-l-4 border-red-500 rounded-tl-lg shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                <div className="absolute -top-0.5 -right-0.5 w-6 h-6 border-t-4 border-r-4 border-red-500 rounded-tr-lg shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                <div className="absolute -bottom-0.5 -left-0.5 w-6 h-6 border-b-4 border-l-4 border-red-500 rounded-bl-lg shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 border-b-4 border-r-4 border-red-500 rounded-br-lg shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
 
-                {/* Línea de escaneo animada */}
-                <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent absolute top-1/2 -translate-y-1/2 animate-pulse shadow-[0_0_8px_#f43f5e]" />
+                {/* Línea roja láser intensa con barrido vertical continuo */}
+                <div className="w-full h-1 bg-red-600 absolute left-0 shadow-[0_0_15px_#ef4444,0_0_30px_#ef4444] animate-[scan_2s_infinite_linear]" />
+
+                {/* Texto indicativo */}
+                <div className="absolute bottom-2 inset-x-0 text-center">
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest bg-red-600/80 px-2 py-0.5 rounded-full backdrop-blur-xs">
+                    Alinea el código de barras aquí
+                  </span>
+                </div>
               </div>
             </div>
           )}

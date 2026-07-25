@@ -119,12 +119,21 @@ export function ExpressScannerMobileView({
       await html5Qrcode.start(
         { facingMode: 'environment' },
         {
-          fps: 15,
+          fps: 25,
           aspectRatio: 1.7777778,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const width = Math.floor(viewfinderWidth * 0.85);
-            const height = Math.floor(Math.min(viewfinderHeight * 0.75, 120));
+            const width = Math.floor(viewfinderWidth * 0.9);
+            const height = Math.floor(Math.min(viewfinderHeight * 0.8, 140));
             return { width, height };
+          },
+          videoConstraints: {
+            facingMode: 'environment',
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+            advanced: [
+              { focusMode: 'continuous' } as MediaTrackConstraintSet,
+              { zoom: 1.2 } as MediaTrackConstraintSet,
+            ],
           },
         },
         (decodedText) => {
@@ -132,19 +141,64 @@ export function ExpressScannerMobileView({
           if (
             lastScannedRef.current &&
             lastScannedRef.current.code === decodedText &&
-            now - lastScannedRef.current.time < 1500
+            now - lastScannedRef.current.time < 1200
           ) {
             return;
           }
 
           lastScannedRef.current = { code: decodedText, time: now };
           playBeep();
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(80);
+          }
           onBarcodeScanned(decodedText);
         },
         () => {}
       );
 
       setIsCameraActive(true);
+
+      // Chrome acelerado por hardware BarcodeDetector
+      if ('BarcodeDetector' in window) {
+        try {
+          const barcodeDetector = new (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (src: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector({
+            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
+          });
+
+          const videoEl = document.querySelector(`#${viewportId} video`) as HTMLVideoElement | null;
+          if (videoEl) {
+            const detectInterval = setInterval(async () => {
+              if (!html5QrcodeRef.current?.isScanning || videoEl.paused || videoEl.ended) {
+                clearInterval(detectInterval);
+                return;
+              }
+              try {
+                const barcodes = await barcodeDetector.detect(videoEl);
+                if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                  const code = barcodes[0].rawValue;
+                  const now = Date.now();
+                  if (
+                    !lastScannedRef.current ||
+                    lastScannedRef.current.code !== code ||
+                    now - lastScannedRef.current.time >= 1200
+                  ) {
+                    lastScannedRef.current = { code, time: now };
+                    playBeep();
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      navigator.vibrate(80);
+                    }
+                    onBarcodeScanned(code);
+                  }
+                }
+              } catch {
+                // ignorar errores frame a frame
+              }
+            }, 100);
+          }
+        } catch {
+          // fallback suave
+        }
+      }
     } catch (err: unknown) {
       console.error('Error al iniciar cámara en línea:', err);
       setCameraError('Toca aquí para otorgar permiso a la cámara.');
@@ -191,24 +245,37 @@ export function ExpressScannerMobileView({
       <div className="relative shrink-0 w-full bg-slate-950 dark:bg-black rounded-2xl overflow-hidden shadow-md border border-slate-900 aspect-video max-h-40 flex items-center justify-center">
         <div
           id={viewportId}
-          className="w-full h-full object-cover overflow-hidden flex items-center justify-center [&_video]:object-cover [&_video]:w-full [&_video]:h-full [&_video]:my-auto [&_div]:my-auto [&_#express-inline-viewport__scan_region]:my-auto [&_#express-inline-viewport__scan_region]:mx-auto"
+          className="w-full h-full object-cover overflow-hidden flex items-center justify-center [&_video]:object-cover [&_video]:w-full [&_video]:h-full [&_video]:my-auto [&_div]:my-auto [&_#express-inline-viewport__scan_region]:my-auto [&_#express-inline-viewport__scan_region]:mx-auto [&_#express-inline-viewport__scan_region_border]:!border-none [&_#express-inline-viewport__shaded_region]:!hidden"
         />
 
         {isCameraActive && (
-          <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-            <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-emerald-400 bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full border border-emerald-500/40 animate-pulse">
-              <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full"></span> Escaneando
-            </span>
-            <Button
-              type="button"
-              size="icon"
-              className="h-6 w-6 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer"
-              onClick={stopCamera}
-              title="Pausar cámara"
-            >
-              <CameraOff className="h-3 w-3" />
-            </Button>
-          </div>
+          <>
+            <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+              <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-emerald-400 bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full border border-emerald-500/40 animate-pulse">
+                <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full"></span> Escaneando
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                className="h-6 w-6 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer"
+                onClick={stopCamera}
+                title="Pausar cámara"
+              >
+                <CameraOff className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* Guía visual del lector con línea roja láser */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="relative w-[85%] h-[80px] border-2 border-red-500/70 rounded-xl overflow-hidden">
+                <div className="absolute -top-0.5 -left-0.5 w-4 h-4 border-t-3 border-l-3 border-red-500 rounded-tl-sm shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                <div className="absolute -top-0.5 -right-0.5 w-4 h-4 border-t-3 border-r-3 border-red-500 rounded-tr-sm shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                <div className="absolute -bottom-0.5 -left-0.5 w-4 h-4 border-b-3 border-l-3 border-red-500 rounded-bl-sm shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 border-b-3 border-r-3 border-red-500 rounded-br-sm shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                <div className="w-full h-1 bg-red-600 absolute left-0 shadow-[0_0_12px_#ef4444,0_0_24px_#ef4444] animate-[scan_1.5s_infinite_linear]" />
+              </div>
+            </div>
+          </>
         )}
 
         {(!isCameraActive || cameraError) && (
