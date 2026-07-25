@@ -193,6 +193,10 @@ export function useDashboard() {
       Promise.resolve().then(() => {
         fetchDashboardData();
       });
+      const interval = setInterval(() => {
+        fetchDashboardData();
+      }, 30000);
+      return () => clearInterval(interval);
     }
   }, [role, fetchDashboardData]);
 
@@ -244,30 +248,31 @@ export function useDashboard() {
 
   const weeklySalesData = useMemo(() => {
     const daysName = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const now = new Date();
+    
+    // Crear los 7 días (del más antiguo al día de hoy)
     const data = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - i));
       return {
+        dateStr: `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`,
         day: daysName[d.getDay()],
         amount: 0,
       };
     });
 
+    const dayMap = new Map<string, number>();
+    data.forEach((d, idx) => dayMap.set(d.dateStr, idx));
+
     sales.forEach((sale) => {
       const saleDate = new Date(sale.createdAt);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      const diffTime = today.getTime() - saleDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays >= 0 && diffDays < 7) {
-        const dayIndex = 6 - diffDays;
-        if (data[dayIndex]) {
-          data[dayIndex].amount += sale.total;
-        }
+      const key = `${saleDate.getFullYear()}-${saleDate.getMonth() + 1}-${saleDate.getDate()}`;
+      if (dayMap.has(key)) {
+        const idx = dayMap.get(key)!;
+        data[idx].amount += sale.total;
       }
     });
 
-    return data;
+    return data.map(({ day, amount }) => ({ day, amount }));
   }, [sales]);
 
   const todayEarnings = stats?.earningsToday || 0;

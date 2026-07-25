@@ -257,14 +257,16 @@ export class SalesService {
 
   // Obtener estadísticas rápidas (Dashboard / Analytics)
   async getDashboardStats() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Ventas totales del día de hoy en hora local
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    // Ventas totales de hoy
     const todaySales = await this.prisma.sale.findMany({
       where: {
         createdAt: {
-          gte: today,
+          gte: startOfDay,
+          lte: endOfDay,
         },
       },
     });
@@ -320,13 +322,10 @@ export class SalesService {
     if (startDate || endDate) {
       whereClause.createdAt = {};
       if (startDate) {
-        // Asegurar que abarque desde el inicio del día local
-        const start = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00`);
-        whereClause.createdAt.gte = start;
+        whereClause.createdAt.gte = new Date(startDate);
       }
       if (endDate) {
-        const end = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`);
-        whereClause.createdAt.lte = end;
+        whereClause.createdAt.lte = new Date(endDate);
       }
     }
 

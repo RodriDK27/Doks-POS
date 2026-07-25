@@ -18,41 +18,31 @@ export function useReports() {
   });
 
   const getDatesForPeriod = (selectedPeriod: PeriodFilter) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     let start: Date;
-    const end = new Date();
+    const end: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     switch (selectedPeriod) {
       case 'TODAY':
-        start = today;
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
         break;
       case 'WEEK':
-        start = new Date(today);
-        start.setDate(today.getDate() - 7);
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
         break;
       case 'MONTH':
-        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
         break;
       case 'CUSTOM':
         return {
-          startDate: dates.startDate || undefined,
-          endDate: dates.endDate || undefined,
+          startDate: dates.startDate ? new Date(`${dates.startDate}T00:00:00`).toISOString() : undefined,
+          endDate: dates.endDate ? new Date(`${dates.endDate}T23:59:59.999`).toISOString() : undefined,
         };
     }
 
-    const formatDate = (d: Date, endOfDay = false) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
-      return endOfDay ? `${dateStr}T23:59:59` : `${dateStr}T00:00:00`;
-    };
-
     return {
-      startDate: formatDate(start, false),
-      endDate: formatDate(end, true),
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
     };
   };
 
@@ -78,6 +68,10 @@ export function useReports() {
       Promise.resolve().then(() => {
         loadReport(period);
       });
+      const interval = setInterval(() => {
+        loadReport(period);
+      }, 30000);
+      return () => clearInterval(interval);
     }
   }, [period]);
 
