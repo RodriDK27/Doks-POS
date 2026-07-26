@@ -15,16 +15,22 @@ export function exportToCSV(products: Product[], filename = 'inventario.csv') {
     'Stock Minimo',
   ];
 
-  const rows = products.map((p) => [
-    escapeCSV(p.name),
-    escapeCSV(p.barcode ?? ''),
-    escapeCSV(p.category ?? ''),
-    p.purchasePrice.toString(),
-    p.sellPrice.toString(),
-    (p.wholesalePrice ?? '').toString(),
-    p.stock.toString(),
-    p.minStock.toString(),
-  ]);
+  const rows = products.map((p) => {
+    // Formatear código de barras con prefijo tabulador para forzar formato de texto en Excel y evitar 7.58E+11
+    const rawBarcode = p.barcode ?? '';
+    const formattedBarcode = rawBarcode ? `\t${rawBarcode}` : '';
+
+    return [
+      escapeCSV(p.name),
+      escapeCSV(formattedBarcode),
+      escapeCSV(p.category ?? ''),
+      p.purchasePrice.toString(),
+      p.sellPrice.toString(),
+      (p.wholesalePrice ?? '').toString(),
+      p.stock.toString(),
+      p.minStock.toString(),
+    ];
+  });
 
   const csvContent = [headers, ...rows]
     .map((row) => row.join(','))
