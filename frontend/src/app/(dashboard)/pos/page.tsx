@@ -88,6 +88,7 @@ export default function POSPage() {
     selectedBulkProduct,
     handleConfirmBulkAdd,
     genericPrice,
+    setGenericPrice,
     genericName,
     setGenericName,
     paymentMethod,
@@ -465,6 +466,7 @@ export default function POSPage() {
         open={isGenericOpen}
         onOpenChange={setIsGenericOpen}
         genericPrice={genericPrice}
+        setGenericPrice={setGenericPrice}
         genericName={genericName}
         setGenericName={setGenericName}
         onAdd={handleAddGeneric}

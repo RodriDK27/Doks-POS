@@ -552,6 +552,47 @@ export function usePOS() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cartItems, paymentMethod, posTab, amountPaid, selectedCustomerId, canCheckout, handleCheckout, isGenericOpen, isShortcutsHelpOpen, isSuspendModalOpen, isSuspendedOpen]);
 
+  // Detector global para escáneres de códigos de barras físicos (USB / Bluetooth)
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ignorar si el usuario está escribiendo deliberadamente en un input/textarea/select que NO sea el buscador
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+        const isSearchInput = searchInputRef.current && target === searchInputRef.current;
+        if (isInput && !isSearchInput) {
+          return;
+        }
+      }
+
+      const currentTime = Date.now();
+      // Los escáneres físicos envían caracteres con intervalos muy cortos (< 50ms)
+      if (currentTime - lastKeyTime > 60) {
+        buffer = '';
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (buffer.length >= 3) {
+          handleBarcodeScanned(buffer);
+          buffer = '';
+          // Si el foco estaba en el buscador, limpiamos su valor visual
+          if (searchInputRef.current) {
+            setSearchQuery('');
+          }
+        }
+      } else if (e.key.length === 1) {
+        buffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [handleBarcodeScanned, setSearchQuery]);
+
   // Autofoco automático al cambiar a la vista de pago
   useEffect(() => {
     if (posTab === 'PAYMENT') {
@@ -622,6 +663,7 @@ export function usePOS() {
     selectedBulkProduct,
     handleConfirmBulkAdd,
     genericPrice,
+    setGenericPrice,
     genericName,
     setGenericName,
     paymentMethod,

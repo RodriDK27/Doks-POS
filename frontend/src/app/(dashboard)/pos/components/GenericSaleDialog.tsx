@@ -8,6 +8,7 @@ interface GenericSaleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   genericPrice: string;
+  setGenericPrice?: (price: string) => void;
   genericName: string;
   setGenericName: (name: string) => void;
   onAdd: () => void;
@@ -18,6 +19,7 @@ export function GenericSaleDialog({
   open,
   onOpenChange,
   genericPrice,
+  setGenericPrice,
   genericName,
   setGenericName,
   onAdd,
@@ -52,12 +54,8 @@ export function GenericSaleDialog({
                 className="h-11 text-right font-black text-lg text-indigo-650 dark:text-indigo-400 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-950 focus-visible:ring-indigo-500"
                 value={genericPrice}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === '' || !isNaN(parseFloat(val))) {
-                    handleKeypadPress('C');
-                    if (val !== '') {
-                      val.split('').forEach(char => handleKeypadPress(char));
-                    }
+                  if (setGenericPrice) {
+                    setGenericPrice(e.target.value);
                   }
                 }}
                 onFocus={(e) => {
