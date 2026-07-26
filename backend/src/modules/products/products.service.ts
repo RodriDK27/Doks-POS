@@ -157,28 +157,101 @@ export class ProductsService {
     return result.map((r: { category: string | null }) => r.category).filter(Boolean);
   }
 
-  // Importación masiva de productos desde CSV
-  async importProducts(rows: CreateProductDto[]) {
-    const results = await Promise.allSettled(
-      rows.map((row) => this.create(row)),
-    );
+  // Crear o actualizar un solo producto durante la importación (Upsert inteligente)
+  async upsertSingleProduct(row: CreateProductDto) {
+    let existingProduct = null;
 
+    // 1. Intentar buscar por código de barras si la fila cuenta con uno
+    if (row.barcode && row.barcode.trim() !== '') {
+      existingProduct = await this.prisma.product.findUnique({
+        where: { barcode: row.barcode.trim() },
+      });
+    }
+
+    // 2. Si no se encontró por código de barras o no tiene código, buscar por nombre exacto (insensible a mayúsculas)
+    if (!existingProduct && row.name && row.name.trim() !== '') {
+      existingProduct = await this.prisma.product.findFirst({
+        where: {
+          name: {
+            equals: row.name.trim(),
+            mode: 'insensitive',
+          },
+        },
+      });
+    }
+
+    if (existingProduct) {
+      // Si el código de barras cambió a otro valor nuevo en la fila, verificar que no esté ocupado por un tercer producto
+      if (row.barcode && row.barcode.trim() !== '' && row.barcode.trim() !== existingProduct.barcode) {
+        const barcodeConflict = await this.prisma.product.findUnique({
+          where: { barcode: row.barcode.trim() },
+        });
+        if (barcodeConflict && barcodeConflict.id !== existingProduct.id) {
+          throw new BadRequestException(`El código de barras "${row.barcode}" ya pertenece a otro producto (${barcodeConflict.name}).`);
+        }
+      }
+
+      // Actualizar el producto existente
+      return this.update(existingProduct.id, {
+        name: row.name ? row.name.trim() : existingProduct.name,
+        barcode: row.barcode ? row.barcode.trim() : (existingProduct.barcode ?? undefined),
+        category: row.category !== undefined ? row.category : (existingProduct.category ?? undefined),
+        purchasePrice: row.purchasePrice !== undefined ? row.purchasePrice : existingProduct.purchasePrice,
+        sellPrice: row.sellPrice !== undefined ? row.sellPrice : existingProduct.sellPrice,
+        wholesalePrice: row.wholesalePrice !== undefined ? row.wholesalePrice : (existingProduct.wholesalePrice ?? undefined),
+        stock: row.stock !== undefined ? row.stock : existingProduct.stock,
+        minStock: row.minStock !== undefined ? row.minStock : existingProduct.minStock,
+        unitType: row.unitType !== undefined ? row.unitType : existingProduct.unitType,
+      });
+    }
+
+    // Si no existe, crear producto nuevo
+    return this.create({
+      ...row,
+      name: row.name.trim(),
+      barcode: row.barcode ? row.barcode.trim() : undefined,
+    });
+  }
+
+  // Importación masiva de productos desde CSV (con soporte de Upsert / Actualización)
+  async importProducts(rows: CreateProductDto[]) {
     const created: string[] = [];
+    const updated: string[] = [];
     const skipped: { name: string; reason: string }[] = [];
 
-    results.forEach((result, index) => {
-      const name = rows[index]?.name ?? `Fila ${index + 1}`;
-      if (result.status === 'fulfilled') {
-        created.push(name);
-      } else {
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index];
+      const name = row?.name ?? `Fila ${index + 1}`;
+      try {
+        // Verificar si ya existía antes de hacer el upsert para saber si fue creado o actualizado
+        let wasExisting = false;
+        if (row.barcode && row.barcode.trim() !== '') {
+          const p = await this.prisma.product.findUnique({ where: { barcode: row.barcode.trim() } });
+          if (p) wasExisting = true;
+        }
+        if (!wasExisting && row.name && row.name.trim() !== '') {
+          const p = await this.prisma.product.findFirst({
+            where: { name: { equals: row.name.trim(), mode: 'insensitive' } },
+          });
+          if (p) wasExisting = true;
+        }
+
+        await this.upsertSingleProduct(row);
+
+        if (wasExisting) {
+          updated.push(name);
+        } else {
+          created.push(name);
+        }
+      } catch (err: any) {
         skipped.push({
           name,
-          reason: result.reason?.message ?? 'Error desconocido',
+          reason: err?.message ?? 'Error al procesar producto',
         });
       }
-    });
+    }
 
-    return { created, skipped };
+    return { created, updated, skipped };
   }
 
   // Obtener el historial de movimientos de stock de un producto

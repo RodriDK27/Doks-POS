@@ -155,7 +155,7 @@ export function useInventory() {
   const handleImportCSV = async (rows: ParsedProductRow[]) => {
     const response = await api.post('/products/import', { rows });
     mutateProducts();
-    return response.data as { created: string[]; skipped: { name: string; reason: string }[] };
+    return response.data as { created: string[]; updated?: string[]; skipped: { name: string; reason: string }[] };
   };
 
   // ─── Export CSV ──────────────────────────────────────────────────────────

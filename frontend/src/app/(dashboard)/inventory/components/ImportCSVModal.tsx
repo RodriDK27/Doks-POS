@@ -24,6 +24,7 @@ import { parseCSV, downloadCSVTemplate, ParsedProductRow } from '../utils/csvUti
 
 interface ImportResult {
   created: string[];
+  updated?: string[];
   skipped: { name: string; reason: string }[];
 }
 
@@ -101,7 +102,7 @@ export function ImportCSVModal({ open, onOpenChange, onImport }: ImportCSVModalP
             <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 space-y-1">
               <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400 text-sm">
                 <CheckCircle className="h-4 w-4" />
-                {result.created.length} producto(s) importado(s) exitosamente
+                {result.created.length} producto(s) creado(s) exitosamente
               </div>
               {result.created.length > 0 && (
                 <ul className="text-xs text-emerald-600 dark:text-emerald-500 space-y-0.5 pl-6 list-disc">
@@ -114,6 +115,23 @@ export function ImportCSVModal({ open, onOpenChange, onImport }: ImportCSVModalP
                 </ul>
               )}
             </div>
+
+            {result.updated && result.updated.length > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 space-y-1">
+                <div className="flex items-center gap-2 font-bold text-blue-700 dark:text-blue-400 text-sm">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  {result.updated.length} producto(s) actualizado(s) exitosamente
+                </div>
+                <ul className="text-xs text-blue-600 dark:text-blue-500 space-y-0.5 pl-6 list-disc">
+                  {result.updated.slice(0, 5).map((name) => (
+                    <li key={name}>{name}</li>
+                  ))}
+                  {result.updated.length > 5 && (
+                    <li>... y {result.updated.length - 5} más</li>
+                  )}
+                </ul>
+              </div>
+            )}
 
             {result.skipped.length > 0 && (
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-1">
