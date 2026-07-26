@@ -257,10 +257,11 @@ export class SalesService {
 
   // Obtener estadísticas rápidas (Dashboard / Analytics)
   async getDashboardStats() {
-    // Ventas totales del día de hoy en hora local
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    // Calcular inicio y fin del día en la zona horaria de México (America/Mexico_City / UTC-6)
+    // Evita que servidores en UTC (como Railway) reinicien el conteo del día a las 18:00 hrs de México
+    const mxDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // YYYY-MM-DD
+    const startOfDay = new Date(`${mxDateStr}T00:00:00.000-06:00`);
+    const endOfDay = new Date(`${mxDateStr}T23:59:59.999-06:00`);
 
     const todaySales = await this.prisma.sale.findMany({
       where: {

@@ -297,8 +297,8 @@ export function usePOS() {
 
       // Product must match all words of the search query
       return queryWords.every(word => {
-        // Expand query term with synonyms
-        const synonyms = SYNONYMS[word] || [];
+        // Expand query term with synonyms only if search word is longer than 2 characters
+        const synonyms = word.length > 2 ? (SYNONYMS[word] || []) : [];
         const termsToMatch = [word, ...synonyms.map(normalizeText)];
 
         return termsToMatch.some(term => {

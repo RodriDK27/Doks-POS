@@ -144,15 +144,27 @@ export function EditTab({
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Categoría</label>
+          <label className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase block mb-1">Alerta Stock Bajo</label>
           <Input
-            type="text"
-            placeholder="Ej. Abarrotes"
+            type="number"
+            placeholder="5"
             className="h-10 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200"
-            value={prodForm.category}
-            onChange={(e) => setProdForm({ ...prodForm, category: e.target.value })}
+            value={prodForm.minStock}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setProdForm({ ...prodForm, minStock: e.target.value })}
           />
         </div>
+      </div>
+
+      <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Categoría</label>
+        <Input
+          type="text"
+          placeholder="Ej. Abarrotes"
+          className="h-10 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200"
+          value={prodForm.category}
+          onChange={(e) => setProdForm({ ...prodForm, category: e.target.value })}
+        />
       </div>
 
       <Button

@@ -55,7 +55,7 @@ export function PaymentPanel({
   return (
     <div className="flex-1 flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden p-4 sm:p-6 gap-4">
       {/* Botón de Regresar / Encabezado */}
-      <div className="flex items-center justify-between shrink-0 border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="flex items-center justify-between shrink-0">
         <Button
           variant="ghost"
           className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl px-3 py-1.5 h-8"
@@ -110,11 +110,10 @@ export function PaymentPanel({
               <button
                 key={m.id}
                 type="button"
-                className={`h-11 px-2 border rounded-xl flex items-center justify-center gap-2 text-xs font-black active:scale-95 transition-all cursor-pointer ${
-                  isActive
-                    ? `border-2 ${m.activeClass} shadow-xs scale-[1.02]`
-                    : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
+                className={`h-11 px-2 border rounded-xl flex items-center justify-center gap-2 text-xs font-black active:scale-95 transition-all cursor-pointer ${isActive
+                  ? `border-2 ${m.activeClass} shadow-xs scale-[1.02]`
+                  : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
                 onClick={() => setPaymentMethod(m.id)}
               >
                 <Icon className="h-4 w-4" />
@@ -175,9 +174,8 @@ export function PaymentPanel({
               <div className="text-right space-y-1 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
                 <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Su Cambio</span>
                 <span
-                  className={`text-xl sm:text-2xl font-black block leading-none ${
-                    changeAmount > 0 ? 'text-emerald-600 dark:text-emerald-400 animate-pulse' : 'text-slate-400 dark:text-slate-600'
-                  }`}
+                  className={`text-xl sm:text-2xl font-black block leading-none ${changeAmount > 0 ? 'text-emerald-600 dark:text-emerald-400 animate-pulse' : 'text-slate-400 dark:text-slate-600'
+                    }`}
                 >
                   ${changeAmount.toFixed(2)}
                 </span>

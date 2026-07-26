@@ -191,7 +191,7 @@ export function useInventory() {
 
   // ─── Duplicar Producto ───────────────────────────────────────────────────
   const handleOpenDuplicate = (product: Product) => {
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
       window.dispatchEvent(
         new CustomEvent('open-mobile-edit-product', {
           detail: { product, isDuplicate: true },
@@ -297,7 +297,7 @@ export function useInventory() {
   };
 
   const handleOpenEdit = (product: Product) => {
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
       window.dispatchEvent(
         new CustomEvent('open-mobile-edit-product', {
           detail: { product, isDuplicate: false },
@@ -321,7 +321,7 @@ export function useInventory() {
         } else {
           setPendingRequestedId(null);
         }
-        if (window.innerWidth >= 640) {
+        if (window.innerWidth >= 1024) {
           setEditingProduct({
             id: '',
             name: detail.name,

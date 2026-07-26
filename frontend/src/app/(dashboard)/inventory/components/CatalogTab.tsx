@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy } from 'lucide-react';
+import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { Badge } from '@/components/ui/badge';
@@ -256,12 +256,12 @@ export function CatalogTab({
                         <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">{p.name}</span>
                         <div className="flex items-center gap-2 mt-1">
                           {p.barcode && (
-                            <span className="text-[9px] text-slate-450 dark:text-slate-400 font-mono flex items-center gap-0.5">
+                            <span className="text-[9px] text-slate-450 dark:text-slate-400 font-mono flex items-center gap-0.5 shrink-0">
                               <Barcode className="h-3 w-3" /> {p.barcode}
                             </span>
                           )}
                           {p.category && (
-                            <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold border-none">
+                            <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-300 font-bold border border-indigo-100/50 dark:border-indigo-900/30">
                               {p.category}
                             </Badge>
                           )}
