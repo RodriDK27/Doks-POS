@@ -206,8 +206,9 @@ export class ProductsService {
     }
 
     // Si no existe, crear producto nuevo
+    const { _errors, ...cleanRow } = row as any;
     return this.create({
-      ...row,
+      ...cleanRow,
       name: row.name.trim(),
       barcode: row.barcode ? row.barcode.trim() : undefined,
     });

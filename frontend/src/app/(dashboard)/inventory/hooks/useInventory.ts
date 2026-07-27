@@ -153,7 +153,8 @@ export function useInventory() {
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   const handleImportCSV = async (rows: ParsedProductRow[]) => {
-    const response = await api.post('/products/import', { rows });
+    const cleanRows = rows.map(({ _errors, ...rest }) => rest);
+    const response = await api.post('/products/import', { rows: cleanRows });
     mutateProducts();
     return response.data as { created: string[]; updated?: string[]; skipped: { name: string; reason: string }[] };
   };
