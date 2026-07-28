@@ -274,4 +274,14 @@ body {
 
 .pt-safe {
   padding-top: env(safe-area-inset-top, 0.5rem);
-}
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ESCALADO GLOBAL PARA TABLETS (EN PORTRAIT / VERTICAL Y HORIZONTAL)
+   ────────────────────────────────────────────────────────────────────────── */
+@media (min-width: 640px) and (max-width: 1180px) {
+  html {
+    font-size: 18px; /* Aumenta proporcionalmente textos, botones y modales en tablets */
+  }
+}
+

@@ -10,10 +10,13 @@ import { parseAxiosError } from '@/lib/errorMapper';
 import { Product, Customer } from '../types';
 
 const SYNONYMS: Record<string, string[]> = {
-  refresco: ['coca', 'fanta', 'sprite', 'sidral', 'soda', 'pepsi', 'mundet', 'boing'],
-  soda: ['coca', 'fanta', 'sprite', 'sidral', 'pepsi', 'mundet', 'boing'],
+  refresco: ['coca', 'fanta', 'sprite', 'sidral', 'soda', 'pepsi', 'mundet', 'boing', 'cocacola'],
+  soda: ['coca', 'fanta', 'sprite', 'sidral', 'pepsi', 'mundet', 'boing', 'cocacola'],
   leche: ['alpura', 'lala', 'leche', 'santa clara'],
-  sabritas: ['papas', 'chips', 'rufles', 'doritos', 'cheetos', 'fritos'],
+  sabritas: ['papas', 'chips', 'rufles', 'doritos', 'cheetos', 'fritos', 'papas fritas'],
+  chips: ['chip', 'chips', 'sabritas', 'papas'],
+  chip: ['chip', 'chips', 'sabritas', 'papas'],
+  coca: ['cocacola', 'coca-cola', 'coca cola', 'refresco'],
   pan: ['bimbo', 'tía rosa', 'concha', 'dona', 'bolillo'],
 };
 
@@ -275,7 +278,11 @@ export function usePOS() {
   };
 
   const normalizeText = (str: string) =>
-    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/['`´’"″\-_\.]/g, '')
+      .toLowerCase();
 
   const filteredCatalog = useMemo(() => {
     const rawQuery = searchQuery.trim();

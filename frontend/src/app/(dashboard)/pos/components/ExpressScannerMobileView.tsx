@@ -390,51 +390,58 @@ export function ExpressScannerMobileView({
       )}
 
       {/* CONTENEDOR PRINCIPAL: TICKET EN VIVO DE ARTÍCULOS REGISTRADOS */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-1 space-y-1 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-1 md:p-2 space-y-1.5 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
         {cartItems.length > 0 ? (
           cartItems.map((item) => (
             <div
               key={item.id}
-              className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800/60 shadow-2xs gap-2"
+              className="flex justify-between items-center p-3 md:p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800/80 shadow-2xs hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all gap-3 md:gap-4"
             >
-              <div className="min-w-0 flex-1">
-                <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs block truncate">
+              {/* Nombre del Producto + Precio Unitario al lado */}
+              <div className="min-w-0 flex-1 flex items-baseline gap-2">
+                <span className="font-extrabold text-slate-850 dark:text-slate-100 text-sm md:text-base truncate" title={item.name}>
                   {item.name}
                 </span>
-
-                <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-900 h-6.5 w-fit mt-1 select-none overflow-hidden">
-                  <button
-                    type="button"
-                    className="h-full px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                  <span className="h-full px-2 font-black text-xs flex items-center justify-center text-slate-800 dark:text-slate-100">
-                    {item.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    className="h-full px-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                </div>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-bold shrink-0">
+                  (${item.sellPrice.toFixed(2)})
+                </span>
               </div>
 
-              <div className="text-right shrink-0 flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-800 dark:text-slate-100">
+              {/* Controles de Cantidad */}
+              <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 h-9 md:h-11 select-none overflow-hidden shrink-0">
+                <button
+                  type="button"
+                  className="h-full px-2.5 md:px-3.5 text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
+                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                >
+                  <Minus className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                </button>
+                <span className="h-full px-2.5 md:px-3 font-black text-xs md:text-base flex items-center justify-center text-slate-850 dark:text-slate-100 min-w-[24px]">
+                  {item.quantity}
+                </span>
+                <button
+                  type="button"
+                  className="h-full px-2.5 md:px-3.5 text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
+                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                >
+                  <Plus className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                </button>
+              </div>
+
+              {/* Total sin etiqueta + Botón Borrar Más Grande */}
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="font-black text-emerald-600 dark:text-emerald-400 text-base md:text-2xl tracking-tight">
                   ${(item.sellPrice * item.quantity).toFixed(2)}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+
+                <button
+                  type="button"
+                  className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-rose-500 hover:text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/40 rounded-2xl cursor-pointer transition-all active:scale-90 flex items-center justify-center shrink-0 border-none bg-transparent"
                   onClick={() => removeFromCart(item.id)}
+                  title="Eliminar del ticket"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                  <Trash2 className="w-6 h-6 sm:w-6 sm:h-6 md:w-6 md:h-6 text-rose-500 stroke-[2.5]" />
+                </button>
               </div>
             </div>
           ))
@@ -446,41 +453,45 @@ export function ExpressScannerMobileView({
         )}
       </div>
 
-      {/* FOOTER TOTAL Y BOTÓN DE COBRO */}
-      <div className="shrink-0 pt-0.5 space-y-1.5">
+      {/* FOOTER TOTAL Y BOTÓN DE COBRO - Opción 1 */}
+      <div className="shrink-0 pt-1 space-y-2.5">
         {cartItems.length > 0 && (
-          <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-800/90 text-slate-800 dark:text-white p-3 rounded-xl">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1.5">
-              Descuento ($)
-            </span>
-            <Input
-              type="number"
-              min="0"
-              step="any"
-              placeholder="0.00"
-              className="w-28 h-8 rounded-lg border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-extrabold text-right text-xs focus-visible:ring-indigo-500 shadow-2xs"
-              value={discount > 0 ? discount : ''}
-              onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-            />
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between bg-white dark:bg-slate-950 p-3 md:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs gap-3">
+            {/* Input Descuento */}
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider block">
+                Descuento ($)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                placeholder="0.00"
+                className="w-full h-11 md:h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-black text-right text-sm md:text-base focus-visible:ring-indigo-500"
+                value={discount > 0 ? discount : ''}
+                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+
+            {/* Total Ticket Derecha */}
+            <div className="text-left md:text-right shrink-0 md:pl-5 md:border-l border-slate-100 dark:border-slate-800/80 pt-2 md:pt-0 border-t md:border-t-0 flex flex-col justify-center">
+              <div className="flex items-center gap-1.5 md:justify-end">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Ticket</span>
+                <span className="text-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-black px-2.5 py-0.5 rounded-md border border-indigo-200/40">
+                  {cartItemsCount} uds
+                </span>
+              </div>
+              {discount > 0 && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-bold block">
+                  Desc. -${discount.toFixed(2)}
+                </span>
+              )}
+              <span className="text-3xl md:text-4xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight leading-none pt-0.5">
+                ${currentTotal.toFixed(2)}
+              </span>
+            </div>
           </div>
         )}
-
-        <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-800/90 text-slate-800 dark:text-white p-3 rounded-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Ticket</span>
-            <span className="text-[10px] bg-slate-200 dark:bg-slate-700/80 text-indigo-700 dark:text-indigo-300 font-extrabold px-2 py-0.5 rounded-md">
-              {cartItemsCount} uds
-            </span>
-          </div>
-          <div className="text-right">
-            {discount > 0 && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold block">
-                Desc. -${discount.toFixed(2)}
-              </span>
-            )}
-            <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">${currentTotal.toFixed(2)}</span>
-          </div>
-        </div>
 
         <div className="flex items-center gap-2">
           <Button
@@ -488,21 +499,24 @@ export function ExpressScannerMobileView({
             variant="outline"
             disabled={cartItems.length === 0}
             onClick={onSuspend}
-            className="h-11 px-3.5 border-amber-300 dark:border-amber-900/60 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
-            title="Suspender Venta en Espera"
+            className="h-11 md:h-12 px-3 border-amber-300 dark:border-amber-900/60 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 font-bold text-xs rounded-xl flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
+            title="Suspender Venta"
           >
             <Pause className="h-4 w-4" />
-            <span>Pausar</span>
+            <span className="hidden sm:inline">Pausar</span>
           </Button>
 
           <Button
             type="button"
             disabled={cartItems.length === 0}
             onClick={onProceedToPayment}
-            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            className="flex-1 h-11 md:h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs md:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 uppercase tracking-wider"
           >
             <span>Cobrar</span>
-            <ArrowRight className="h-4 w-4" />
+            <span className="px-2 py-0.5 bg-emerald-700 dark:bg-emerald-900 rounded-lg text-xs font-black">
+              ${currentTotal.toFixed(2)}
+            </span>
+            <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
         </div>
       </div>
