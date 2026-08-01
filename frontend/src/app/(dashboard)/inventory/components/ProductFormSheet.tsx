@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Barcode, CirclePercent, Edit3, Sparkles } from 'lucide-react';
 import { Product } from '../types';
+import { CustomSelect } from '@/components/CustomSelect';
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre del producto es obligatorio'),
@@ -29,6 +30,7 @@ interface ProductFormSheetProps {
   onSubmit: (data: ProductFormValues) => Promise<void>;
   categories: string[];
   barcodeInputRef: React.RefObject<HTMLInputElement | null>;
+  onOpenCategoryManager?: () => void;
 }
 
 export function ProductFormSheet({
@@ -38,8 +40,9 @@ export function ProductFormSheet({
   onSubmit,
   categories,
   barcodeInputRef,
+  onOpenCategoryManager,
 }: ProductFormSheetProps) {
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
@@ -148,19 +151,27 @@ export function ProductFormSheet({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Categoría</label>
-                  <Input
-                    type="text"
-                    placeholder="Bebidas..."
-                    className="focus-visible:ring-indigo-500 h-10 text-xs font-bold"
-                    {...register('category')}
-                    list="category-suggestions"
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Categoría</label>
+                    {onOpenCategoryManager && (
+                      <button
+                        type="button"
+                        onClick={onOpenCategoryManager}
+                        className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                      >
+                        + Nueva
+                      </button>
+                    )}
+                  </div>
+                  <CustomSelect
+                    value={watch('category') || ''}
+                    onChange={(val) => setValue('category', val)}
+                    placeholder="-- Seleccionar categoría --"
+                    options={[
+                      { value: '', label: '-- Seleccionar categoría --' },
+                      ...categories.map((c) => ({ value: c, label: c })),
+                    ]}
                   />
-                  <datalist id="category-suggestions">
-                    {categories.map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
                   {errors.category && (
                     <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.category.message}</span>
                   )}

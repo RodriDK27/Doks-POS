@@ -603,6 +603,7 @@ export function MobileInventoryScannerView({
               setProdForm={setProdForm}
               isSubmitting={isSubmitting}
               onSaveProductForm={handleSaveProductForm}
+              categories={categories}
             />
           )}
 

@@ -5,6 +5,7 @@ import { Save, Package, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Product } from '../../types';
+import { CustomSelect } from '@/components/CustomSelect';
 
 interface EditTabProps {
   selectedProduct: Product | null;
@@ -30,6 +31,7 @@ interface EditTabProps {
   }>>;
   isSubmitting: boolean;
   onSaveProductForm: (e: React.FormEvent) => void;
+  categories?: string[];
 }
 
 export function EditTab({
@@ -38,6 +40,7 @@ export function EditTab({
   setProdForm,
   isSubmitting,
   onSaveProductForm,
+  categories = [],
 }: EditTabProps) {
   return (
     <form onSubmit={onSaveProductForm} className="space-y-3 animate-in fade-in duration-150 py-1">
@@ -158,12 +161,14 @@ export function EditTab({
 
       <div>
         <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Categoría</label>
-        <Input
-          type="text"
-          placeholder="Ej. Abarrotes"
-          className="h-10 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200"
+        <CustomSelect
           value={prodForm.category}
-          onChange={(e) => setProdForm({ ...prodForm, category: e.target.value })}
+          onChange={(val) => setProdForm({ ...prodForm, category: val })}
+          placeholder="-- Seleccionar categoría --"
+          options={[
+            { value: '', label: '-- Seleccionar categoría --' },
+            ...categories.map((c) => ({ value: c, label: c })),
+          ]}
         />
       </div>
 

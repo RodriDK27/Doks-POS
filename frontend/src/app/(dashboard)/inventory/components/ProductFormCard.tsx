@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import { Product } from '../types';
+import { CustomSelect } from '@/components/CustomSelect';
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre del producto es obligatorio'),
@@ -28,6 +29,7 @@ interface ProductFormCardProps {
   categories: string[];
   barcodeInputRef: React.RefObject<HTMLInputElement | null>;
   onCancelEdit: () => void;
+  onOpenCategoryManager?: () => void;
 }
 
 export function ProductFormCard({
@@ -36,6 +38,7 @@ export function ProductFormCard({
   categories,
   barcodeInputRef,
   onCancelEdit,
+  onOpenCategoryManager,
 }: ProductFormCardProps) {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
@@ -172,19 +175,27 @@ export function ProductFormCard({
           </div>
 
           <div className="space-y-1">
-            <label className="text-[9px] font-bold text-slate-400 uppercase">Categoría</label>
-            <Input
-              type="text"
-              placeholder="Bebidas..."
-              className="focus-visible:ring-indigo-500 h-10 text-xs font-bold"
-              {...register('category')}
-              list="category-suggestions"
+            <div className="flex items-center justify-between">
+              <label className="text-[9px] font-bold text-slate-400 uppercase">Categoría</label>
+              {onOpenCategoryManager && (
+                <button
+                  type="button"
+                  onClick={onOpenCategoryManager}
+                  className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                >
+                  + Nueva
+                </button>
+              )}
+            </div>
+            <CustomSelect
+              value={watch('category') || ''}
+              onChange={(val) => setValue('category', val)}
+              placeholder="-- Seleccionar categoría --"
+              options={[
+                { value: '', label: '-- Seleccionar categoría --' },
+                ...categories.map((c) => ({ value: c, label: c })),
+              ]}
             />
-            <datalist id="category-suggestions">
-              {categories.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
             {errors.category && (
               <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.category.message}</span>
             )}

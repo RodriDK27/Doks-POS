@@ -14,6 +14,17 @@ datasource db {
 // MODELOS DEL DOMINIO
 // ----------------------------------------------------
 
+/// Representa una categoría de productos
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique // Nombre de la categoría (ej. Bebidas, Abarrotes)
+  description String?  // Descripción opcional
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
 /// Representa un producto en el inventario
 model Product {
   id             String     @id @default(uuid())
@@ -121,6 +132,7 @@ model CashRegister {
   notes          String?           // Observaciones (ej. "Faltaron $10 por cambio")
   sales          Sale[]
   transactions   CashTransaction[]
+  vaultTransactions MainVaultTransaction[]
 }
 
 /// Registra entradas o salidas de efectivo manuales de la caja (ej. pagar a proveedor o retirar ganancias)
@@ -178,10 +190,12 @@ model Purchase {
   supplier       Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   total          Float          // Monto total de la compra
   notes          String?        // Observaciones (ej. "Factura #8821")
-  payFromRegister Boolean       @default(false) // Si se pagó con dinero de caja chica
+  payFromRegister Boolean       @default(false) // Deprecado / compatibilidad: Si se pagó con dinero de caja chica
+  paymentSource  String         @default("CAJA_CHICA") // "CAJA_CHICA" | "CAJA_GRANDE" | "CREDITO"
   cashRegisterId String?        // Caja de la que salió el dinero (si aplica)
   createdAt      DateTime       @default(now())
   items          PurchaseItem[]
+  vaultTransactions MainVaultTransaction[]
 
   @@index([supplierId])
 }
@@ -199,6 +213,34 @@ model PurchaseItem {
 
   @@index([purchaseId])
   @@index([productId])
+}
+
+/// Representa la Caja Grande (Bóveda Principal / Tesorería del negocio)
+model MainVault {
+  id        String   @id @default("MAIN_VAULT")
+  balance   Float    @default(0) // Saldo actual acumulado en Caja Grande
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+/// Historial de transacciones y movimientos de Caja Grande
+model MainVaultTransaction {
+  id             String        @id @default(uuid())
+  type           String        // DEPOSITO_CORTE | EGRESO_PROVEEDOR | RETIRO_UTILIDAD | GASTO_OPERATIVO | ENTRADA_MANUAL | AJUSTE_SALDO
+  amount         Float         // Monto (Positivo para entradas, Negativo para salidas)
+  balanceAfter   Float         // Saldo resultante en Caja Grande tras el movimiento
+  description    String        // Concepto u observaciones
+  cashRegisterId String?       // Referencia opcional al cierre de caja chica
+  cashRegister   CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
+  purchaseId     String?       // Referencia opcional a la compra/proveedor
+  purchase       Purchase?     @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  createdByName  String?       // Nombre del usuario/administrador que ejecutó la transacción
+  createdAt      DateTime      @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([cashRegisterId])
+  @@index([purchaseId])
 }
 
 /// Registra cada cambio de stock en el inventario (entrada, salida o ajuste manual)

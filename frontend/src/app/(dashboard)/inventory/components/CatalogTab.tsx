@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy, AlertTriangle, Layers } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,7 @@ interface CatalogTabProps {
   handleOpenDuplicate: (product: Product) => void;
   handleOpenEdit: (product: Product) => void;
   handleOpenDelete: (product: Product) => void;
+  onOpenCategoryManager?: () => void;
 }
 
 export function CatalogTab({
@@ -69,6 +70,7 @@ export function CatalogTab({
   handleOpenDuplicate,
   handleOpenEdit,
   handleOpenDelete,
+  onOpenCategoryManager,
 }: CatalogTabProps) {
   const { role } = useAuthStore();
   const [productsPage, setProductsPage] = React.useState(1);
@@ -159,6 +161,14 @@ export function CatalogTab({
           </span>
           
           <div className="flex items-center gap-2">
+            {(role === 'ADMIN' || role === 'GERENTE') && onOpenCategoryManager && (
+              <Button
+                className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-indigo-650 dark:text-indigo-400 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
+                onClick={onOpenCategoryManager}
+              >
+                <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Categorías
+              </Button>
+            )}
             {(role === 'ADMIN' || role === 'GERENTE') && (
               <Button
                 className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"

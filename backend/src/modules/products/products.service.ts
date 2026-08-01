@@ -19,6 +19,15 @@ export class ProductsService {
       }
     }
 
+    if (createProductDto.category && createProductDto.category.trim()) {
+      const catName = createProductDto.category.trim();
+      await this.prisma.category.upsert({
+        where: { name: catName },
+        update: {},
+        create: { name: catName, description: 'Categoría registrada automáticamente desde producto' },
+      }).catch(() => {});
+    }
+
     const product = await this.prisma.product.create({
       data: createProductDto,
     });
@@ -96,6 +105,15 @@ export class ProductsService {
       }
     }
 
+    if (updateProductDto.category && updateProductDto.category.trim()) {
+      const catName = updateProductDto.category.trim();
+      await this.prisma.category.upsert({
+        where: { name: catName },
+        update: {},
+        create: { name: catName, description: 'Categoría registrada automáticamente desde producto' },
+      }).catch(() => {});
+    }
+
     const updated = await this.prisma.product.update({
       where: { id },
       data: updateProductDto,
@@ -148,13 +166,24 @@ export class ProductsService {
     });
   }
 
-  // Obtener categorías únicas de productos
+  // Obtener categorías únicas registradas y de productos
   async getCategories() {
-    const result = await this.prisma.product.findMany({
+    const categoriesFromDb = await this.prisma.category.findMany({
+      select: { name: true },
+      orderBy: { name: 'asc' },
+    });
+    const productCategories = await this.prisma.product.findMany({
       select: { category: true },
       distinct: ['category'],
     });
-    return result.map((r: { category: string | null }) => r.category).filter(Boolean);
+
+    const categorySet = new Set<string>();
+    categoriesFromDb.forEach((c) => categorySet.add(c.name));
+    productCategories.forEach((p) => {
+      if (p.category && p.category.trim()) categorySet.add(p.category.trim());
+    });
+
+    return Array.from(categorySet).sort((a, b) => a.localeCompare(b));
   }
 
   // Crear o actualizar un solo producto durante la importación (Upsert inteligente)

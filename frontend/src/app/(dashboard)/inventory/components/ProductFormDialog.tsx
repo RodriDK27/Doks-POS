@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Product } from '../types';
 import { cn } from '@/lib/utils';
+import { CustomSelect } from '@/components/CustomSelect';
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre del producto es obligatorio'),
@@ -29,6 +30,7 @@ interface ProductFormDialogProps {
   onSubmit: (data: ProductFormValues) => Promise<void>;
   categories: string[];
   barcodeInputRef: React.RefObject<HTMLInputElement | null>;
+  onOpenCategoryManager?: () => void;
 }
 
 export function ProductFormDialog({
@@ -38,6 +40,7 @@ export function ProductFormDialog({
   onSubmit,
   categories,
   barcodeInputRef,
+  onOpenCategoryManager,
 }: ProductFormDialogProps) {
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -69,6 +72,7 @@ export function ProductFormDialog({
   }, [open, editingProduct, reset]);
 
   const unitType = watch('unitType');
+  const selectedCategory = watch('category') || '';
 
   const onFormSubmit = async (values: ProductFormValues) => {
     await onSubmit(values);
@@ -127,21 +131,29 @@ export function ProductFormDialog({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <Layers className="h-3 w-3" /> Categoría
-              </label>
-              <Input
-                type="text"
-                placeholder="Bebidas, Abarrotes..."
-                className="focus-visible:ring-indigo-500 h-10 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
-                {...register('category')}
-                list="category-suggestions"
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Layers className="h-3 w-3" /> Categoría
+                </label>
+                {onOpenCategoryManager && (
+                  <button
+                    type="button"
+                    onClick={onOpenCategoryManager}
+                    className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                  >
+                    + Nueva
+                  </button>
+                )}
+              </div>
+              <CustomSelect
+                value={selectedCategory}
+                onChange={(val) => setValue('category', val)}
+                placeholder="-- Seleccionar categoría --"
+                options={[
+                  { value: '', label: '-- Seleccionar categoría --' },
+                  ...categories.map((c) => ({ value: c, label: c })),
+                ]}
               />
-              <datalist id="category-suggestions">
-                {categories.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
             </div>
           </div>
 
