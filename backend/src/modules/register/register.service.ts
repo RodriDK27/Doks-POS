@@ -3,11 +3,15 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { OpenRegisterDto } from './dto/open-register.dto';
 import { CloseRegisterDto } from './dto/close-register.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { VaultService } from '../vault/vault.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class RegisterService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vaultService: VaultService,
+  ) {}
 
   // Abrir una sesión de caja
   async open(dto: OpenRegisterDto) {
@@ -54,7 +58,7 @@ export class RegisterService {
       throw new BadRequestException('No hay ninguna sesión de caja abierta para cerrar.');
     }
 
-    return this.prisma.cashRegister.update({
+    const closedRegister = await this.prisma.cashRegister.update({
       where: { id: activeRegister.id },
       data: {
         closedAt: new Date(),
@@ -63,6 +67,21 @@ export class RegisterService {
         notes: dto.notes,
       },
     });
+
+    // Calcular el dinero que se traslada automáticamente a la Caja Grande
+    const nextInitialBalance = dto.nextInitialBalance ?? 500;
+    const surplus = dto.actualBalance - nextInitialBalance;
+
+    if (surplus > 0) {
+      await this.vaultService.depositFromRegisterClosure(
+        closedRegister.id,
+        surplus,
+        `Corte de caja de ${activeRegister.openedBy} (Contado: $${dto.actualBalance.toFixed(2)}, Dejado en caja: $${nextInitialBalance.toFixed(2)})`,
+        activeRegister.openedBy,
+      );
+    }
+
+    return closedRegister;
   }
 
   // Registrar un ingreso o egreso de efectivo manual

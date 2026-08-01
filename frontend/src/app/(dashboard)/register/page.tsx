@@ -46,6 +46,8 @@ export default function RegisterPage() {
     setCountedCash,
     closeNotes,
     setCloseNotes,
+    nextInitialBalance,
+    setNextInitialBalance,
     billCounts,
     setBillCounts,
     calculatedSum,
@@ -621,6 +623,8 @@ export default function RegisterPage() {
           setCountedCash={setCountedCash}
           closeNotes={closeNotes}
           setCloseNotes={setCloseNotes}
+          nextInitialBalance={nextInitialBalance}
+          setNextInitialBalance={setNextInitialBalance}
           billCounts={billCounts}
           setBillCounts={setBillCounts}
           calculatedSum={calculatedSum}

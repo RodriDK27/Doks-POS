@@ -86,7 +86,8 @@ export function useInventory() {
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
   const [selectedSupplierForPurchase, setSelectedSupplierForPurchase] = useState<Supplier | null>(null);
   const [purchaseNotes, setPurchaseNotes] = useState('');
-  const [payFromRegister, setPayFromRegister] = useState(true);
+  const [payFromRegister, setPayFromRegister] = useState(false);
+  const [paymentSource, setPaymentSource] = useState<'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO'>('CAJA_GRANDE');
   const [addedPurchaseItems, setAddedPurchaseItems] = useState<Array<{
     productId: string;
     productName: string;
@@ -585,7 +586,8 @@ export function useInventory() {
     const payload = {
       supplierId: selectedSupplierForPurchase.id,
       notes: purchaseNotes.trim() || undefined,
-      payFromRegister,
+      payFromRegister: paymentSource === 'CAJA_CHICA',
+      paymentSource,
       items: addedPurchaseItems.map(i => ({
         productId: i.productId,
         costPrice: i.costPrice,
@@ -596,8 +598,11 @@ export function useInventory() {
     try {
       setIsSubmittingPurchase(true);
       await api.post('/purchases', payload);
-      toast.success('Compra registrada. Stock de inventario e historial de caja actualizados.');
+      toast.success('Compra registrada correctamente.');
       setIsPurchaseOpen(false);
+      mutate('/vault');
+      mutate('/vault/transactions');
+      mutate('/vault/profit-report');
       fetchInventory();
       fetchSuppliersData();
     } catch (error) {
@@ -646,6 +651,8 @@ export function useInventory() {
     setPurchaseNotes,
     payFromRegister,
     setPayFromRegister,
+    paymentSource,
+    setPaymentSource,
     addedPurchaseItems,
     newPurchaseItem,
     setNewPurchaseItem,

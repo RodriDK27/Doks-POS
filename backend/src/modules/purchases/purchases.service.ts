@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { RegisterService } from '../register/register.service';
+import { VaultService } from '../vault/vault.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class PurchasesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly registerService: RegisterService,
+    private readonly vaultService: VaultService,
   ) {}
 
   async create(dto: CreatePurchaseDto) {
@@ -20,12 +22,14 @@ export class PurchasesService {
       throw new NotFoundException(`El proveedor con ID ${dto.supplierId} no existe.`);
     }
 
-    // 2. Si se paga desde caja, verificar turno activo
+    const source = dto.paymentSource || (dto.payFromRegister ? 'CAJA_CHICA' : 'CREDITO');
+
+    // 2. Si se paga desde caja chica, verificar turno activo
     let activeRegister: any = null;
-    if (dto.payFromRegister) {
+    if (source === 'CAJA_CHICA') {
       activeRegister = await this.registerService.getActive();
       if (!activeRegister) {
-        throw new BadRequestException('No se puede pagar desde caja porque no hay una sesión de caja abierta activa.');
+        throw new BadRequestException('No se puede pagar desde caja chica porque no hay una sesión abierta.');
       }
     }
 
@@ -46,15 +50,26 @@ export class PurchasesService {
       total += item.costPrice * item.quantity;
     }
 
-    // 4. Iniciar transacción en Prisma
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // 4. Si se paga desde Caja Grande, verificar que haya saldo suficiente
+    if (source === 'CAJA_GRANDE') {
+      const { vault } = await this.vaultService.getVaultState();
+      if (vault.balance < total) {
+        throw new BadRequestException(
+          `Saldo insuficiente en Caja Grande ($${vault.balance.toFixed(2)}) para pagar la compra ($${total.toFixed(2)}).`
+        );
+      }
+    }
+
+    // 5. Iniciar transacción en Prisma
+    const createdPurchase = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // A. Crear la cabecera de la compra
       const purchase = await tx.purchase.create({
         data: {
           supplierId: dto.supplierId,
           total,
           notes: dto.notes || null,
-          payFromRegister: !!dto.payFromRegister,
+          payFromRegister: source === 'CAJA_CHICA',
+          paymentSource: source,
           cashRegisterId: activeRegister ? activeRegister.id : null,
         },
       });
@@ -96,7 +111,7 @@ export class PurchasesService {
       }
 
       // C. Si se pagó con caja chica, restar del cajón y crear un egreso
-      if (dto.payFromRegister && activeRegister) {
+      if (source === 'CAJA_CHICA' && activeRegister) {
         const register = await tx.cashRegister.findUnique({ where: { id: activeRegister.id } });
         if (!register) {
           throw new NotFoundException(`La caja activa no existe.`);
@@ -133,6 +148,16 @@ export class PurchasesService {
         },
       });
     });
+
+    if (source === 'CAJA_GRANDE') {
+      await this.vaultService.deductForSupplierPayment(
+        createdPurchase!.id,
+        total,
+        `Pago a proveedor: ${supplier.name}`,
+      );
+    }
+
+    return createdPurchase;
   }
 
   // Listar todas las compras

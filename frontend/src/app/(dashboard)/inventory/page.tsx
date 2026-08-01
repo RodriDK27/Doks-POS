@@ -31,6 +31,7 @@ import { RequestedProductsTab } from './components/RequestedProductsTab';
 import { WasteModal } from './components/WasteModal';
 import { WasteReportTab } from './components/WasteReportTab';
 import { CatalogTab } from './components/CatalogTab';
+import { CategoryManagementModal } from './components/CategoryManagementModal';
 import { SuppliersTab } from './components/SuppliersTab';
 import { AnalyticsTab } from './components/AnalyticsTab';
 import { SupplierCalendarCard } from './components/SupplierCalendarCard';
@@ -50,6 +51,7 @@ const PurchaseDetailsDialog = dynamic(() => import('./components/PurchaseDetails
 
 export default function InventoryPage() {
   const { role } = useAuthStore();
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = React.useState(false);
   const {
 
     activeTab,
@@ -84,6 +86,8 @@ export default function InventoryPage() {
     setPurchaseNotes,
     payFromRegister,
     setPayFromRegister,
+    paymentSource,
+    setPaymentSource,
     addedPurchaseItems,
     newPurchaseItem,
     setNewPurchaseItem,
@@ -344,6 +348,7 @@ export default function InventoryPage() {
           handleOpenDuplicate={handleOpenDuplicate}
           handleOpenEdit={handleOpenEdit}
           handleOpenDelete={handleOpenDelete}
+          onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
         />
       ) : activeTab === 'REQUESTED' ? (
         <div className="space-y-6 animate-in fade-in duration-300 w-full">
@@ -458,6 +463,8 @@ export default function InventoryPage() {
         addedPurchaseItems={addedPurchaseItems}
         payFromRegister={payFromRegister}
         setPayFromRegister={setPayFromRegister}
+        paymentSource={paymentSource}
+        setPaymentSource={setPaymentSource}
         purchaseNotes={purchaseNotes}
         setPurchaseNotes={setPurchaseNotes}
         onAddPurchaseItem={handleAddPurchaseItem}
@@ -482,6 +489,12 @@ export default function InventoryPage() {
         onSubmit={handleFormSubmit}
         categories={categories}
         barcodeInputRef={barcodeInputRef}
+        onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
+      />
+
+      <CategoryManagementModal
+        open={isCategoryManagerOpen}
+        onOpenChange={setIsCategoryManagerOpen}
       />
 
       <ImportCSVModal

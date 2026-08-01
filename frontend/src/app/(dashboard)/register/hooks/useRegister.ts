@@ -161,6 +161,8 @@ export function useRegister() {
     }
   };
 
+  const [nextInitialBalance, setNextInitialBalance] = useState<number>(500);
+
   const handleCloseRegister = async () => {
     if (countedCash === null || countedCash < 0) {
       toast.error('Debe capturar la cantidad total contada en el cajón.');
@@ -171,6 +173,7 @@ export function useRegister() {
       const active = activeRegister;
       await api.post('/register/close', {
         actualBalance: countedCash,
+        nextInitialBalance,
         notes: closeNotes.trim() || undefined,
       });
 
@@ -236,6 +239,8 @@ export function useRegister() {
     setCountedCash,
     closeNotes,
     setCloseNotes,
+    nextInitialBalance,
+    setNextInitialBalance,
     billCounts,
     setBillCounts,
     calculatedSum,

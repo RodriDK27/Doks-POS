@@ -14,12 +14,16 @@ import { BackupModule } from './modules/backup/backup.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RequestedProductsModule } from './modules/requested-products/requested-products.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { VaultModule } from './modules/vault/vault.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(), // Habilitar programación cron en NestJS
     PrismaModule,
     ProductsModule,
+    CategoriesModule,
+    VaultModule,
     CustomersModule,
     RegisterModule,
     SalesModule,

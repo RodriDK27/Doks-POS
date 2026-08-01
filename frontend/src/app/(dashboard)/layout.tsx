@@ -22,7 +22,8 @@ import {
   Smartphone,
   Wifi,
   WifiOff,
-  Clock
+  Clock,
+  Landmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -242,6 +243,7 @@ export default function DashboardLayout({
     { name: 'Inventario', href: '/inventory', icon: Package },
     { name: 'Clientes', href: '/customers', icon: Users },
     { name: 'Caja', href: '/register', icon: DollarSign },
+    { name: 'Caja Grande', href: '/vault', icon: Landmark, adminOnly: true },
     { name: 'Sueldos', href: '/payroll', icon: Clock, adminOnly: true },
   ].filter((item) => {
     // Si NO es Administrador y no se ha abierto turno (caja cerrada), ocultar todas las secciones excepto "Caja"

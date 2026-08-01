@@ -31,6 +31,8 @@ interface PurchaseDialogProps {
   }>;
   payFromRegister: boolean;
   setPayFromRegister: (val: boolean) => void;
+  paymentSource?: 'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO';
+  setPaymentSource?: (val: 'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO') => void;
   purchaseNotes: string;
   setPurchaseNotes: (notes: string) => void;
   onAddPurchaseItem: () => void;
@@ -52,6 +54,8 @@ export function PurchaseDialog({
   addedPurchaseItems,
   payFromRegister,
   setPayFromRegister,
+  paymentSource = 'CAJA_GRANDE',
+  setPaymentSource,
   purchaseNotes,
   setPurchaseNotes,
   onAddPurchaseItem,
@@ -298,20 +302,24 @@ export function PurchaseDialog({
               </div>
             </div>
 
-            {/* CAJA CHICA Y TOTAL */}
+            {/* ORIGEN DE PAGO Y TOTAL */}
             <div className="space-y-1.5 sm:space-y-2 pt-1">
-              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 p-2 sm:p-3 border border-slate-200/60 dark:border-slate-800 rounded-2xl gap-2">
-                <div className="flex items-center gap-1.5 sm:gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="payFromRegister-chk"
-                    className="accent-indigo-600 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 rounded cursor-pointer"
-                    checked={payFromRegister}
-                    onChange={(e) => setPayFromRegister(e.target.checked)}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-slate-50 dark:bg-slate-900 p-2 sm:p-3 border border-slate-200/60 dark:border-slate-800 rounded-2xl gap-3">
+                <div className="flex-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Origen del Pago de la Factura</label>
+                  <CustomSelect
+                    className="h-8.5 sm:h-9 text-xs font-bold"
+                    value={paymentSource}
+                    onChange={(val) => {
+                      if (setPaymentSource) setPaymentSource(val as 'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO');
+                      setPayFromRegister(val === 'CAJA_CHICA');
+                    }}
+                    options={[
+                      { value: 'CAJA_GRANDE', label: 'Caja Grande (Bóveda Principal)' },
+                      { value: 'CAJA_CHICA', label: 'Caja Chica (Turno del Cajero)' },
+                      { value: 'CREDITO', label: 'Crédito / Nota Pendiente' },
+                    ]}
                   />
-                  <label htmlFor="payFromRegister-chk" className="text-[11px] sm:text-xs font-extrabold text-slate-700 dark:text-slate-300 leading-none cursor-pointer">
-                    Pagar con dinero de caja chica
-                  </label>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-[8.5px] sm:text-[9px] text-slate-400 font-extrabold block uppercase tracking-wider">Total Factura</span>

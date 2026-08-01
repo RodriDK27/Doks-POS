@@ -24,6 +24,10 @@ export class CreatePurchaseDto {
   @IsOptional()
   payFromRegister?: boolean;
 
+  @IsString({ message: 'El origen de pago debe ser texto' })
+  @IsOptional()
+  paymentSource?: 'CAJA_CHICA' | 'CAJA_GRANDE' | 'CREDITO';
+
   @IsString({ message: 'Las notas deben ser texto' })
   @IsOptional()
   notes?: string;

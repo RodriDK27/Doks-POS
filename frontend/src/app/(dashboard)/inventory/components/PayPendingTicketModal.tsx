@@ -1,10 +1,9 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DollarSign, Wallet } from 'lucide-react';
+import { CustomSelect } from '@/components/CustomSelect';
 
 interface PendingTicketItem {
   id: string;
@@ -28,15 +27,14 @@ export function PayPendingTicketModal({
   onConfirmPay,
 }: PayPendingTicketModalProps) {
   const [amountPaid, setAmountPaid] = useState<string>('');
-  const [payFromRegister, setPayFromRegister] = useState<boolean>(true);
+  const [paymentSource, setPaymentSource] = useState<'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO'>('CAJA_GRANDE');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
   const [prevTicketId, setPrevTicketId] = useState<string | null>(null);
 
   if (ticket && prevTicketId !== ticket?.id) {
     setPrevTicketId(ticket.id);
     setAmountPaid(String(ticket.amount));
-    setPayFromRegister(true);
+    setPaymentSource('CAJA_GRANDE');
   }
 
   if (!ticket) return null;
@@ -48,7 +46,8 @@ export function PayPendingTicketModal({
 
     try {
       setIsSubmitting(true);
-      await onConfirmPay(ticket.id, payFromRegister, finalVal);
+      const isRegister = paymentSource === 'CAJA_CHICA';
+      await onConfirmPay(ticket.id, isRegister, finalVal);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -88,17 +87,18 @@ export function PayPendingTicketModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
-            <input
-              type="checkbox"
-              id="payFromRegister"
-              className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-              checked={payFromRegister}
-              onChange={(e) => setPayFromRegister(e.target.checked)}
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Origen del Pago de Efectivo</label>
+            <CustomSelect
+              className="h-10 text-xs font-bold"
+              value={paymentSource}
+              onChange={(val) => setPaymentSource(val as 'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO')}
+              options={[
+                { value: 'CAJA_GRANDE', label: 'Caja Grande (Bóveda Principal)' },
+                { value: 'CAJA_CHICA', label: 'Caja Chica (Turno Actual)' },
+                { value: 'CREDITO', label: 'Sin Afectar Efectivo' },
+              ]}
             />
-            <label htmlFor="payFromRegister" className="text-xs font-extrabold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-              Registrar Egreso y Descuento de Caja Chica
-            </label>
           </div>
 
           <DialogFooter className="pt-2 border-t border-slate-100 dark:border-slate-800 gap-2 flex-row justify-end">

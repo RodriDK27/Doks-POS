@@ -12,6 +12,8 @@ interface CloseRegisterDialogProps {
   setCountedCash: (val: number | null) => void;
   closeNotes: string;
   setCloseNotes: (val: string) => void;
+  nextInitialBalance: number;
+  setNextInitialBalance: (val: number) => void;
   billCounts: Record<number, number>;
   setBillCounts: React.Dispatch<React.SetStateAction<Record<number, number>>>;
   calculatedSum: number;
@@ -27,6 +29,8 @@ export function CloseRegisterDialog({
   setCountedCash,
   closeNotes,
   setCloseNotes,
+  nextInitialBalance,
+  setNextInitialBalance,
   billCounts,
   setBillCounts,
   calculatedSum,
@@ -129,6 +133,37 @@ export function CloseRegisterDialog({
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setCountedCash(parseFloat(e.target.value) || 0)}
               />
+            </div>
+          </div>
+
+          {/* FONDO PARA EL SIGUIENTE TURNO Y PREVISIÓN BÓVEDA */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/40">
+            <div className="space-y-1">
+              <label className="text-[9.5px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block">
+                Fondo a Dejar en Caja ($) *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-indigo-600 dark:text-indigo-400">$</span>
+                <Input
+                  type="number"
+                  step="any"
+                  placeholder="500.00"
+                  className="pl-7 h-9 text-xs font-black bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800 rounded-xl"
+                  value={nextInitialBalance}
+                  onChange={(e) => setNextInitialBalance(parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <span className="text-[9px] text-slate-400 block font-medium">Dinero reservado para cambio del próx. turno.</span>
+            </div>
+
+            <div className="flex flex-col justify-between p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-indigo-100 dark:border-indigo-800/80">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">
+                Depósito Automático a Caja Grande
+              </span>
+              <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                +${Math.max(0, (countedCash || 0) - nextInitialBalance).toFixed(2)}
+              </div>
+              <span className="text-[9px] text-slate-400 block font-medium">Se acumulará en tu Bóveda Principal</span>
             </div>
           </div>
 
