@@ -152,7 +152,7 @@ export function SuppliersTab({
   };
 
   const handleSupplierFilterChange = (val: string) => {
-    setSupplierFilter(val);
+    setSupplierFilter(val as 'ALL' | 'WITH_TICKET' | 'ACTIVE' | 'INACTIVE');
     setSuppliersPage(1);
   };
 

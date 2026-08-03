@@ -71,6 +71,7 @@ export function ProductFormSheet({
 
   const purchasePrice = useWatch({ control, name: 'purchasePrice' }) || 0;
   const sellPrice = useWatch({ control, name: 'sellPrice' }) || 0;
+  const categoryValue = useWatch({ control, name: 'category' }) || '';
   const calculatedMargin = sellPrice > 0 ? ((sellPrice - purchasePrice) / sellPrice) * 100 : 0;
 
   const onFormSubmit = async (values: ProductFormValues) => {
@@ -164,7 +165,7 @@ export function ProductFormSheet({
                     )}
                   </div>
                   <CustomSelect
-                    value={watch('category') || ''}
+                    value={categoryValue}
                     onChange={(val) => setValue('category', val)}
                     placeholder="-- Seleccionar categoría --"
                     options={[
