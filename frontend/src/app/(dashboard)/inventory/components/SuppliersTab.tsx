@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Truck, Plus, Edit3, Trash2, Calendar, FileText, Eye } from 'lucide-react';
+import { Truck, Plus, Edit3, Trash2, Calendar, FileText, Eye, Search, Filter, Tag, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomSelect } from '@/components/CustomSelect';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,12 @@ export function SuppliersTab({
   const { role } = useAuthStore();
   const [logView, setLogView] = React.useState<'PURCHASES' | 'TICKETS'>('PURCHASES');
 
+  // Estado para búsqueda, filtrado y paginación del directorio de proveedores
+  const [supplierSearch, setSupplierSearch] = React.useState('');
+  const [supplierFilter, setSupplierFilter] = React.useState<'ALL' | 'WITH_TICKET' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [suppliersPage, setSuppliersPage] = React.useState(1);
+  const suppliersPerPage = 10;
+
   // Paginación para Compras y Tickets
   const [purchasesPage, setPurchasesPage] = React.useState(1);
   const [purchasesPerPage, setPurchasesPerPage] = React.useState(10);
@@ -91,6 +98,79 @@ export function SuppliersTab({
     setPrevSelectedMonth(selectedMonth);
     setPurchasesPage(1);
   }
+
+  // ORDEN E INTELIGENCIA DE BÚSQUEDA DEL DIRECTORIO
+  const sortedSuppliers = React.useMemo(() => {
+    let list = suppliers.map((s) => {
+      const activeTicket = pendingTickets.find(
+        (t) => t.supplier?.id === s.id || (t.supplier?.name && t.supplier.name.toLowerCase() === s.name.toLowerCase())
+      );
+      return {
+        ...s,
+        activeTicket,
+        hasTicket: !!activeTicket,
+      };
+    });
+
+    // 1. Filtrar por término de búsqueda (nombre o teléfono)
+    if (supplierSearch.trim()) {
+      const q = supplierSearch.toLowerCase().trim();
+      list = list.filter(
+        (s) => s.name.toLowerCase().includes(q) || (s.phone && s.phone.includes(q))
+      );
+    }
+
+    // 2. Filtrar por tipo/estado
+    if (supplierFilter === 'WITH_TICKET') {
+      list = list.filter((s) => s.hasTicket);
+    } else if (supplierFilter === 'ACTIVE') {
+      list = list.filter((s) => s.isActive !== false);
+    } else if (supplierFilter === 'INACTIVE') {
+      list = list.filter((s) => s.isActive === false);
+    }
+
+    // 3. ORDEN INTELIGENTE (SMART SORT):
+    // Priority 1: Con Ticket Pendiente por Pagar (arriba)
+    // Priority 2: Activos ordenados A-Z por defecto
+    // Priority 3: Inactivos al final A-Z
+    return list.sort((a, b) => {
+      if (a.hasTicket && !b.hasTicket) return -1;
+      if (!a.hasTicket && b.hasTicket) return 1;
+
+      const aActive = a.isActive !== false;
+      const bActive = b.isActive !== false;
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+
+      return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+    });
+  }, [suppliers, pendingTickets, supplierSearch, supplierFilter]);
+
+  const handleSupplierSearchChange = (val: string) => {
+    setSupplierSearch(val);
+    setSuppliersPage(1);
+  };
+
+  const handleSupplierFilterChange = (val: string) => {
+    setSupplierFilter(val);
+    setSuppliersPage(1);
+  };
+
+  const totalSuppliersPages = Math.ceil(sortedSuppliers.length / suppliersPerPage) || 1;
+  const paginatedSuppliers = React.useMemo(() => {
+    return sortedSuppliers.slice(
+      (suppliersPage - 1) * suppliersPerPage,
+      suppliersPage * suppliersPerPage
+    );
+  }, [sortedSuppliers, suppliersPage, suppliersPerPage]);
+
+  const countPendingTickets = React.useMemo(() => {
+    return suppliers.filter((s) =>
+      pendingTickets.some(
+        (t) => t.supplier?.id === s.id || (t.supplier?.name && t.supplier.name.toLowerCase() === s.name.toLowerCase())
+      )
+    ).length;
+  }, [suppliers, pendingTickets]);
 
   const totalPurchasesPages = Math.ceil(filteredPurchases.length / purchasesPerPage) || 1;
   const paginatedPurchases = React.useMemo(() => {
@@ -107,13 +187,14 @@ export function SuppliersTab({
 
       {/* 1. SECCIÓN DE PROVEEDORES */}
       <div className="space-y-3 w-full">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-            <Truck className="h-4 w-4 text-indigo-650" /> Directorio de Proveedores
+            <Truck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Directorio de Proveedores ({sortedSuppliers.length})
           </h3>
+
           {(role === 'ADMIN' || role === 'GERENTE') && (
-            <Button 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer self-start sm:self-auto"
               onClick={() => setIsSupplierOpen(true)}
             >
               <Plus className="h-4 w-4" /> Registrar Proveedor
@@ -121,7 +202,65 @@ export function SuppliersTab({
           )}
         </div>
 
+        {/* BARRA DE BÚSQUEDA Y FILTROS RÁPIDOS PARA PROVEEDORES */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-slate-50/70 dark:bg-slate-900/60 p-2.5 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Buscar proveedor por nombre o teléfono..."
+              value={supplierSearch}
+              onChange={(e) => setSupplierSearch(e.target.value)}
+              className="pl-8 h-9 text-xs font-bold bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 rounded-xl"
+            />
+          </div>
 
+          {/* CHIPS DE FILTRADO RÁPIDO */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setSupplierFilter('ALL')}
+              className={cn(
+                "px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border",
+                supplierFilter === 'ALL'
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              Todos ({suppliers.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSupplierFilter('WITH_TICKET')}
+              className={cn(
+                "px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border flex items-center gap-1",
+                supplierFilter === 'WITH_TICKET'
+                  ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                  : countPendingTickets > 0
+                    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/40 hover:bg-amber-100"
+                    : "bg-white dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-800"
+              )}
+            >
+              <Tag className="h-3 w-3" /> Con Ticket ({countPendingTickets})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSupplierFilter('ACTIVE')}
+              className={cn(
+                "px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border",
+                supplierFilter === 'ACTIVE'
+                  ? "bg-slate-800 dark:bg-slate-700 text-white border-slate-800 shadow-xs"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              Activos
+            </button>
+          </div>
+        </div>
+
+        {/* TABLA DE PROVEEDORES */}
         <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden w-full">
           {suppliersLoading ? (
             <div className="p-4 space-y-4">
@@ -133,70 +272,89 @@ export function SuppliersTab({
                 </div>
               ))}
             </div>
-          ) : suppliers.length > 0 ? (
-            <Table>
-              <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs w-[180px]">Nombre / Marca</TableHead>
-                  <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs w-[120px]">Teléfono</TableHead>
-                  <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs w-[120px]">Frecuencia</TableHead>
-                  <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs text-right w-[120px]">Pago Est. ($)</TableHead>
-                  <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs text-center w-[90px]">Compras</TableHead>
-                  <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs text-right min-w-[280px] pr-4">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y">
-                {suppliers.map((supplier) => (
-                  <TableRow 
-                    key={supplier.id} 
-                    className={cn(
-                      "hover:bg-slate-50/20 border-b transition-all",
-                      supplier.isActive === false && "opacity-60 bg-slate-50/30 dark:bg-slate-950/20"
-                    )}
-                  >
-                    <TableCell className="py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">{supplier.name}</span>
-                        {supplier.isActive === false && (
-                          <span className="px-1.5 py-0.5 text-[8px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded uppercase tracking-wider">Inactivo</span>
+          ) : paginatedSuppliers.length > 0 ? (
+            <>
+              <Table>
+                <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs w-[200px]">Nombre / Marca</TableHead>
+                    <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs w-[120px]">Teléfono</TableHead>
+                    <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs w-[120px]">Frecuencia</TableHead>
+                    <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs text-right w-[120px]">Pago Est. ($)</TableHead>
+                    <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs text-center w-[90px]">Compras</TableHead>
+                    <TableHead className="font-bold text-slate-700 dark:text-slate-300 text-xs text-right min-w-[280px] pr-4">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {paginatedSuppliers.map((supplier) => {
+                    const activeTicket = supplier.activeTicket;
+                    return (
+                      <TableRow
+                        key={supplier.id}
+                        className={cn(
+                          "hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border-b transition-all",
+                          supplier.hasTicket && "bg-amber-50/30 dark:bg-amber-950/20 border-l-4 border-l-amber-500",
+                          supplier.isActive === false && "opacity-60 bg-slate-50/30 dark:bg-slate-950/20"
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3 text-xs text-slate-600 dark:text-slate-300 font-medium">
-                      {supplier.phone || <span className="text-slate-350 dark:text-slate-600 italic">Sin teléfono</span>}
-                    </TableCell>
-                    <TableCell className="py-3 text-xs">
-                      {supplier.visitFrequency === 'BIWEEKLY_A' ? (
-                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40">15d (Sem 1/3)</span>
-                      ) : supplier.visitFrequency === 'BIWEEKLY_B' ? (
-                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40">15d (Sem 2/4)</span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/40">Semanal</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-3 text-right text-xs font-black text-emerald-600 dark:text-emerald-400">
-                      ${(supplier.expectedPayment || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="py-3 text-center text-xs text-slate-600 dark:text-slate-300 font-black">
-                      {supplier._count?.purchases || 0}
-                    </TableCell>
-                    <TableCell className="py-3 text-right pr-4">
-                      {(() => {
-                        const activeTicket = pendingTickets.find(t => t.supplier.id === supplier.id || t.supplier.name === supplier.name);
-                        return (
+                      >
+                        <TableCell className="py-3">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-slate-850 dark:text-slate-100 text-xs">{supplier.name}</span>
+                              {supplier.isActive === false && (
+                                <span className="px-1.5 py-0.5 text-[8px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded uppercase tracking-wider">Inactivo</span>
+                              )}
+                            </div>
+                            {activeTicket && (
+                              <span className="inline-flex items-center gap-1 text-[9.5px] font-black text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50 w-fit">
+                                <Tag className="h-3 w-3" /> Ticket Pendiente: ${activeTicket.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                          {supplier.phone || <span className="text-slate-350 dark:text-slate-600 italic">Sin teléfono</span>}
+                        </TableCell>
+                        <TableCell className="py-3 text-xs">
+                          {supplier.visitFrequency === 'BIWEEKLY_A' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40">15d (Sem 1/3)</span>
+                          ) : supplier.visitFrequency === 'BIWEEKLY_B' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40">15d (Sem 2/4)</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/40">Semanal</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 text-right text-xs font-black text-emerald-600 dark:text-emerald-400">
+                          ${(supplier.expectedPayment || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="py-3 text-center text-xs text-slate-600 dark:text-slate-300 font-black">
+                          {supplier._count?.purchases || 0}
+                        </TableCell>
+                        <TableCell className="py-3 text-right pr-4">
                           <div className="flex items-center justify-end gap-1.5 whitespace-nowrap shrink-0">
                             {activeTicket && (
-                              <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-                                onClick={() => onOpenPayTicket?.(activeTicket)}
-                                title="Liquidar pago de ticket pendiente"
-                              >
-                                Pagar (${activeTicket.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })})
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
+                                  onClick={() => onOpenPayTicket?.(activeTicket)}
+                                  title="Liquidar pago de ticket pendiente"
+                                >
+                                  Pagar Ticket (${activeTicket.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })})
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                                  onClick={() => onCancelPendingTicket?.(activeTicket.id)}
+                                  title="Cancelar ticket de preventa"
+                                >
+                                  Cancelar Ticket
+                                </Button>
+                              </>
                             )}
                             {supplier.isActive !== false && (
-                              <Button 
+                              <Button
                                 size="sm"
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
                                 onClick={() => handleOpenRegisterPurchase(supplier)}
@@ -204,44 +362,73 @@ export function SuppliersTab({
                                 {activeTicket ? 'Compra' : 'Registrar Compra / Ticket'}
                               </Button>
                             )}
-                        {(role === 'ADMIN' || role === 'GERENTE') && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-650 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-                            onClick={() => handleOpenEditSupplier(supplier)}
-                            title="Editar"
-                          >
-                            <Edit3 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {role === 'ADMIN' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                              "h-7 w-7 rounded-lg cursor-pointer",
-                              supplier.isActive === false
-                                ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20"
-                                : "text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20"
+                            {(role === 'ADMIN' || role === 'GERENTE') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                                onClick={() => handleOpenEditSupplier(supplier)}
+                                title="Editar"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </Button>
                             )}
-                            onClick={() => handleToggleActiveSupplier(supplier)}
-                            title={supplier.isActive === false ? 'Activar' : 'Desactivar'}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
+                            {role === 'ADMIN' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  "h-7 w-7 rounded-lg cursor-pointer",
+                                  supplier.isActive === false
+                                    ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20"
+                                    : "text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20"
+                                )}
+                                onClick={() => handleToggleActiveSupplier(supplier)}
+                                title={supplier.isActive === false ? 'Activar' : 'Desactivar'}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     );
-                  })()}
-                </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                  })}
+                </TableBody>
+              </Table>
+
+              {/* PAGINACIÓN DE PROVEEDORES */}
+              {totalSuppliersPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <span className="text-slate-400 font-bold text-[11px]">
+                    Página {suppliersPage} de {totalSuppliersPages} ({sortedSuppliers.length} proveedores)
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={suppliersPage === 1}
+                      onClick={() => setSuppliersPage((p) => Math.max(1, p - 1))}
+                      className="h-7 px-2 text-xs font-bold border-slate-200 dark:border-slate-800 cursor-pointer"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={suppliersPage >= totalSuppliersPages}
+                      onClick={() => setSuppliersPage((p) => Math.min(totalSuppliersPages, p + 1))}
+                      className="h-7 px-2 text-xs font-bold border-slate-200 dark:border-slate-800 cursor-pointer"
+                    >
+                      Siguiente <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-12 text-slate-400 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-4 w-full">
-              No hay proveedores registrados.
+              No se encontraron proveedores que coincidan con la búsqueda o filtro.
             </div>
           )}
         </div>
@@ -587,15 +774,28 @@ export function SuppliersTab({
                         </TableCell>
                         <TableCell className="text-center pr-5">
                           {ticket.status === 'PENDING' ? (
-                            <Button
-                              size="sm"
-                              className="h-7 text-[10px] font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 cursor-pointer"
-                              onClick={() => onOpenPayTicket?.(ticket)}
-                            >
-                              Pagar Ticket
-                            </Button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Button
+                                size="sm"
+                                className="h-7 text-[10px] font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-2.5 cursor-pointer"
+                                onClick={() => onOpenPayTicket?.(ticket)}
+                              >
+                                Pagar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                                onClick={() => onCancelPendingTicket?.(ticket.id)}
+                                title="Cancelar ticket"
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
                           ) : (
-                            <span className="text-[10px] text-slate-400 italic">Completado</span>
+                            <span className="text-[10px] text-slate-400 italic">
+                              {ticket.status === 'PAID' ? 'Completado' : 'Cancelado'}
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>

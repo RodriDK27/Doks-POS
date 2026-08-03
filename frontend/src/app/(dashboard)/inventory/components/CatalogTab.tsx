@@ -103,14 +103,15 @@ export function CatalogTab({
       />
 
       {/* FILTROS + ACCIONES */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white dark:bg-slate-900 p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)]">
-        <div className="flex flex-col sm:flex-row gap-2 flex-grow items-stretch sm:items-center">
-          <div className="relative w-full sm:w-[240px] md:w-[280px] lg:w-[320px] xl:w-[360px] shrink-0">
+      <div className="flex flex-col gap-2.5 bg-white dark:bg-slate-900 p-3.5 sm:p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] w-full">
+        {/* FILA SUPERIOR: BUSCADOR + CATEGORÍAS + STOCK */}
+        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center w-full">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               type="text"
               placeholder="Buscar producto o código..."
-              className="pl-10 h-10 border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-xl text-xs font-semibold focus-visible:ring-indigo-500"
+              className="pl-10 h-10 border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-xl text-xs font-semibold focus-visible:ring-indigo-500 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -118,7 +119,7 @@ export function CatalogTab({
 
           <div className="grid grid-cols-2 gap-2 sm:flex shrink-0">
             <CustomSelect
-              className="w-full sm:w-36 h-10"
+              className="w-full sm:w-36 md:w-40 h-10"
               value={selectedCategory}
               onChange={setSelectedCategory}
               placeholder="Categorías"
@@ -129,7 +130,7 @@ export function CatalogTab({
             />
 
             <CustomSelect
-              className="w-full sm:w-36 h-10"
+              className="w-full sm:w-36 md:w-40 h-10"
               value={stockFilter}
               onChange={(val) => setStockFilter(val as 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK')}
               options={[
@@ -141,15 +142,14 @@ export function CatalogTab({
           </div>
         </div>
 
+        {/* FILA INFERIOR: BOTÓN NUEVO PRODUCTO (ANCHO COMPLETO 100%) */}
         {(role === 'ADMIN' || role === 'GERENTE') && (
-          <div className="shrink-0">
-            <Button 
-              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-              onClick={handleOpenAdd}
-            >
-              <Plus className="h-4 w-4" /> Nuevo Producto
-            </Button>
-          </div>
+          <Button 
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-6 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            onClick={handleOpenAdd}
+          >
+            <Plus className="h-4 w-4" /> Nuevo Producto
+          </Button>
         )}
       </div>
 

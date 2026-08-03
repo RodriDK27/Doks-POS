@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import useSWR, { mutate } from 'swr';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import api from '@/lib/api';
@@ -40,7 +41,6 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import useSWR from 'swr';
 import { CashiersManagementDialog } from '@/components/CashiersManagementDialog';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -196,6 +196,23 @@ export default function DashboardLayout({
       setLoading(false);
     }
   };
+
+  const { data: swrActiveRegister, mutate: mutateActiveRegister } = useSWR<ActiveRegister | null>(
+    role !== 'NONE' ? '/register/active' : null
+  );
+
+  const displayRegister = swrActiveRegister !== undefined ? swrActiveRegister : activeRegister;
+
+  useEffect(() => {
+    const handleRegisterUpdated = () => {
+      void mutateActiveRegister();
+      void checkActiveRegister();
+    };
+    window.addEventListener('register-active-updated', handleRegisterUpdated);
+    return () => {
+      window.removeEventListener('register-active-updated', handleRegisterUpdated);
+    };
+  }, [mutateActiveRegister]);
 
   useEffect(() => {
     Promise.resolve().then(async () => {
@@ -359,12 +376,12 @@ export default function DashboardLayout({
 
           {!loading && (
             <div className="flex items-center gap-1.5 bg-slate-100/80 dark:bg-slate-800/80 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-bold shrink-0">
-              {activeRegister ? (
+              {displayRegister ? (
                 <>
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   <span className="text-slate-600 dark:text-slate-300">
                     <span className="hidden sm:inline">Caja: </span>
-                    <strong className="text-slate-800 dark:text-slate-100">${activeRegister.expectedBalance.toFixed(0)}</strong>
+                    <strong className="text-slate-800 dark:text-slate-100">${displayRegister.expectedBalance.toFixed(0)}</strong>
                   </span>
                 </>
               ) : (

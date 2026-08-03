@@ -91,6 +91,8 @@ export default function POSPage() {
     setGenericPrice,
     genericName,
     setGenericName,
+    genericMarginPercent,
+    setGenericMarginPercent,
     paymentMethod,
     setPaymentMethod,
     amountPaid,

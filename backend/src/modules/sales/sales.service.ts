@@ -367,17 +367,20 @@ export class SalesService {
       totalDiscount += sale.discount;
       paymentDistribution[sale.paymentMethod] = (paymentDistribution[sale.paymentMethod] || 0) + sale.total;
 
-      for (const item of sale.items) {
-        let purchasePrice = 0;
-        if (item.product) {
-          purchasePrice = item.product.purchasePrice;
-        } else {
-          // Si no tiene product vinculado, buscar si el producto ya fue dado de alta por nombre
-          const matchCost = productNameCostMap.get(item.productName.toLowerCase().trim());
-          if (matchCost !== undefined) {
-            purchasePrice = matchCost;
+        for (const item of sale.items) {
+          let purchasePrice = 0;
+          if (item.product) {
+            purchasePrice = item.product.purchasePrice;
+          } else {
+            // Si no tiene product vinculado, buscar si el producto ya fue dado de alta por nombre
+            const matchCost = productNameCostMap.get(item.productName.toLowerCase().trim());
+            if (matchCost !== undefined) {
+              purchasePrice = matchCost;
+            } else {
+              // Si es un producto genérico/libre no registrado, estimar el 16% de utilidad (costo = 84% del precio de venta)
+              purchasePrice = item.price * 0.84;
+            }
           }
-        }
 
         const itemCost = purchasePrice * item.quantity;
         const itemProfit = item.total - itemCost;

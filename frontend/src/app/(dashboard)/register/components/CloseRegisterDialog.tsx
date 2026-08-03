@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calculator, Coins, AlertCircle, CheckCircle2, ArrowUpRight, ArrowDownRight, Scale } from 'lucide-react';
+import { Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -58,7 +58,7 @@ export function CloseRegisterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] rounded-3xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[650px] md:max-w-[700px] rounded-3xl p-5 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh] overflow-y-auto">
         {/* HEADER */}
         <DialogHeader className="space-y-1 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -136,51 +136,20 @@ export function CloseRegisterDialog({
             </div>
           </div>
 
-          {/* FONDO PARA EL SIGUIENTE TURNO Y PREVISIÓN BÓVEDA */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/40">
-            <div className="space-y-1">
-              <label className="text-[9.5px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block">
-                Fondo a Dejar en Caja ($) *
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-indigo-600 dark:text-indigo-400">$</span>
-                <Input
-                  type="number"
-                  step="any"
-                  placeholder="500.00"
-                  className="pl-7 h-9 text-xs font-black bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800 rounded-xl"
-                  value={nextInitialBalance}
-                  onChange={(e) => setNextInitialBalance(parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <span className="text-[9px] text-slate-400 block font-medium">Dinero reservado para cambio del próx. turno.</span>
-            </div>
-
-            <div className="flex flex-col justify-between p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-indigo-100 dark:border-indigo-800/80">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">
-                Depósito Automático a Caja Grande
-              </span>
-              <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                +${Math.max(0, (countedCash || 0) - nextInitialBalance).toFixed(2)}
-              </div>
-              <span className="text-[9px] text-slate-400 block font-medium">Se acumulará en tu Bóveda Principal</span>
-            </div>
-          </div>
-
           {/* SECCIÓN DESGLOSE OPCIONAL RÁPIDO */}
-          <div className="bg-slate-50/70 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
-            <span className="text-[9.5px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+          <div className="bg-slate-50/70 dark:bg-slate-800/40 p-3.5 sm:p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2.5">
+            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
               Desglose Opcional de Billetes y Monedas
             </span>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto pr-1 scrollbar-none">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 sm:max-h-72 overflow-y-auto pr-1">
               {denominations.map((d) => (
-                <div key={d.val} className="flex items-center justify-between bg-white dark:bg-slate-900 px-2 py-1 rounded-xl border border-slate-200/50 dark:border-slate-800">
-                  <span className="font-extrabold text-[10px] text-slate-600 dark:text-slate-300">{d.label}</span>
+                <div key={d.val} className="flex items-center justify-between bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-2xs">
+                  <span className="font-black text-xs text-slate-700 dark:text-slate-200">{d.label}</span>
                   <Input
                     type="number"
                     placeholder="0"
-                    className="h-6 w-11 text-center text-xs font-black p-0 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg"
+                    className="h-8 w-14 text-center text-xs font-black p-0 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg focus-visible:ring-indigo-500"
                     value={billCounts[d.val] || ''}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {

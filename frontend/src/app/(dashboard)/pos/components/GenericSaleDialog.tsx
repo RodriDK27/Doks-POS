@@ -59,7 +59,6 @@ export function GenericSaleDialog({
                   }
                 }}
                 onFocus={(e) => {
-                  // Al hacer clic/touch deliberado en el campo de texto, activar el teclado del dispositivo
                   e.target.removeAttribute('inputmode');
                 }}
                 onBlur={(e) => {

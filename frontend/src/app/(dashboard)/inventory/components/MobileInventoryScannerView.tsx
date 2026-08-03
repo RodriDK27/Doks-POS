@@ -71,7 +71,7 @@ export function MobileInventoryScannerView({
     sellPrice: '',
     purchasePrice: '',
     stock: '',
-    minStock: '5',
+    minStock: '1',
     category: '',
     unitType: 'PIECE',
   });
@@ -97,7 +97,7 @@ export function MobileInventoryScannerView({
       sellPrice: '',
       purchasePrice: '',
       stock: '',
-      minStock: '5',
+      minStock: '1',
       category: '',
       unitType: 'PIECE',
     });
@@ -129,7 +129,7 @@ export function MobileInventoryScannerView({
           sellPrice: detail.sellPrice ? String(detail.sellPrice) : '',
           purchasePrice: '',
           stock: '1',
-          minStock: '5',
+          minStock: '1',
           category: 'VARIOS',
           unitType: 'PIECE',
         });
@@ -150,7 +150,7 @@ export function MobileInventoryScannerView({
             sellPrice: String(product.sellPrice),
             purchasePrice: String(product.purchasePrice),
             stock: String(product.stock),
-            minStock: String(product.minStock || 5),
+            minStock: String(product.minStock || 1),
             category: product.category || '',
             unitType: (product.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
           });
@@ -162,7 +162,7 @@ export function MobileInventoryScannerView({
             sellPrice: String(product.sellPrice),
             purchasePrice: String(product.purchasePrice),
             stock: String(product.stock),
-            minStock: String(product.minStock || 5),
+            minStock: String(product.minStock || 1),
             category: product.category || '',
             unitType: (product.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
           });
@@ -228,7 +228,7 @@ export function MobileInventoryScannerView({
         sellPrice: String(found.sellPrice),
         purchasePrice: String(found.purchasePrice),
         stock: String(found.stock),
-        minStock: String(found.minStock || 5),
+        minStock: String(found.minStock || 1),
         category: found.category || '',
         unitType: (found.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
       });
@@ -254,7 +254,7 @@ export function MobileInventoryScannerView({
         ...prev,
         barcode: code,
         stock: prev.stock || '1',
-        minStock: prev.minStock || '5',
+        minStock: prev.minStock || '1',
         unitType: prev.unitType || 'PIECE',
       }));
       toast.info(`Código asignado: ${code}`);
@@ -385,7 +385,7 @@ export function MobileInventoryScannerView({
         sellPrice: parseFloat(prodForm.sellPrice) || 0,
         purchasePrice: parseFloat(prodForm.purchasePrice) || 0,
         stock: parseFloat(prodForm.stock) || 0,
-        minStock: parseFloat(prodForm.minStock) || 5,
+        minStock: parseFloat(prodForm.minStock) || 1,
         category: prodForm.category.trim() || null,
         unitType: prodForm.unitType || 'PIECE',
       };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -42,7 +42,7 @@ export function ProductFormSheet({
   barcodeInputRef,
   onOpenCategoryManager,
 }: ProductFormSheetProps) {
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
+  const { register, handleSubmit, reset, control, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
@@ -51,7 +51,7 @@ export function ProductFormSheet({
       purchasePrice: 0,
       sellPrice: 0,
       stock: 0,
-      minStock: 5,
+      minStock: 1,
     }
   });
 
@@ -64,13 +64,13 @@ export function ProductFormSheet({
         purchasePrice: editingProduct?.purchasePrice ?? 0,
         sellPrice: editingProduct?.sellPrice ?? 0,
         stock: editingProduct?.stock ?? 0,
-        minStock: editingProduct?.minStock ?? 5,
+        minStock: editingProduct?.minStock ?? 1,
       });
     }
   }, [open, editingProduct, reset]);
 
-  const purchasePrice = watch('purchasePrice') || 0;
-  const sellPrice = watch('sellPrice') || 0;
+  const purchasePrice = useWatch({ control, name: 'purchasePrice' }) || 0;
+  const sellPrice = useWatch({ control, name: 'sellPrice' }) || 0;
   const calculatedMargin = sellPrice > 0 ? ((sellPrice - purchasePrice) / sellPrice) * 100 : 0;
 
   const onFormSubmit = async (values: ProductFormValues) => {

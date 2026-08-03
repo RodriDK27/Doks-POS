@@ -3,6 +3,7 @@ export interface Product {
   barcode: string | null;
   name: string;
   sellPrice: number;
+  costPrice?: number;
   stock: number;
   category: string | null;
   unitType?: 'PIECE' | 'WEIGHT' | string;

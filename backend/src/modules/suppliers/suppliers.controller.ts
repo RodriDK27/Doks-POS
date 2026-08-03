@@ -57,7 +57,7 @@ export class SuppliersController {
 
   @Post('pending-tickets/:id/pay')
   @Roles('ADMIN', 'GERENTE')
-  payPendingTicket(@Param('id') id: string, @Body() dto: { payFromRegister?: boolean; amountPaid?: number }) {
+  payPendingTicket(@Param('id') id: string, @Body() dto: { payFromRegister?: boolean; amountPaid?: number; paymentSource?: string }) {
     return this.suppliersService.payPendingTicket(id, dto);
   }
 

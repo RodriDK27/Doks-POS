@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VaultService } from '../vault/vault.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 
 @Injectable()
 export class SuppliersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vaultService: VaultService,
+  ) {}
 
   async create(createSupplierDto: CreateSupplierDto) {
     const existing = await this.prisma.supplier.findUnique({
@@ -155,7 +159,7 @@ export class SuppliersService {
     });
   }
 
-  async payPendingTicket(id: string, data: { payFromRegister?: boolean; amountPaid?: number }) {
+  async payPendingTicket(id: string, data: { payFromRegister?: boolean; amountPaid?: number; paymentSource?: string }) {
     const ticket = await this.prisma.supplierPendingTicket.findUnique({
       where: { id },
       include: { supplier: true },
@@ -165,10 +169,20 @@ export class SuppliersService {
     if (ticket.status === 'PAID') throw new BadRequestException(`Este ticket ya fue pagado.`);
 
     const finalAmount = data.amountPaid && data.amountPaid > 0 ? data.amountPaid : ticket.amount;
+    const source = data.paymentSource || (data.payFromRegister ? 'CAJA_CHICA' : 'CAJA_GRANDE');
 
-    return this.prisma.$transaction(async (tx) => {
+    if (source === 'CAJA_GRANDE') {
+      const { vault } = await this.vaultService.getVaultState();
+      if (vault.balance < finalAmount) {
+        throw new BadRequestException(
+          `Saldo insuficiente en Caja Grande ($${vault.balance.toFixed(2)}) para liquidar el ticket ($${finalAmount.toFixed(2)}).`
+        );
+      }
+    }
+
+    const updatedTicket = await this.prisma.$transaction(async (tx) => {
       // 1. Marcar ticket como pagado
-      const updatedTicket = await tx.supplierPendingTicket.update({
+      const updated = await tx.supplierPendingTicket.update({
         where: { id },
         data: {
           status: 'PAID',
@@ -178,7 +192,7 @@ export class SuppliersService {
       });
 
       // 2. Si se pagó desde caja chica, descontar del balance y registrar egreso
-      if (data.payFromRegister) {
+      if (source === 'CAJA_CHICA') {
         const activeRegister = await tx.cashRegister.findFirst({
           where: { status: 'ABIERTO' },
         });
@@ -202,8 +216,18 @@ export class SuppliersService {
         }
       }
 
-      return updatedTicket;
+      return updated;
     });
+
+    if (source === 'CAJA_GRANDE') {
+      await this.vaultService.deductForSupplierPayment(
+        undefined,
+        finalAmount,
+        `Pago de Ticket a Proveedor: ${ticket.supplier.name} (${ticket.notes || 'Preventa'})`,
+      );
+    }
+
+    return updatedTicket;
   }
 
   async cancelPendingTicket(id: string) {

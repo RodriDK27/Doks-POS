@@ -52,7 +52,7 @@ export function ProductFormDialog({
       purchasePrice: 0,
       sellPrice: 0,
       stock: 0,
-      minStock: 5,
+      minStock: 1,
     }
   });
 
@@ -66,7 +66,7 @@ export function ProductFormDialog({
         purchasePrice: editingProduct?.purchasePrice ?? 0,
         sellPrice: editingProduct?.sellPrice ?? 0,
         stock: editingProduct?.stock ?? 0,
-        minStock: editingProduct?.minStock ?? 5,
+        minStock: editingProduct?.minStock ?? 1,
       });
     }
   }, [open, editingProduct, reset]);

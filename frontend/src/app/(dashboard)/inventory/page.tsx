@@ -34,7 +34,7 @@ import { CatalogTab } from './components/CatalogTab';
 import { CategoryManagementModal } from './components/CategoryManagementModal';
 import { SuppliersTab } from './components/SuppliersTab';
 import { AnalyticsTab } from './components/AnalyticsTab';
-import { SupplierCalendarCard } from './components/SupplierCalendarCard';
+import { FloatingSupplierWidget } from './components/FloatingSupplierWidget';
 import { MobileInventoryScannerView } from './components/MobileInventoryScannerView';
 import { RegisterPendingTicketModal } from './components/RegisterPendingTicketModal';
 import { PayPendingTicketModal } from './components/PayPendingTicketModal';
@@ -316,9 +316,6 @@ export default function InventoryPage() {
 
       </div>
 
-      {/* TARJETA DE CALENDARIO DE PROVEEDORES */}
-      <SupplierCalendarCard />
-
       {/* CONTENIDO SEGÚN PESTAÑA */}
 
       {activeTab === 'CATALOG' ? (
@@ -547,6 +544,15 @@ export default function InventoryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* BOTÓN FLOTANTE GLOBAL DE PROVEEDORES Y TICKETS (ESQUINA INFERIOR DERECHA) */}
+      <FloatingSupplierWidget
+        onOpenPayTicket={(ticket) => {
+          setSelectedTicketToPay(ticket);
+          setIsPayTicketOpen(true);
+        }}
+        onCancelTicket={handleCancelPendingTicket}
+      />
     </div>
   );
 }

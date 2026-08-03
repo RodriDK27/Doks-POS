@@ -17,7 +17,7 @@ interface PayPendingTicketModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ticket: PendingTicketItem | null;
-  onConfirmPay: (id: string, payFromRegister: boolean, amountPaid: number) => Promise<void>;
+  onConfirmPay: (id: string, payFromRegister: boolean, amountPaid: number, paymentSource?: 'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO') => Promise<void>;
 }
 
 export function PayPendingTicketModal({
@@ -47,7 +47,7 @@ export function PayPendingTicketModal({
     try {
       setIsSubmitting(true);
       const isRegister = paymentSource === 'CAJA_CHICA';
-      await onConfirmPay(ticket.id, isRegister, finalVal);
+      await onConfirmPay(ticket.id, isRegister, finalVal, paymentSource);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -93,6 +93,7 @@ export function PayPendingTicketModal({
               className="h-10 text-xs font-bold"
               value={paymentSource}
               onChange={(val) => setPaymentSource(val as 'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO')}
+              menuPlacement="top"
               options={[
                 { value: 'CAJA_GRANDE', label: 'Caja Grande (Bóveda Principal)' },
                 { value: 'CAJA_CHICA', label: 'Caja Chica (Turno Actual)' },

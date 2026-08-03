@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { useCartStore } from '@/store/useCartStore';
 import { useOfflineStore } from '@/store/useOfflineStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -8,17 +8,9 @@ import { toast } from 'sonner';
 import dbHelper from '@/lib/indexedDb';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { Product, Customer } from '../types';
-
-const SYNONYMS: Record<string, string[]> = {
-  refresco: ['coca', 'fanta', 'sprite', 'sidral', 'soda', 'pepsi', 'mundet', 'boing', 'cocacola'],
-  soda: ['coca', 'fanta', 'sprite', 'sidral', 'pepsi', 'mundet', 'boing', 'cocacola'],
-  leche: ['alpura', 'lala', 'leche', 'santa clara'],
-  sabritas: ['papas', 'chips', 'rufles', 'doritos', 'cheetos', 'fritos', 'papas fritas'],
-  chips: ['chip', 'chips', 'sabritas', 'papas'],
-  chip: ['chip', 'chips', 'sabritas', 'papas'],
-  coca: ['cocacola', 'coca-cola', 'coca cola', 'refresco'],
-  pan: ['bimbo', 'tía rosa', 'concha', 'dona', 'bolillo'],
-};
+import { useVoiceSearch } from './useVoiceSearch';
+import { useCatalogFilter } from './useCatalogFilter';
+import { usePOSKeybindings } from './usePOSKeybindings';
 
 export function usePOS() {
   const { role } = useAuthStore();
@@ -58,6 +50,7 @@ export function usePOS() {
   const [isGenericOpen, setIsGenericOpen] = useState(false);
   const [genericPrice, setGenericPrice] = useState<string>('');
   const [genericName, setGenericName] = useState<string>('');
+  const [genericMarginPercent, setGenericMarginPercent] = useState<number>(30);
 
   // Estados de cobro
   const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'FIADO'>('EFECTIVO');
@@ -67,121 +60,10 @@ export function usePOS() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Búsqueda por voz
-  const [isListening, setIsListening] = useState(false);
-  const isListeningRef = useRef(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
-
-  const toggleVoiceSearch = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error('El reconocimiento de voz no es soportado en este navegador.');
-      return;
-    }
-
-    if (isListeningRef.current) {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (err) {
-          console.error('SpeechRecognition stop error:', err);
-        }
-      }
-      setIsListening(false);
-      isListeningRef.current = false;
-      return;
-    }
-
-    // Solicitar permisos de micrófono
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        let devices = await navigator.mediaDevices.enumerateDevices();
-        let audioDevices = devices.filter(d => d.kind === 'audioinput');
-        
-        if (audioDevices.length === 0 || !audioDevices[0].label) {
-          await navigator.mediaDevices.getUserMedia({ audio: true });
-          devices = await navigator.mediaDevices.enumerateDevices();
-          audioDevices = devices.filter(d => d.kind === 'audioinput');
-        }
-
-        // Buscar dispositivo "D1"
-        const d1Device = audioDevices.find(d => d.label.toLowerCase().includes('d1'));
-        
-        const constraints = d1Device 
-          ? { audio: { deviceId: { exact: d1Device.deviceId } } } 
-          : { audio: true };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        
-        // Detener todas las pistas de audio para liberar el hardware del micrófono
-        stream.getTracks().forEach(track => {
-          try {
-            track.stop();
-          } catch (e) {
-            console.error('Error stopping stream track:', e);
-          }
-        });
-      } catch (micErr) {
-        console.error('Microphone permission request failed:', micErr);
-        toast.error('Permiso de micrófono denegado o no disponible. Habilítalo en tu navegador.');
-        return;
-      }
-    }
-
-    try {
-      const recog = new SpeechRecognition();
-      recog.continuous = false;
-      recog.interimResults = false;
-      recog.lang = 'es-MX';
-
-      recog.onstart = () => {
-        setIsListening(true);
-        isListeningRef.current = true;
-      };
-
-      recog.onend = () => {
-        setIsListening(false);
-        isListeningRef.current = false;
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recog.onerror = (event: any) => {
-        setIsListening(false);
-        isListeningRef.current = false;
-        
-        if (event.error === 'not-allowed') {
-          toast.error('Permiso de micrófono denegado o bloqueado.');
-        } else if (event.error === 'no-speech') {
-          toast.error('No se detectó voz. Intenta de nuevo.');
-        } else if (event.error === 'network') {
-          toast.error('Error de red. Asegúrate de tener conexión a Internet.');
-        } else {
-          toast.error(`Error de búsqueda por voz: ${event.error}`);
-        }
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recog.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        const cleanedText = transcript.endsWith('.') ? transcript.slice(0, -1) : transcript;
-        setSearchQuery(cleanedText);
-        toast.success(`Búsqueda por voz: "${cleanedText}"`);
-      };
-
-      recognitionRef.current = recog;
-      recog.start();
-    } catch (err) {
-      console.error('SpeechRecognition start error:', err);
-      setIsListening(false);
-      isListeningRef.current = false;
-    }
-  }, []);
   const amountPaidInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
+
+  const { isListening, toggleVoiceSearch } = useVoiceSearch(setSearchQuery);
 
   // SWR queries con caché global
   const { data: swrProducts, mutate: mutateProducts } = useSWR<Product[]>(role !== 'NONE' && isOnline ? '/products' : null);
@@ -258,11 +140,15 @@ export function usePOS() {
       return;
     }
 
+    // Estimar automáticamente un 16% de utilidad para productos de cobro rápido/no registrados
+    const costPrice = price * 0.84;
+
     const mockProduct: Product = {
       id: `generic-${Date.now()}`,
       barcode: null,
       name: genericName.trim() || 'Artículo Común',
       sellPrice: price,
+      costPrice: Math.max(0, costPrice),
       stock: 9999,
       category: 'VARIOS',
     };
@@ -277,48 +163,7 @@ export function usePOS() {
     setPosTab('CART');
   };
 
-  const normalizeText = (str: string) =>
-    str
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/['`´’"″\-_\.]/g, '')
-      .toLowerCase();
-
-  const filteredCatalog = useMemo(() => {
-    const rawQuery = searchQuery.trim();
-    if (!rawQuery) {
-      return catalogProducts.filter(p => activeCategory === 'TODOS' || p.category === activeCategory);
-    }
-
-    const normalizedQuery = normalizeText(rawQuery);
-    // Split query by spaces to match words in any order
-    const queryWords = normalizedQuery.split(/\s+/).filter(Boolean);
-
-    return catalogProducts.filter(p => {
-      const matchesCategory = activeCategory === 'TODOS' || p.category === activeCategory;
-      if (!matchesCategory) return false;
-
-      const normName = normalizeText(p.name);
-      const normCat = p.category ? normalizeText(p.category) : '';
-      const normBarcode = p.barcode ? p.barcode.toLowerCase() : '';
-
-      // Product must match all words of the search query
-      return queryWords.every(word => {
-        // Expand query term with synonyms only if search word is longer than 2 characters
-        const synonyms = word.length > 2 ? (SYNONYMS[word] || []) : [];
-        const termsToMatch = [word, ...synonyms.map(normalizeText)];
-
-        return termsToMatch.some(term => {
-          const nameMatches = normName.includes(term);
-          const catMatches = normCat ? normCat.includes(term) : false;
-          const barcodeMatches = normBarcode ? normBarcode.includes(term) : false;
-
-          return nameMatches || catMatches || barcodeMatches;
-        });
-      });
-    });
-  }, [catalogProducts, searchQuery, activeCategory]);
-
+  const { filteredCatalog } = useCatalogFilter(catalogProducts, searchQuery, activeCategory);
 
   const handleBarcodeScanned = useCallback((barcode: string) => {
     const code = barcode.trim();
@@ -344,7 +189,7 @@ export function usePOS() {
   const handleSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
     const query = value.trim();
-    if (!query || query.length < 3) return; // avoid matching incomplete inputs
+    if (!query || query.length < 3) return;
 
     const exactBarcodeProduct = catalogProducts.find(p => p.barcode === query);
     if (exactBarcodeProduct) {
@@ -425,7 +270,6 @@ export function usePOS() {
         await dbHelper.queueSale(payload);
         await updateSyncQueueCount();
         
-        // Simular descuento de stock localmente
         const updatedProducts = catalogProducts.map(p => {
           const cartItem = cartItems.find(item => item.id === p.id);
           if (cartItem) {
@@ -433,6 +277,7 @@ export function usePOS() {
           }
           return p;
         });
+
         setLocalProducts(updatedProducts);
         await dbHelper.saveProducts(updatedProducts);
 
@@ -461,15 +306,17 @@ export function usePOS() {
       clearCart();
       setSelectedCustomerId('');
       setPosTab('CATALOG');
-      // Recargar catálogo para actualizar el stock local
       mutateProducts();
+      void mutate('/register/active');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('register-active-updated'));
+      }
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al procesar la venta.'));
     } finally {
       setIsSubmitting(false);
     }
   }, [
-
     getTotal,
     customers,
     selectedCustomerId,
@@ -507,98 +354,30 @@ export function usePOS() {
     ? rawCartItemsCount
     : Number(rawCartItemsCount.toFixed(2));
 
-
   const canCheckout = cartItems.length > 0 && 
     !(paymentMethod === 'FIADO' && !selectedCustomerId) && 
     !(paymentMethod === 'EFECTIVO' && amountPaid < getTotal());
 
-  // Atajos de teclado
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // F2 enfocar buscador
-      if (e.key === 'F2') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-      // F4 cobro rápido / artículo libre
-      if (e.key === 'F4') {
-        e.preventDefault();
-        setIsGenericOpen(true);
-      }
-      // F8 cobro: ir a pagar o confirmar venta
-      if (e.key === 'F8') {
-        e.preventDefault();
-        if (cartItems.length > 0) {
-          if (posTab !== 'PAYMENT') {
-            setPosTab('PAYMENT');
-          } else {
-            if (canCheckout) {
-              handleCheckout();
-            } else {
-              toast.error('Complete la información de pago requerida.');
-            }
-          }
-        }
-      }
-      // Esc cerrar modales auxiliares o volver al ticket si está en cobro
-      if (e.key === 'Escape') {
-        if (isGenericOpen || isSuspendModalOpen || isSuspendedOpen || isShortcutsHelpOpen) {
-          setIsGenericOpen(false);
-          setIsSuspendModalOpen(false);
-          setIsSuspendedOpen(false);
-          setIsShortcutsHelpOpen(false);
-        } else if (posTab === 'PAYMENT') {
-          e.preventDefault();
-          setPosTab('CART');
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cartItems, paymentMethod, posTab, amountPaid, selectedCustomerId, canCheckout, handleCheckout, isGenericOpen, isShortcutsHelpOpen, isSuspendModalOpen, isSuspendedOpen]);
-
-  // Detector global para escáneres de códigos de barras físicos (USB / Bluetooth)
-  useEffect(() => {
-    let buffer = '';
-    let lastKeyTime = Date.now();
-
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Ignorar si el usuario está escribiendo deliberadamente en un input/textarea/select que NO sea el buscador
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-        const isSearchInput = searchInputRef.current && target === searchInputRef.current;
-        if (isInput && !isSearchInput) {
-          return;
-        }
-      }
-
-      const currentTime = Date.now();
-      // Los escáneres físicos envían caracteres con intervalos muy cortos (< 50ms)
-      if (currentTime - lastKeyTime > 60) {
-        buffer = '';
-      }
-      lastKeyTime = currentTime;
-
-      if (e.key === 'Enter') {
-        if (buffer.length >= 3) {
-          handleBarcodeScanned(buffer);
-          buffer = '';
-          // Si el foco estaba en el buscador, limpiamos su valor visual
-          if (searchInputRef.current) {
-            setSearchQuery('');
-          }
-        }
-      } else if (e.key.length === 1) {
-        buffer += e.key;
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [handleBarcodeScanned, setSearchQuery]);
+  usePOSKeybindings({
+    cartItemsCount,
+    paymentMethod,
+    posTab,
+    amountPaid,
+    selectedCustomerId,
+    canCheckout,
+    isGenericOpen,
+    isSuspendModalOpen,
+    isSuspendedOpen,
+    isShortcutsHelpOpen,
+    searchInputRef,
+    setIsGenericOpen,
+    setIsSuspendModalOpen,
+    setIsSuspendedOpen,
+    setIsShortcutsHelpOpen,
+    setPosTab,
+    handleCheckout,
+    handleBarcodeScanned,
+  });
 
   // Autofoco automático al cambiar a la vista de pago
   useEffect(() => {
@@ -673,6 +452,8 @@ export function usePOS() {
     setGenericPrice,
     genericName,
     setGenericName,
+    genericMarginPercent,
+    setGenericMarginPercent,
     paymentMethod,
     setPaymentMethod,
     amountPaid,

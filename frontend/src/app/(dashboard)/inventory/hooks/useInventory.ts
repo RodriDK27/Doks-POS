@@ -272,8 +272,7 @@ export function useInventory() {
   const filteredProducts = products.filter(p => {
     const matchesSearch = 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (p.barcode && p.barcode.includes(searchQuery)) ||
-      (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+      (!!p.barcode && p.barcode.includes(searchQuery));
 
     const matchesCategory = selectedCategory === '' || p.category === selectedCategory;
 
@@ -332,7 +331,7 @@ export function useInventory() {
             purchasePrice: 0,
             sellPrice: detail.sellPrice,
             stock: 1,
-            minStock: 5,
+            minStock: 1,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
@@ -503,12 +502,22 @@ export function useInventory() {
     }
   };
 
-  const handlePayPendingTicket = async (id: string, payFromRegister: boolean, amountPaid: number) => {
+  const handlePayPendingTicket = async (id: string, payFromRegister: boolean, amountPaid: number, paymentSource?: 'CAJA_GRANDE' | 'CAJA_CHICA' | 'CREDITO') => {
     try {
-      await api.post(`/suppliers/pending-tickets/${id}/pay`, { payFromRegister, amountPaid });
-      toast.success('Ticket liquidado y pagado correctamente. ¡Salida de caja registrada!');
+      await api.post(`/suppliers/pending-tickets/${id}/pay`, { 
+        payFromRegister, 
+        amountPaid,
+        paymentSource: paymentSource || (payFromRegister ? 'CAJA_CHICA' : 'CAJA_GRANDE'),
+      });
+      toast.success('Ticket liquidado y pagado correctamente.');
       fetchPendingTickets();
       fetchSuppliersData();
+      void mutate('/register/active');
+      void mutate('/vault/state');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('register-active-updated'));
+        window.dispatchEvent(new CustomEvent('vault-updated'));
+      }
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al liquidar pago de ticket.'));
     }

@@ -161,7 +161,7 @@ export class VaultService {
    * Descontar pago de proveedor pagado desde Caja Grande
    */
   async deductForSupplierPayment(
-    purchaseId: string,
+    purchaseId: string | null | undefined,
     amount: number,
     description: string,
     createdByName?: string,
@@ -189,7 +189,7 @@ export class VaultService {
           amount: -expense,
           balanceAfter: newBalance,
           description,
-          purchaseId,
+          purchaseId: purchaseId || undefined,
           createdByName,
         },
       });
