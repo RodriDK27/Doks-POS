@@ -28,8 +28,8 @@ export class VaultController {
 
   @Get('profit-report')
   @Roles('ADMIN')
-  getProfitReport() {
-    return this.vaultService.getProfitReport();
+  getProfitReport(@Query('period') period?: 'TODAY' | 'WEEK' | 'MONTH' | 'ALL') {
+    return this.vaultService.getProfitReport(period);
   }
 
   @Post('transaction')

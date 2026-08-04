@@ -230,36 +230,82 @@ export class VaultService {
   }
 
   /**
-   * Reporte de Utilidad Real Neta del Negocio
+   * Reporte de Utilidad Real Neta del Negocio (con filtro de período)
    */
-  async getProfitReport() {
-    const { vault, metrics } = await this.getVaultState();
+  async getProfitReport(period: 'TODAY' | 'WEEK' | 'MONTH' | 'ALL' = 'ALL') {
+    const { vault } = await this.getVaultState();
 
-    // 1. Total ventas registradas
-    const totalSales = await this.prisma.sale.aggregate({
-      _sum: { total: true },
+    let startDate: Date | undefined;
+    const now = new Date();
+
+    if (period === 'TODAY') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === 'WEEK') {
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === 'MONTH') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    const whereDate = startDate ? { gte: startDate } : undefined;
+
+    // Aggregates filtrados por fecha
+    const aggregates = await this.prisma.mainVaultTransaction.groupBy({
+      by: ['type'],
+      where: whereDate ? { createdAt: whereDate } : undefined,
+      _sum: { amount: true },
     });
-    const grossRevenue = totalSales._sum.total || 0;
 
-    // 2. Costo estimado de ventas (Costo de adquisición de productos vendidos)
-    const saleItems = await this.prisma.saleItem.findMany({
-      include: { product: { select: { purchasePrice: true } } },
+    const statsMap: Record<string, number> = {};
+    aggregates.forEach((agg) => {
+      statsMap[agg.type] = Math.abs(agg._sum.amount || 0);
     });
 
-    const costOfGoodsSold = saleItems.reduce((acc, item) => {
-      const cost = item.product?.purchasePrice || 0;
-      return acc + (cost * item.quantity);
-    }, 0);
+    const totalDepositsFromClosures = statsMap[VaultTransactionType.DEPOSITO_CORTE] || 0;
+    const totalSupplierPayments = statsMap[VaultTransactionType.EGRESO_PROVEEDOR] || 0;
+    const totalProfitWithdrawals = statsMap[VaultTransactionType.RETIRO_UTILIDAD] || 0;
+    const totalOperationalExpenses = statsMap[VaultTransactionType.GASTO_OPERATIVO] || 0;
+
+    // 1. Ingresos brutos en Bóveda por cortes de caja transferidos
+    const grossRevenue = totalDepositsFromClosures;
+
+    // 2. Transacciones de depósito de corte en Bóveda en el rango
+    const vaultClosureTxs = await this.prisma.mainVaultTransaction.findMany({
+      where: {
+        type: VaultTransactionType.DEPOSITO_CORTE,
+        cashRegisterId: { not: null },
+        ...(whereDate ? { createdAt: whereDate } : {}),
+      },
+      select: { cashRegisterId: true },
+    });
+
+    const registerIds: string[] = vaultClosureTxs
+      .map((t) => t.cashRegisterId)
+      .filter((id): id is string => Boolean(id));
+
+    // 3. Costo real de mercancía vendida en esas cajas cerradas
+    let costOfGoodsSold = 0;
+    if (registerIds.length > 0) {
+      const saleItems = await this.prisma.saleItem.findMany({
+        where: { sale: { cashRegisterId: { in: registerIds } } },
+      });
+
+      const allProducts = await this.prisma.product.findMany();
+      const productCostMap = new Map<string, number>();
+      allProducts.forEach((p) => productCostMap.set(p.id, p.purchasePrice));
+
+      costOfGoodsSold = saleItems.reduce((acc, item) => {
+        const cost = item.productId ? (productCostMap.get(item.productId) || 0) : 0;
+        return acc + cost * item.quantity;
+      }, 0);
+    } else {
+      costOfGoodsSold = totalSupplierPayments;
+    }
 
     const grossProfit = grossRevenue - costOfGoodsSold;
-
-    // 3. Gastos operativos totales pagados desde Caja Grande
-    const operationalExpenses = metrics.totalOperationalExpenses;
-
-    // 4. Utilidades efectivamente retiradas por el dueño
-    const profitWithdrawn = metrics.totalProfitWithdrawals;
-
-    // 5. Ganancia Real Neta Disponible = Utilidad Bruta - Gastos Operativos
+    const operationalExpenses = totalOperationalExpenses;
+    const profitWithdrawn = totalProfitWithdrawals;
     const netRealProfit = grossProfit - operationalExpenses;
 
     return {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import useSWR, { mutate } from 'swr';
+import useSWR from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import {
@@ -26,7 +26,6 @@ import { Badge } from '@/components/ui/badge';
 import { CustomSelect } from '@/components/CustomSelect';
 import { parseAxiosError } from '@/lib/errorMapper';
 import PinLockGuard from '@/components/PinLockGuard';
-import { useAuthStore } from '@/store/useAuthStore';
 
 interface VaultTransaction {
   id: string;
@@ -62,13 +61,17 @@ interface ProfitReport {
   netProfitRemaining: number;
 }
 
+type PeriodFilter = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL';
+
 export default function VaultPage() {
-  const { role } = useAuthStore();
-  const { data: vaultData, isLoading: loadingVault, mutate: mutateVault } = useSWR<VaultData>('/vault');
+  const { data: vaultData, mutate: mutateVault } = useSWR<VaultData>('/vault');
   const { data: transactions = [], isLoading: loadingTx, mutate: mutateTx } = useSWR<VaultTransaction[]>('/vault/transactions');
-  const { data: profitReport, isLoading: loadingProfit, mutate: mutateProfit } = useSWR<ProfitReport>('/vault/profit-report');
+  const [analysisPeriod, setAnalysisPeriod] = useState<PeriodFilter>('ALL');
+  const { data: profitReport, isLoading: loadingProfit, mutate: mutateProfit } = useSWR<ProfitReport>(`/vault/profit-report?period=${analysisPeriod}`);
 
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('');
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('ALL');
+  const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
   
   // Modales de Acción Rápida
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -161,9 +164,34 @@ export default function VaultPage() {
     }
   };
 
-  const filteredTransactions = selectedTypeFilter
-    ? transactions.filter((t) => t.type === selectedTypeFilter)
-    : transactions;
+  // Opciones de años dinámicos según el historial de transacciones
+  const availableYears = React.useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const yearsSet = new Set<number>([currentYear]);
+    transactions.forEach((t) => {
+      const year = new Date(t.createdAt).getFullYear();
+      if (!isNaN(year)) yearsSet.add(year);
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [transactions]);
+
+  const filteredTransactions = transactions.filter((t) => {
+    if (selectedTypeFilter && t.type !== selectedTypeFilter) {
+      return false;
+    }
+    const txDate = new Date(t.createdAt);
+    if (selectedMonthFilter !== 'ALL') {
+      if (txDate.getMonth() !== parseInt(selectedMonthFilter, 10)) {
+        return false;
+      }
+    }
+    if (selectedYearFilter !== 'ALL') {
+      if (txDate.getFullYear() !== parseInt(selectedYearFilter, 10)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   const currentBalance = vaultData?.vault.balance ?? 0;
   const metrics = vaultData?.metrics;
@@ -348,49 +376,85 @@ export default function VaultPage() {
         </div>
 
         {/* PANEL DE ANÁLISIS DE GANANCIA REAL NETA */}
-        {profitReport && (
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <h2 className="text-base font-black text-slate-850 dark:text-slate-100">
-                  Análisis de Ganancia Real Neta del Negocio
-                </h2>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1">
+            <div className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              <h2 className="text-base font-black text-slate-850 dark:text-slate-100">
+                Análisis de Ganancia Real Neta del Negocio
+              </h2>
+            </div>
+            
+            {/* Botones de filtro de periodo */}
+            <div className="flex flex-wrap gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/50 dark:border-slate-700/50">
+              {[
+                { id: 'TODAY', label: 'Hoy' },
+                { id: 'WEEK', label: 'Últimos 7 Días' },
+                { id: 'MONTH', label: 'Este Mes' },
+                { id: 'ALL', label: 'Histórico Total' },
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  type="button"
+                  onClick={() => setAnalysisPeriod(btn.id as PeriodFilter)}
+                  className={`px-3 py-1 text-[10px] font-extrabold rounded-xl transition-all cursor-pointer ${
+                    analysisPeriod === btn.id
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Ventas Totales Brutas</span>
+              <div className="text-lg font-black text-slate-800 dark:text-slate-100 mt-1">
+                {loadingProfit || !profitReport ? (
+                  <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse my-0.5" />
+                ) : (
+                  `$${profitReport.grossRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`
+                )}
               </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cálculo en Tiempo Real</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Ventas Totales Brutas</span>
-                <div className="text-lg font-black text-slate-800 dark:text-slate-100 mt-1">
-                  ${profitReport.grossRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                </div>
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Costo de Mercancía Vendida</span>
+              <div className="text-lg font-black text-slate-600 dark:text-slate-300 mt-1">
+                {loadingProfit || !profitReport ? (
+                  <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse my-0.5" />
+                ) : (
+                  `-$${profitReport.costOfGoodsSold.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`
+                )}
               </div>
+            </div>
 
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Costo de Mercancía Vendida</span>
-                <div className="text-lg font-black text-slate-600 dark:text-slate-300 mt-1">
-                  -${profitReport.costOfGoodsSold.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                </div>
+            <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900">
+              <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase block">Utilidad Bruta</span>
+              <div className="text-lg font-black text-indigo-650 dark:text-indigo-300 mt-1">
+                {loadingProfit || !profitReport ? (
+                  <div className="h-6 w-24 bg-indigo-200/50 dark:bg-indigo-900/50 rounded-lg animate-pulse my-0.5" />
+                ) : (
+                  `$${profitReport.grossProfit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`
+                )}
               </div>
+            </div>
 
-              <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900">
-                <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase block">Utilidad Bruta</span>
-                <div className="text-lg font-black text-indigo-650 dark:text-indigo-300 mt-1">
-                  ${profitReport.grossProfit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-
-              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-900">
-                <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase block">Ganancia Real Neta</span>
-                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                  ${profitReport.netRealProfit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                </div>
+            <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-900">
+              <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase block">Ganancia Real Neta</span>
+              <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                {loadingProfit || !profitReport ? (
+                  <div className="h-6 w-24 bg-emerald-200/50 dark:bg-emerald-900/50 rounded-lg animate-pulse my-0.5" />
+                ) : (
+                  `$${profitReport.netRealProfit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`
+                )}
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* TABLA HISTORIAL DE MOVIMIENTOS */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
@@ -402,21 +466,64 @@ export default function VaultPage() {
               </h2>
             </div>
 
-            <div className="w-full sm:w-64">
-              <CustomSelect
-                value={selectedTypeFilter}
-                onChange={setSelectedTypeFilter}
-                placeholder="Todos los tipos de movimiento"
-                options={[
-                  { value: '', label: 'Todos los movimientos' },
-                  { value: 'DEPOSITO_CORTE', label: 'Cierres de Caja Chica' },
-                  { value: 'EGRESO_PROVEEDOR', label: 'Pagos a Proveedores' },
-                  { value: 'RETIRO_UTILIDAD', label: 'Retiros de Utilidad' },
-                  { value: 'GASTO_OPERATIVO', label: 'Gastos Operativos' },
-                  { value: 'ENTRADA_MANUAL', label: 'Entradas de Capital' },
-                  { value: 'AJUSTE_SALDO', label: 'Ajustes de Saldo' },
-                ]}
-              />
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              {/* Filtro Mes */}
+              <div className="w-36">
+                <CustomSelect
+                  value={selectedMonthFilter}
+                  onChange={setSelectedMonthFilter}
+                  placeholder="Mes"
+                  options={[
+                    { value: 'ALL', label: 'Todos los meses' },
+                    { value: '0', label: 'Enero' },
+                    { value: '1', label: 'Febrero' },
+                    { value: '2', label: 'Marzo' },
+                    { value: '3', label: 'Abril' },
+                    { value: '4', label: 'Mayo' },
+                    { value: '5', label: 'Junio' },
+                    { value: '6', label: 'Julio' },
+                    { value: '7', label: 'Agosto' },
+                    { value: '8', label: 'Septiembre' },
+                    { value: '9', label: 'Octubre' },
+                    { value: '10', label: 'Noviembre' },
+                    { value: '11', label: 'Diciembre' },
+                  ]}
+                />
+              </div>
+
+              {/* Filtro Año */}
+              <div className="w-32">
+                <CustomSelect
+                  value={selectedYearFilter}
+                  onChange={setSelectedYearFilter}
+                  placeholder="Año"
+                  options={[
+                    { value: 'ALL', label: 'Todos los años' },
+                    ...availableYears.map((y) => ({
+                      value: y.toString(),
+                      label: y.toString(),
+                    })),
+                  ]}
+                />
+              </div>
+
+              {/* Filtro Tipo de Movimiento */}
+              <div className="w-48 sm:w-56">
+                <CustomSelect
+                  value={selectedTypeFilter}
+                  onChange={setSelectedTypeFilter}
+                  placeholder="Todos los movimientos"
+                  options={[
+                    { value: '', label: 'Todos los movimientos' },
+                    { value: 'DEPOSITO_CORTE', label: 'Cierres de Caja Chica' },
+                    { value: 'EGRESO_PROVEEDOR', label: 'Pagos a Proveedores' },
+                    { value: 'RETIRO_UTILIDAD', label: 'Retiros de Utilidad' },
+                    { value: 'GASTO_OPERATIVO', label: 'Gastos Operativos' },
+                    { value: 'ENTRADA_MANUAL', label: 'Entradas de Capital' },
+                    { value: 'AJUSTE_SALDO', label: 'Ajustes de Saldo' },
+                  ]}
+                />
+              </div>
             </div>
           </div>
 
