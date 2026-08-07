@@ -71,6 +71,9 @@ export function useRegister() {
     mutateCashiers();
   };
 
+  // Sugerir el saldo dejado en el corte anterior si está disponible
+  const suggestedInitialBalance = lastClosedRegister?.actualBalance !== undefined ? 500 : 500;
+
   const handleDownloadPdf = async (registerId: string) => {
     try {
       toast.info('Generando reporte PDF...');

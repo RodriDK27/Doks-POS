@@ -169,6 +169,43 @@ export function CloseRegisterDialog({
             </div>
           </div>
 
+          {/* FONDO QUE SE QUEDA EN CAJA Y TRASLADO A BÓVEDA */}
+          <div className="bg-indigo-50/60 dark:bg-indigo-950/30 p-3.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 space-y-3">
+            <label className="flex items-center justify-between cursor-pointer group">
+              <div className="space-y-0.5 pr-2">
+                <span className="text-xs font-black text-indigo-950 dark:text-indigo-200 block">
+                  Mantener todo el efectivo para el siguiente turno
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block leading-tight">
+                  {nextInitialBalance === countedCash && countedCash !== null && countedCash > 0
+                    ? 'Activado: No se retira nada a Bóveda. El siguiente empleado inicia con el total contado.'
+                    : 'Desactivado: Se dejan $500 de base en la caja chica y el resto se traslada a Bóveda.'}
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600 shrink-0"
+                checked={countedCash !== null && countedCash > 0 && nextInitialBalance === countedCash}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setNextInitialBalance(countedCash || 0);
+                  } else {
+                    setNextInitialBalance(500);
+                  }
+                }}
+              />
+            </label>
+
+            <div className="flex items-center justify-between pt-1 border-t border-indigo-100/80 dark:border-indigo-900/50 text-xs">
+              <span className="font-bold text-slate-600 dark:text-slate-400">
+                Fondo dejado en caja: <strong className="font-black text-indigo-700 dark:text-indigo-300">${nextInitialBalance.toFixed(2)}</strong>
+              </span>
+              <span className="font-bold text-slate-600 dark:text-slate-400">
+                Traslado a Bóveda: <strong className="font-black text-emerald-600 dark:text-emerald-400">${Math.max(0, (countedCash || 0) - nextInitialBalance).toFixed(2)}</strong>
+              </span>
+            </div>
+          </div>
+
           {/* NOTAS */}
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
