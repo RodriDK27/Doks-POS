@@ -226,7 +226,8 @@ export default function DashboardLayout({
               router.replace('/register');
             }
           } else {
-            if (role === 'CAJERO' && (pathname === '/' || pathname === '/reports')) {
+            // Si la caja YA está abierta y el usuario intenta entrar a la página de apertura/caja (/register), ir directo a Ventas (/pos)
+            if (pathname === '/register' || (role === 'CAJERO' && (pathname === '/' || pathname === '/reports'))) {
               router.replace('/pos');
             }
           }
