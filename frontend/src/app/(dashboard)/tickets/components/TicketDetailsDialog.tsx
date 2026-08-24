@@ -33,7 +33,7 @@ export function TicketDetailsDialog({
             >
               {/* Cabecera del ticket */}
               <div className="text-center space-y-1">
-                <h3 className="font-bold text-sm tracking-wide">DOK'S POS CENTRAL</h3>
+                <h3 className="font-bold text-sm tracking-wide">DOK&apos;S POS CENTRAL</h3>
                 <p className="text-[10px] text-slate-450 uppercase font-semibold">Abarrotes & Miscelánea</p>
                 <p className="text-[9px] text-slate-400">Tel: 55-1234-5678</p>
               </div>
@@ -102,7 +102,7 @@ export function TicketDetailsDialog({
 
               <div className="text-center pt-3 border-t border-dashed text-[9px] text-slate-400">
                 <p>¡Gracias por su preferencia!</p>
-                <p className="mt-0.5">Visite Dok's POS pronto</p>
+                <p className="mt-0.5">Visite Dok&apos;s POS pronto</p>
               </div>
             </div>
           </div>

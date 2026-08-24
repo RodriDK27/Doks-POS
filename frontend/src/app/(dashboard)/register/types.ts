@@ -18,3 +18,35 @@ export interface CashRegister {
   notes: string | null;
   transactions: CashTransaction[];
 }
+
+export interface DailySupplierTemplateItem {
+  id: string;
+  templateId: string;
+  productId: string;
+  product: {
+    id: string;
+    name: string;
+    barcode?: string | null;
+    purchasePrice: number;
+    sellPrice: number;
+    stock: number;
+    unitType?: 'PIECE' | 'WEIGHT';
+  };
+  defaultQty: number;
+  defaultCost?: number | null;
+}
+
+export interface DailySupplierTemplate {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  supplierId?: string | null;
+  supplier?: {
+    id: string;
+    name: string;
+  } | null;
+  isActive: boolean;
+  items: DailySupplierTemplateItem[];
+}
+

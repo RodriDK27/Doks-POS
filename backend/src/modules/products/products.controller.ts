@@ -81,6 +81,25 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
 
+  /** Vincular un código de barras adicional (rápido para POS / Inventario) */
+  @Post(':id/barcodes')
+  addBarcode(
+    @Param('id') id: string,
+    @Body() body: { barcode: string; label?: string },
+  ) {
+    return this.productsService.addBarcode(id, body.barcode, body.label);
+  }
+
+  /** Desvincular un código de barras secundario */
+  @Delete(':id/barcodes/:barcodeId')
+  @Roles('ADMIN', 'GERENTE')
+  removeBarcode(
+    @Param('id') id: string,
+    @Param('barcodeId') barcodeId: string,
+  ) {
+    return this.productsService.removeBarcode(id, barcodeId);
+  }
+
   @Patch(':id')
   @Roles('ADMIN', 'GERENTE')
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {

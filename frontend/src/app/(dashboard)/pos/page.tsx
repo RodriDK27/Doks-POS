@@ -16,10 +16,12 @@ import {
   Camera,
   Zap,
   Layers,
-  Receipt
+  Receipt,
+  Truck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { CustomSelect } from '@/components/CustomSelect';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 
@@ -34,10 +36,13 @@ import { SuspendCartDialog } from './components/SuspendCartDialog';
 import { SuspendedCartsDialog } from './components/SuspendedCartsDialog';
 import { ShortcutsHelpDialog } from './components/ShortcutsHelpDialog';
 import { ExpressScannerMobileView } from './components/ExpressScannerMobileView';
+import { QuickLinkBarcodeModal } from './components/QuickLinkBarcodeModal';
+import { DailySuppliersModal } from '../register/components/DailySuppliersModal';
 
 export default function POSPage() {
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  const [isDailySuppliersOpen, setIsDailySuppliersOpen] = useState(false);
   const [mobileMode, setMobileMode] = useState<'STANDARD' | 'EXPRESS'>(() => {
     if (typeof window !== 'undefined') {
       const savedMode = localStorage.getItem('doks_pos_mobile_mode');
@@ -100,6 +105,11 @@ export default function POSPage() {
     isSubmitting,
     changeAmount,
 
+    catalogProducts,
+    isQuickLinkOpen,
+    setIsQuickLinkOpen,
+    unrecognizedBarcode,
+    handleQuickLinkBarcode,
     searchInputRef,
     amountPaidInputRef,
     confirmButtonRef,
@@ -216,6 +226,16 @@ export default function POSPage() {
 
           {/* ACCIONES RÁPIDAS EN MÓVIL (COMPACTAS Y SIN DESBORDAMIENTO) */}
           <div className="flex items-center gap-1.5 sm:hidden shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-bold text-xs h-9 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer shadow-xs"
+              onClick={() => setIsDailySuppliersOpen(true)}
+              title="Proveedores Diarios (Pan, Tortillas...)"
+            >
+              <Zap className="h-4 w-4" />
+            </Button>
+
             {suspendedCarts.length > 0 && (
               <Button
                 variant="outline"
@@ -254,6 +274,15 @@ export default function POSPage() {
 
         {/* ACCIONES DEL POS EN ESCRITORIO / TABLET */}
         <div className="hidden sm:flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            className="border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-bold text-xs sm:text-sm h-10 rounded-xl flex items-center gap-1.5 shrink-0 px-3.5 active:scale-95 transition-all cursor-pointer shadow-xs"
+            onClick={() => setIsDailySuppliersOpen(true)}
+          >
+            <Zap className="h-4 w-4 text-amber-500" />
+            <span>Proveedores Diarios</span>
+          </Button>
+
           {suspendedCarts.length > 0 && (
             <Button
               variant="outline"
@@ -562,17 +591,30 @@ export default function POSPage() {
         </div>
       )}
 
+      {/* MODAL DE VINCULACIÓN RÁPIDA DE CÓDIGO NO RECONOCIDO */}
+      <QuickLinkBarcodeModal
+        open={isQuickLinkOpen}
+        onOpenChange={setIsQuickLinkOpen}
+        unrecognizedBarcode={unrecognizedBarcode}
+        catalogProducts={catalogProducts}
+        onLinkBarcode={handleQuickLinkBarcode}
+      />
+
       {/* MODAL DE ESCÁNER DE CÓDIGO DE BARRAS CON CÁMARA */}
       <BarcodeScannerModal
         isOpen={isCameraScannerOpen}
         onClose={() => setIsCameraScannerOpen(false)}
         onScan={(barcode) => {
-          setSearchQuery(barcode);
-          handleSearchQueryChange(barcode);
-          handleSearchSubmit();
+          handleBarcodeScanned(barcode);
           setIsCameraScannerOpen(false);
         }}
         title="Escanear Producto para Cobro"
+      />
+
+      {/* MODAL TODO-EN-UNO DE PROVEEDORES Y GASTOS DIARIOS */}
+      <DailySuppliersModal
+        open={isDailySuppliersOpen}
+        onOpenChange={setIsDailySuppliersOpen}
       />
     </div>
   );

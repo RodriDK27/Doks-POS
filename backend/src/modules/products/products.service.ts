@@ -7,20 +7,60 @@ import { UpdateProductDto } from './dto/update-product.dto';
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Helper para validar que un código de barras no esté asignado a otro producto
+  private async checkBarcodeUniqueness(barcode: string, excludeProductId?: string) {
+    const clean = barcode.trim();
+    if (!clean) return;
+
+    // 1. Checar en el campo principal de Product
+    const existingMain = await this.prisma.product.findUnique({
+      where: { barcode: clean },
+    });
+    if (existingMain && existingMain.id !== excludeProductId) {
+      throw new BadRequestException(`El código "${clean}" ya pertenece al producto "${existingMain.name}" como código principal.`);
+    }
+
+    // 2. Checar en los códigos secundarios (ProductBarcode)
+    const existingSecondary = await this.prisma.productBarcode.findUnique({
+      where: { barcode: clean },
+      include: { product: true },
+    });
+    if (existingSecondary && existingSecondary.productId !== excludeProductId) {
+      throw new BadRequestException(`El código "${clean}" ya está asignado como código secundario al producto "${existingSecondary.product.name}".`);
+    }
+  }
+
   // Crear un producto nuevo
   async create(createProductDto: CreateProductDto) {
-    // Si tiene código de barras, validar que sea único
-    if (createProductDto.barcode) {
-      const existingProduct = await this.prisma.product.findUnique({
-        where: { barcode: createProductDto.barcode },
-      });
-      if (existingProduct) {
-        throw new BadRequestException('Ya existe un producto registrado con este código de barras.');
+    const { additionalBarcodes, ...productData } = createProductDto;
+
+    // Si tiene código de barras principal, validar que sea único
+    if (productData.barcode && productData.barcode.trim()) {
+      await this.checkBarcodeUniqueness(productData.barcode.trim());
+    }
+
+    // Validar códigos secundarios si vienen en la creación
+    const validSecondaryBarcodes: Array<{ barcode: string; label?: string | null }> = [];
+    if (additionalBarcodes && Array.isArray(additionalBarcodes)) {
+      for (const item of additionalBarcodes) {
+        const rawCode = typeof item === 'string' ? item : item.barcode;
+        const rawLabel = typeof item === 'string' ? null : (item.label ?? null);
+        const code = rawCode ? rawCode.trim() : '';
+        if (code) {
+          if (productData.barcode && code === productData.barcode.trim()) {
+            continue; // Evitar duplicar el principal en los secundarios
+          }
+          if (validSecondaryBarcodes.some(b => b.barcode === code)) {
+            continue; // Evitar duplicados dentro del mismo array
+          }
+          await this.checkBarcodeUniqueness(code);
+          validSecondaryBarcodes.push({ barcode: code, label: rawLabel });
+        }
       }
     }
 
-    if (createProductDto.category && createProductDto.category.trim()) {
-      const catName = createProductDto.category.trim();
+    if (productData.category && productData.category.trim()) {
+      const catName = productData.category.trim();
       await this.prisma.category.upsert({
         where: { name: catName },
         update: {},
@@ -29,7 +69,19 @@ export class ProductsService {
     }
 
     const product = await this.prisma.product.create({
-      data: createProductDto,
+      data: {
+        ...productData,
+        barcode: productData.barcode ? productData.barcode.trim() : null,
+        barcodes: validSecondaryBarcodes.length > 0 ? {
+          create: validSecondaryBarcodes.map(b => ({
+            barcode: b.barcode,
+            label: b.label || null,
+          })),
+        } : undefined,
+      },
+      include: {
+        barcodes: true,
+      },
     });
 
     // Registrar movimiento inicial si el stock es > 0
@@ -55,16 +107,21 @@ export class ProductsService {
       whereClause.category = category;
     }
 
-    if (search) {
+    if (search && search.trim()) {
+      const query = search.trim();
       whereClause.OR = [
-        { name: { contains: search } },
-        { barcode: { contains: search } },
-        { category: { contains: search } },
+        { name: { contains: query, mode: 'insensitive' } },
+        { barcode: { contains: query } },
+        { category: { contains: query, mode: 'insensitive' } },
+        { barcodes: { some: { barcode: { contains: query } } } },
       ];
     }
 
     return this.prisma.product.findMany({
       where: whereClause,
+      include: {
+        barcodes: true,
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -73,6 +130,9 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
+      include: {
+        barcodes: true,
+      },
     });
     if (!product) {
       throw new NotFoundException(`El producto con ID ${id} no fue encontrado.`);
@@ -80,10 +140,19 @@ export class ProductsService {
     return product;
   }
 
-  // Buscar un producto por código de barras (muy utilizado por el lector del POS)
+  // Buscar un producto por código de barras (busca en principal y secundarios)
   async findByBarcode(barcode: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { barcode },
+    const code = barcode.trim();
+    const product = await this.prisma.product.findFirst({
+      where: {
+        OR: [
+          { barcode: code },
+          { barcodes: { some: { barcode: code } } },
+        ],
+      },
+      include: {
+        barcodes: true,
+      },
     });
     if (!product) {
       throw new NotFoundException(`Ningún producto tiene el código de barras: ${barcode}`);
@@ -94,19 +163,19 @@ export class ProductsService {
   // Actualizar un producto
   async update(id: string, updateProductDto: UpdateProductDto) {
     const currentProduct = await this.findOne(id);
+    const { additionalBarcodes, ...productData } = updateProductDto;
 
-    // Si se está cambiando el código de barras, verificar que no esté duplicado
-    if (updateProductDto.barcode && updateProductDto.barcode !== currentProduct.barcode) {
-      const existingProduct = await this.prisma.product.findUnique({
-        where: { barcode: updateProductDto.barcode },
-      });
-      if (existingProduct) {
-        throw new BadRequestException('El nuevo código de barras ya está asignado a otro producto.');
+    // Si se está cambiando el código de barras principal, verificar que no esté duplicado
+    if (productData.barcode !== undefined) {
+      const newBarcode = productData.barcode ? productData.barcode.trim() : null;
+      if (newBarcode && newBarcode !== currentProduct.barcode) {
+        await this.checkBarcodeUniqueness(newBarcode, id);
       }
+      productData.barcode = newBarcode || undefined;
     }
 
-    if (updateProductDto.category && updateProductDto.category.trim()) {
-      const catName = updateProductDto.category.trim();
+    if (productData.category && productData.category.trim()) {
+      const catName = productData.category.trim();
       await this.prisma.category.upsert({
         where: { name: catName },
         update: {},
@@ -114,9 +183,49 @@ export class ProductsService {
       }).catch(() => {});
     }
 
+    // Si se enviaron códigos secundarios, sincronizarlos
+    if (additionalBarcodes !== undefined) {
+      const validSecondary: Array<{ barcode: string; label?: string | null }> = [];
+      const effectiveMainBarcode = productData.barcode !== undefined ? productData.barcode : currentProduct.barcode;
+
+      for (const item of additionalBarcodes) {
+        const rawCode = typeof item === 'string' ? item : item.barcode;
+        const rawLabel = typeof item === 'string' ? null : (item.label ?? null);
+        const code = rawCode ? rawCode.trim() : '';
+        if (code) {
+          if (effectiveMainBarcode && code === effectiveMainBarcode) {
+            continue; // No agregar el principal como secundario
+          }
+          if (validSecondary.some(b => b.barcode === code)) {
+            continue;
+          }
+          await this.checkBarcodeUniqueness(code, id);
+          validSecondary.push({ barcode: code, label: rawLabel });
+        }
+      }
+
+      // Reemplazar la lista de códigos secundarios
+      await this.prisma.productBarcode.deleteMany({
+        where: { productId: id },
+      });
+
+      if (validSecondary.length > 0) {
+        await this.prisma.productBarcode.createMany({
+          data: validSecondary.map(b => ({
+            productId: id,
+            barcode: b.barcode,
+            label: b.label || null,
+          })),
+        });
+      }
+    }
+
     const updated = await this.prisma.product.update({
       where: { id },
-      data: updateProductDto,
+      data: productData,
+      include: {
+        barcodes: true,
+      },
     });
 
     // Si el stock cambió manualmente, registrar un movimiento de ajuste
@@ -133,6 +242,56 @@ export class ProductsService {
     }
 
     return updated;
+  }
+
+  // Vincular un nuevo código de barras rápido a un producto existente (Quick-Link desde POS o Catálogo)
+  async addBarcode(productId: string, barcode: string, label?: string) {
+    const cleanCode = barcode.trim();
+    if (!cleanCode) {
+      throw new BadRequestException('El código de barras no puede estar vacío.');
+    }
+
+    const product = await this.findOne(productId);
+
+    if (product.barcode === cleanCode) {
+      return product; // Ya es el código principal
+    }
+
+    await this.checkBarcodeUniqueness(cleanCode, productId);
+
+    // Si ya existe en secundarios de este mismo producto, solo actualizar etiqueta
+    const existing = await this.prisma.productBarcode.findFirst({
+      where: { productId, barcode: cleanCode },
+    });
+
+    if (!existing) {
+      await this.prisma.productBarcode.create({
+        data: {
+          productId,
+          barcode: cleanCode,
+          label: label?.trim() || null,
+        },
+      });
+    }
+
+    return this.findOne(productId);
+  }
+
+  // Desvincular un código de barras secundario
+  async removeBarcode(productId: string, barcodeOrId: string) {
+    await this.findOne(productId);
+
+    await this.prisma.productBarcode.deleteMany({
+      where: {
+        productId,
+        OR: [
+          { id: barcodeOrId },
+          { barcode: barcodeOrId },
+        ],
+      },
+    });
+
+    return this.findOne(productId);
   }
 
   // Eliminar un producto

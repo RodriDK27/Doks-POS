@@ -1,6 +1,13 @@
+export interface ProductBarcode {
+  id?: string;
+  barcode: string;
+  label?: string | null;
+}
+
 export interface Product {
   id: string;
   barcode: string | null;
+  barcodes?: ProductBarcode[];
   name: string;
   sellPrice: number;
   costPrice?: number;

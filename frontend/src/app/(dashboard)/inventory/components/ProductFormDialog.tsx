@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Barcode, Package, Scale, Layers } from 'lucide-react';
+import { Barcode, Package, Scale, Layers, Plus, X, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -21,7 +21,9 @@ const productSchema = z.object({
   minStock: z.number().min(0, 'El stock mínimo no puede ser negativo'),
 });
 
-export type ProductFormValues = z.infer<typeof productSchema>;
+export type ProductFormValues = z.infer<typeof productSchema> & {
+  additionalBarcodes?: Array<{ barcode: string; label?: string | null }>;
+};
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -42,6 +44,9 @@ export function ProductFormDialog({
   barcodeInputRef,
   onOpenCategoryManager,
 }: ProductFormDialogProps) {
+  const [additionalBarcodes, setAdditionalBarcodes] = useState<Array<{ barcode: string; label?: string | null }>>([]);
+  const [newSecBarcode, setNewSecBarcode] = useState('');
+
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -68,14 +73,47 @@ export function ProductFormDialog({
         stock: editingProduct?.stock ?? 0,
         minStock: editingProduct?.minStock ?? 1,
       });
+      setAdditionalBarcodes(
+        editingProduct?.barcodes?.map(b => ({
+          barcode: b.barcode,
+          label: b.label || null,
+        })) || []
+      );
+      setNewSecBarcode('');
     }
   }, [open, editingProduct, reset]);
 
   const unitType = watch('unitType');
   const selectedCategory = watch('category') || '';
+  const mainBarcode = watch('barcode') || '';
+
+  const handleAddSecondaryBarcode = () => {
+    const code = newSecBarcode.trim();
+    if (!code) return;
+    const mainCode = mainBarcode.trim();
+    if (mainCode && code === mainCode) {
+      return; // Ya es el código principal
+    }
+    if (additionalBarcodes.some(b => b.barcode.toLowerCase() === code.toLowerCase())) {
+      return; // Ya está agregado
+    }
+
+    setAdditionalBarcodes(prev => [
+      ...prev,
+      { barcode: code, label: null }
+    ]);
+    setNewSecBarcode('');
+  };
+
+  const handleRemoveSecondaryBarcode = (index: number) => {
+    setAdditionalBarcodes(prev => prev.filter((_, i) => i !== index));
+  };
 
   const onFormSubmit = async (values: ProductFormValues) => {
-    await onSubmit(values);
+    await onSubmit({
+      ...values,
+      additionalBarcodes,
+    });
   };
 
   return (
@@ -155,6 +193,79 @@ export function ProductFormDialog({
                 ]}
               />
             </div>
+          </div>
+
+          {/* CÓDIGOS DE BARRAS ADICIONALES / ALTERNATIVOS */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Tag className="h-3 w-3 text-indigo-500" />
+                <span>Códigos de Barra Adicionales / Alternativos</span>
+              </label>
+              {additionalBarcodes.length > 0 && (
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-black">
+                  {additionalBarcodes.length} código{additionalBarcodes.length > 1 ? 's' : ''} extra
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Barcode className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Escanear o teclear código extra..."
+                  value={newSecBarcode}
+                  onChange={(e) => setNewSecBarcode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSecondaryBarcode();
+                    }
+                  }}
+                  className="pl-8 h-8 text-xs font-mono bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddSecondaryBarcode}
+                disabled={!newSecBarcode.trim()}
+                className="h-8 px-3 text-xs font-bold rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 cursor-pointer flex items-center justify-center gap-1 shrink-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Agregar</span>
+              </Button>
+            </div>
+
+            {/* Listado de badges de códigos adicionales */}
+            {additionalBarcodes.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {additionalBarcodes.map((item, index) => (
+                  <div
+                    key={index}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-900/50 text-[11px] font-medium shadow-2xs"
+                  >
+                    <Barcode className="h-3 w-3 text-indigo-500 shrink-0" />
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
+                      {item.barcode}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSecondaryBarcode(index)}
+                      className="text-slate-400 hover:text-rose-500 transition-colors p-0.5 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer ml-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">
+                Si este producto tiene otros códigos de barra (presentaciones, lotes nuevos o promos), agrégalos aquí.
+              </p>
+            )}
           </div>
 
           {/* TIPO DE VENTA (PIEZA VS GRANEL) */}

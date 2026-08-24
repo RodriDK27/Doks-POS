@@ -42,4 +42,7 @@ export class CreateProductDto {
   @IsString({ message: 'El tipo de unidad debe ser texto' })
   @IsOptional()
   unitType?: string;
+
+  @IsOptional()
+  additionalBarcodes?: Array<string | { barcode: string; label?: string }>;
 }

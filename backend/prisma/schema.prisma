@@ -44,9 +44,24 @@ model Product {
   saleItems      SaleItem[]
   purchaseItems  PurchaseItem[]
   stockMovements StockMovement[]
+  barcodes       ProductBarcode[]
+  dailyTemplateItems DailySupplierTemplateItem[]
 
   @@index([barcode])
   @@index([name])
+}
+
+/// Representa un código de barras adicional/alternativo para un producto
+model ProductBarcode {
+  id        String   @id @default(uuid())
+  barcode   String   @unique // Código de barras secundario/alternativo
+  label     String?  // Etiqueta opcional (ej. "Lote nuevo", "Presentación 2026", "Pack")
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([barcode])
+  @@index([productId])
 }
 
 /// Representa a un cliente del negocio (usado principalmente para el control de deudas/fiado)
@@ -163,6 +178,7 @@ model Supplier {
   updatedAt       DateTime                @updatedAt
   purchases       Purchase[]
   pendingTickets  SupplierPendingTicket[]
+  dailyTemplates  DailySupplierTemplate[]
 
   @@index([name])
 }
@@ -295,4 +311,36 @@ model RequestedProduct {
   status    String   @default("PENDIENTE") // PENDIENTE | COMPRADO | CANCELADO
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Plantillas de compras y gastos de proveedores diarios (ej. Panadería, Tortillería)
+model DailySupplierTemplate {
+  id          String   @id @default(uuid())
+  name        String   // Nombre visible (ej: "Panadería Diaria", "Tortillería")
+  icon        String   @default("Truck") // Identificador de icono (Truck, Package, Store, Utensils, Boxes)
+  color       String   @default("indigo") // Color temático
+  supplierId  String?  // Proveedor asociado opcional
+  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items       DailySupplierTemplateItem[]
+
+  @@index([supplierId])
+}
+
+/// Artículos que componen la plantilla de proveedor diario
+model DailySupplierTemplateItem {
+  id          String   @id @default(uuid())
+  templateId  String
+  template    DailySupplierTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  defaultQty  Float    @default(1) // Cantidad estimada/habitual
+  defaultCost Float?   // Costo unitario opcional (si es null, usa product.purchasePrice)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([templateId])
+  @@index([productId])
 }

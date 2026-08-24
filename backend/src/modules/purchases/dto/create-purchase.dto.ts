@@ -17,8 +17,8 @@ export class CreatePurchaseItemDto {
 
 export class CreatePurchaseDto {
   @IsString({ message: 'El ID del proveedor debe ser texto' })
-  @IsNotEmpty({ message: 'El ID del proveedor es obligatorio' })
-  supplierId: string;
+  @IsOptional()
+  supplierId?: string;
 
   @IsBoolean({ message: 'El pago desde caja debe ser un valor booleano' })
   @IsOptional()

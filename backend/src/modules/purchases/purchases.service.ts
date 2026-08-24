@@ -14,12 +14,27 @@ export class PurchasesService {
   ) {}
 
   async create(dto: CreatePurchaseDto) {
-    // 1. Validar que el proveedor exista
-    const supplier = await this.prisma.supplier.findUnique({
-      where: { id: dto.supplierId },
-    });
-    if (!supplier) {
-      throw new NotFoundException(`El proveedor con ID ${dto.supplierId} no existe.`);
+    // 1. Validar o buscar proveedor
+    let supplier: any = null;
+    if (dto.supplierId) {
+      supplier = await this.prisma.supplier.findUnique({
+        where: { id: dto.supplierId },
+      });
+      if (!supplier) {
+        throw new NotFoundException(`El proveedor con ID ${dto.supplierId} no existe.`);
+      }
+    } else {
+      supplier = await this.prisma.supplier.findFirst({
+        where: { name: 'Proveedores Diarios' },
+      });
+      if (!supplier) {
+        supplier = await this.prisma.supplier.create({
+          data: {
+            name: 'Proveedores Diarios',
+            visitFrequency: 'WEEKLY',
+          },
+        });
+      }
     }
 
     const source = dto.paymentSource || (dto.payFromRegister ? 'CAJA_CHICA' : 'CREDITO');
@@ -65,7 +80,7 @@ export class PurchasesService {
       // A. Crear la cabecera de la compra
       const purchase = await tx.purchase.create({
         data: {
-          supplierId: dto.supplierId,
+          supplierId: supplier.id,
           total,
           notes: dto.notes || null,
           payFromRegister: source === 'CAJA_CHICA',

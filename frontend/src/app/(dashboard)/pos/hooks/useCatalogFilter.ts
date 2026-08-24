@@ -48,13 +48,16 @@ export function useCatalogFilter(
     for (const p of categoryFiltered) {
       const normName = normalizeText(p.name);
       const normBarcode = p.barcode ? p.barcode.toLowerCase() : '';
+      const secondaryBarcodes = (p.barcodes || []).map(b => (b.barcode || '').toLowerCase()).filter(Boolean);
 
-      // Coincidencia exacta o parcial de código de barras
-      if (normBarcode && normBarcode === normalizedQuery) {
+      // Coincidencia exacta de código de barras (principal o secundarios)
+      if (normBarcode === normalizedQuery || secondaryBarcodes.includes(normalizedQuery)) {
         scoredProducts.push({ product: p, score: 10000 });
         continue;
       }
-      if (normBarcode && normBarcode.includes(normalizedQuery)) {
+
+      // Coincidencia parcial de código de barras (principal o secundarios)
+      if ((normBarcode && normBarcode.includes(normalizedQuery)) || secondaryBarcodes.some(b => b.includes(normalizedQuery))) {
         scoredProducts.push({ product: p, score: 8000 });
         continue;
       }

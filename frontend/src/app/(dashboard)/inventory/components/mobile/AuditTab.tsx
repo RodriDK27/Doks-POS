@@ -34,7 +34,16 @@ export function AuditTab({
     <div className="space-y-3 animate-in fade-in duration-150">
       <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
         <span className="font-black text-sm text-slate-800 dark:text-slate-100 block">{selectedProduct.name}</span>
-        <span className="text-[10px] text-slate-400 font-bold block">Código: {selectedProduct.barcode || 'Sin código'}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] text-slate-400 font-bold font-mono">
+            Código: {selectedProduct.barcode || 'Sin código'}
+          </span>
+          {selectedProduct.barcodes && selectedProduct.barcodes.length > 0 && (
+            <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200/60 dark:border-indigo-900/60">
+              +{selectedProduct.barcodes.length} adicional{selectedProduct.barcodes.length > 1 ? 'es' : ''}
+            </span>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
           <div>

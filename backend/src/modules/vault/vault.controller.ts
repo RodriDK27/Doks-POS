@@ -11,7 +11,6 @@ export class VaultController {
   constructor(private readonly vaultService: VaultService) {}
 
   @Get()
-  @Roles('ADMIN')
   getVaultState() {
     return this.vaultService.getVaultState();
   }

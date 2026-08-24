@@ -56,6 +56,7 @@ export function MobileInventoryScannerView({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [auditStock, setAuditStock] = useState<number>(0);
+  const [additionalBarcodes, setAdditionalBarcodes] = useState<Array<{ barcode: string; label?: string | null }>>([]);
   const [prodForm, setProdForm] = useState<{
     name: string;
     barcode: string;
@@ -91,6 +92,7 @@ export function MobileInventoryScannerView({
     setScannedBarcode('');
     setSearchQuery('');
     setAuditStock(0);
+    setAdditionalBarcodes([]);
     setProdForm({
       name: '',
       barcode: '',
@@ -123,6 +125,7 @@ export function MobileInventoryScannerView({
         }
         setSelectedProduct(null);
         setAuditStock(1);
+        setAdditionalBarcodes([]);
         setProdForm({
           name: detail.name,
           barcode: '',
@@ -144,6 +147,7 @@ export function MobileInventoryScannerView({
         const { product, isDuplicate } = customEv.detail;
         if (isDuplicate) {
           setSelectedProduct(null);
+          setAdditionalBarcodes([]);
           setProdForm({
             name: `${product.name} (Copia)`,
             barcode: '',
@@ -156,6 +160,7 @@ export function MobileInventoryScannerView({
           });
         } else {
           setSelectedProduct(product);
+          setAdditionalBarcodes(product.barcodes?.map(b => ({ barcode: b.barcode, label: b.label || null })) || []);
           setProdForm({
             name: product.name,
             barcode: product.barcode || '',
@@ -206,22 +211,50 @@ export function MobileInventoryScannerView({
 
     setScannedBarcode(code);
 
-    // Si estamos expresamente en la pestaña EDIT y ya tenemos un producto seleccionado para Editar o Duplicar,
-    // simplemente asignamos el nuevo código de barras al producto que se está editando sin reemplazar los datos.
+    const found = products.find((p) => 
+      p.barcode === code || 
+      p.id === code || 
+      (p.barcodes && p.barcodes.some(b => (b.barcode || '').toLowerCase() === code.toLowerCase()))
+    );
+
+    // Si estamos en la pestaña EDIT y ya tenemos un producto seleccionado:
     if (mobileTab === 'EDIT' && selectedProduct) {
-      setProdForm((prev) => ({
-        ...prev,
-        barcode: code,
-      }));
-      toast.success(`Código asignado a "${selectedProduct.name}": ${code}`);
+      if (found && found.id !== selectedProduct.id) {
+        toast.info(`Cargando producto escaneado: "${found.name}"`);
+        setSelectedProduct(found);
+        setAuditStock(found.stock);
+        setAdditionalBarcodes(found.barcodes?.map(b => ({ barcode: b.barcode, label: b.label || null })) || []);
+        setProdForm({
+          name: found.name,
+          barcode: found.barcode || code,
+          sellPrice: String(found.sellPrice),
+          purchasePrice: String(found.purchasePrice),
+          stock: String(found.stock),
+          minStock: String(found.minStock || 1),
+          category: found.category || '',
+          unitType: (found.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
+        });
+        return;
+      }
+
+      if (!prodForm.barcode) {
+        setProdForm((prev) => ({ ...prev, barcode: code }));
+        toast.success(`Código principal asignado: ${code}`);
+      } else if (prodForm.barcode !== code) {
+        if (!additionalBarcodes.some(b => b.barcode.toLowerCase() === code.toLowerCase())) {
+          setAdditionalBarcodes((prev) => [...prev, { barcode: code, label: null }]);
+          toast.success(`Código adicional añadido a "${selectedProduct.name}": ${code}`);
+        } else {
+          toast.info(`El código "${code}" ya está en la lista de códigos adicionales.`);
+        }
+      }
       return;
     }
-
-    const found = products.find((p) => p.barcode === code || p.id === code);
 
     if (found) {
       setSelectedProduct(found);
       setAuditStock(found.stock);
+      setAdditionalBarcodes(found.barcodes?.map(b => ({ barcode: b.barcode, label: b.label || null })) || []);
       setProdForm({
         name: found.name,
         barcode: found.barcode || code,
@@ -250,6 +283,7 @@ export function MobileInventoryScannerView({
     } else {
       setSelectedProduct(null);
       setAuditStock(0);
+      setAdditionalBarcodes([]);
       setProdForm((prev) => ({
         ...prev,
         barcode: code,
@@ -259,7 +293,7 @@ export function MobileInventoryScannerView({
       }));
       toast.info(`Código asignado: ${code}`);
     }
-  }, [products, mobileTab, selectedProduct]);
+  }, [products, mobileTab, selectedProduct, prodForm.barcode, additionalBarcodes]);
 
   const startCamera = useCallback(async () => {
     setCameraError(null);
@@ -382,6 +416,7 @@ export function MobileInventoryScannerView({
       const payload = {
         name: prodForm.name.trim(),
         barcode: prodForm.barcode.trim() || null,
+        additionalBarcodes: additionalBarcodes,
         sellPrice: parseFloat(prodForm.sellPrice) || 0,
         purchasePrice: parseFloat(prodForm.purchasePrice) || 0,
         stock: parseFloat(prodForm.stock) || 0,
@@ -473,7 +508,11 @@ export function MobileInventoryScannerView({
   };
 
   const filteredSearch = searchQuery.trim()
-    ? products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.barcode && p.barcode.includes(searchQuery)))
+    ? products.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (p.barcode && p.barcode.includes(searchQuery)) ||
+        (p.barcodes && p.barcodes.some(b => b.barcode.includes(searchQuery)))
+      )
     : [];
 
   return (
@@ -601,6 +640,8 @@ export function MobileInventoryScannerView({
               selectedProduct={selectedProduct}
               prodForm={prodForm}
               setProdForm={setProdForm}
+              additionalBarcodes={additionalBarcodes}
+              setAdditionalBarcodes={setAdditionalBarcodes}
               isSubmitting={isSubmitting}
               onSaveProductForm={handleSaveProductForm}
               categories={categories}

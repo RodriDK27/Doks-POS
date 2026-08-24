@@ -52,6 +52,10 @@ export function usePOS() {
   const [genericName, setGenericName] = useState<string>('');
   const [genericMarginPercent, setGenericMarginPercent] = useState<number>(30);
 
+  // Modal Vinculación Rápida de Código no Reconocido (Quick-Link)
+  const [isQuickLinkOpen, setIsQuickLinkOpen] = useState(false);
+  const [unrecognizedBarcode, setUnrecognizedBarcode] = useState<string>('');
+
   // Estados de cobro
   const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'FIADO'>('EFECTIVO');
   const [amountPaid, setAmountPaid] = useState<number>(0);
@@ -165,11 +169,23 @@ export function usePOS() {
 
   const { filteredCatalog } = useCatalogFilter(catalogProducts, searchQuery, activeCategory);
 
+  const findProductByCode = useCallback((code: string): Product | undefined => {
+    const clean = code.trim().toLowerCase();
+    if (!clean) return undefined;
+
+    return catalogProducts.find(p => {
+      if (p.barcode && p.barcode.toLowerCase() === clean) return true;
+      if (p.id.toLowerCase() === clean) return true;
+      if (p.barcodes && p.barcodes.some(b => (b.barcode || '').toLowerCase() === clean)) return true;
+      return false;
+    });
+  }, [catalogProducts]);
+
   const handleBarcodeScanned = useCallback((barcode: string) => {
     const code = barcode.trim();
     if (!code) return;
 
-    const product = catalogProducts.find(p => p.barcode === code || p.id === code);
+    const product = findProductByCode(code);
     if (product) {
       if (product.unitType === 'WEIGHT') {
         setSelectedBulkProduct(product);
@@ -182,25 +198,27 @@ export function usePOS() {
       addToCart(product, 1);
       toast.success(`+1 ${product.name}`, { id: 'pos-add-toast' });
     } else {
-      toast.error(`Producto no encontrado (${code})`);
+      // Abrir modal interactivo de vinculación rápida
+      setUnrecognizedBarcode(code);
+      setIsQuickLinkOpen(true);
     }
-  }, [catalogProducts, addToCart]);
+  }, [findProductByCode, addToCart]);
 
   const handleSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
     const query = value.trim();
     if (!query || query.length < 3) return;
 
-    const exactBarcodeProduct = catalogProducts.find(p => p.barcode === query);
-    if (exactBarcodeProduct) {
-      if (exactBarcodeProduct.stock <= 0) {
-        toast.warning(`"${exactBarcodeProduct.name}" no tiene existencias en inventario.`);
+    const exactProduct = findProductByCode(query);
+    if (exactProduct) {
+      if (exactProduct.stock <= 0) {
+        toast.warning(`"${exactProduct.name}" no tiene existencias en inventario.`);
       }
-      addToCart(exactBarcodeProduct, 1);
-      toast.success(`Añadido: ${exactBarcodeProduct.name} (código escaneado)`, { id: 'pos-add-toast' });
+      addToCart(exactProduct, 1);
+      toast.success(`Añadido: ${exactProduct.name} (código escaneado)`, { id: 'pos-add-toast' });
       setSearchQuery('');
     }
-  }, [catalogProducts, addToCart, setSearchQuery]);
+  }, [findProductByCode, addToCart, setSearchQuery]);
 
   const handleSearchSubmit = useCallback(() => {
     if (filteredCatalog.length === 1) {
@@ -213,6 +231,45 @@ export function usePOS() {
       setSearchQuery('');
     }
   }, [filteredCatalog, addToCart, setSearchQuery]);
+
+  // Handler para vincular en caliente un código de barras a un producto desde el POS
+  const handleQuickLinkBarcode = useCallback(async (productId: string, barcodeToLink: string) => {
+    try {
+      const cleanCode = barcodeToLink.trim();
+      const res = await api.post(`/products/${productId}/barcodes`, { barcode: cleanCode });
+      const updatedProduct: Product = res.data;
+
+      // Actualizar caché de SWR
+      await mutateProducts();
+
+      // Actualizar almacenamiento local / IndexedDB
+      if (dbHelper) {
+        const allProds = await dbHelper.getProducts<Product>();
+        const updatedList = allProds.map(p => p.id === productId ? { ...p, ...updatedProduct } : p);
+        await dbHelper.saveProducts(updatedList);
+        setLocalProducts(updatedList);
+      }
+
+      // Añadir automáticamente al carrito de la venta en curso
+      const targetProduct = catalogProducts.find(p => p.id === productId) || updatedProduct;
+      if (targetProduct.unitType === 'WEIGHT') {
+        setSelectedBulkProduct(targetProduct);
+        setIsBulkOpen(true);
+      } else {
+        if (targetProduct.stock <= 0) {
+          toast.warning(`"${targetProduct.name}" no tiene existencias en inventario.`);
+        }
+        addToCart(targetProduct, 1);
+        toast.success(`¡Código vinculado exitosamente! +1 ${targetProduct.name}`, { id: 'pos-add-toast' });
+      }
+
+      setIsQuickLinkOpen(false);
+      setUnrecognizedBarcode('');
+    } catch (err: unknown) {
+      const errorMsg = parseAxiosError(err) || 'Error al vincular el código de barras.';
+      toast.error(errorMsg);
+    }
+  }, [catalogProducts, mutateProducts, addToCart]);
 
   const total = getTotal();
   const changeAmount = (paymentMethod === 'EFECTIVO' && amountPaid >= total) ? amountPaid - total : 0;
@@ -461,6 +518,12 @@ export function usePOS() {
     isSubmitting,
     changeAmount,
 
+    catalogProducts,
+    isQuickLinkOpen,
+    setIsQuickLinkOpen,
+    unrecognizedBarcode,
+    setUnrecognizedBarcode,
+    handleQuickLinkBarcode,
     searchInputRef,
     amountPaidInputRef,
     confirmButtonRef,

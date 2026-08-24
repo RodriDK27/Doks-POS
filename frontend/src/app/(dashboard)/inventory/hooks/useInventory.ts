@@ -270,9 +270,12 @@ export function useInventory() {
   const lowStockCount = products.filter(p => p.stock <= p.minStock).length;
 
   const filteredProducts = products.filter(p => {
+    const q = searchQuery.toLowerCase().trim();
     const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (!!p.barcode && p.barcode.includes(searchQuery));
+      !q ||
+      p.name.toLowerCase().includes(q) || 
+      (!!p.barcode && p.barcode.toLowerCase().includes(q)) ||
+      (!!p.barcodes && p.barcodes.some(b => (b.barcode || '').toLowerCase().includes(q)));
 
     const matchesCategory = selectedCategory === '' || p.category === selectedCategory;
 
@@ -352,6 +355,7 @@ export function useInventory() {
       ...values,
       barcode: values.barcode?.trim() || null,
       category: values.category?.trim() || null,
+      additionalBarcodes: values.additionalBarcodes || [],
     };
 
     try {

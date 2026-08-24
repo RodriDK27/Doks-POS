@@ -56,6 +56,7 @@ export default function RegisterPage() {
     handleAdjustmentSubmit,
     handleCloseRegister,
     handleDownloadPdf,
+    fetchCajaData,
     cashiers,
     isPinModalOpen,
     setIsPinModalOpen,
@@ -339,7 +340,7 @@ export default function RegisterPage() {
                       className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs sm:text-sm h-11 rounded-full flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer"
                       onClick={() => setIsAdjOpen(true)}
                     >
-                      <Plus className="h-4 w-4" /> Movimiento de Caja
+                      <Plus className="h-4 w-4" /> Movimiento de Caja Manual
                     </Button>
                     <Button 
                       className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs sm:text-sm h-11 rounded-full flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer border-none"
@@ -614,6 +615,7 @@ export default function RegisterPage() {
           adjForm={adjForm}
           setAdjForm={setAdjForm}
           onSubmit={handleAdjustmentSubmit}
+          onSuccess={fetchCajaData}
         />
 
         <CloseRegisterDialog

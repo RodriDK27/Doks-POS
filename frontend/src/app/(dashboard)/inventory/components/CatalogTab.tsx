@@ -264,10 +264,18 @@ export function CatalogTab({
                     <TableCell className="py-3">
                       <div>
                         <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">{p.name}</span>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {p.barcode && (
                             <span className="text-[9px] text-slate-450 dark:text-slate-400 font-mono flex items-center gap-0.5 shrink-0">
                               <Barcode className="h-3 w-3" /> {p.barcode}
+                            </span>
+                          )}
+                          {p.barcodes && p.barcodes.length > 0 && (
+                            <span
+                              title={`Códigos adicionales: ${p.barcodes.map(b => b.barcode + (b.label ? ` (${b.label})` : '')).join(', ')}`}
+                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40 cursor-help"
+                            >
+                              +{p.barcodes.length} cód.
                             </span>
                           )}
                           {p.category && (

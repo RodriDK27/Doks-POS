@@ -16,6 +16,7 @@ import { RequestedProductsModule } from './modules/requested-products/requested-
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { VaultModule } from './modules/vault/vault.module';
+import { DailyTemplatesModule } from './modules/daily-templates/daily-templates.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { VaultModule } from './modules/vault/vault.module';
     SalesModule,
     SuppliersModule,
     PurchasesModule,
+    DailyTemplatesModule,
     AuthModule,
     BackupModule,
     ReportsModule,
