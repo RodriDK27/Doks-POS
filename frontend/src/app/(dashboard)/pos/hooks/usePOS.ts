@@ -229,8 +229,11 @@ export function usePOS() {
       addToCart(singleProduct, 1);
       toast.success(`Añadido: ${singleProduct.name}`, { id: 'pos-add-toast' });
       setSearchQuery('');
+    } else if (filteredCatalog.length === 0 && searchQuery.trim()) {
+      handleBarcodeScanned(searchQuery.trim());
+      setSearchQuery('');
     }
-  }, [filteredCatalog, addToCart, setSearchQuery]);
+  }, [filteredCatalog, addToCart, setSearchQuery, searchQuery, handleBarcodeScanned]);
 
   // Handler para vincular en caliente un código de barras a un producto desde el POS
   const handleQuickLinkBarcode = useCallback(async (productId: string, barcodeToLink: string) => {
