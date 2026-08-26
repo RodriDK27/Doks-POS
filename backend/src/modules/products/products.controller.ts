@@ -100,8 +100,18 @@ export class ProductsController {
     return this.productsService.removeBarcode(id, barcodeId);
   }
 
+  /** Restablecer / actualizar stock rápido (para reposición express en POS o auditoría) */
+  @Patch(':id/stock')
+  @Roles('ADMIN', 'GERENTE', 'CAJERO')
+  updateStock(
+    @Param('id') id: string,
+    @Body() body: { stock: number },
+  ) {
+    return this.productsService.update(id, { stock: Number(body.stock) });
+  }
+
   @Patch(':id')
-  @Roles('ADMIN', 'GERENTE')
+  @Roles('ADMIN', 'GERENTE', 'CAJERO')
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     return this.productsService.update(id, updateProductDto);
   }

@@ -37,6 +37,7 @@ import { SuspendedCartsDialog } from './components/SuspendedCartsDialog';
 import { ShortcutsHelpDialog } from './components/ShortcutsHelpDialog';
 import { ExpressScannerMobileView } from './components/ExpressScannerMobileView';
 import { QuickLinkBarcodeModal } from './components/QuickLinkBarcodeModal';
+import { ZeroStockRestockModal } from './components/ZeroStockRestockModal';
 import { DailySuppliersModal } from '../register/components/DailySuppliersModal';
 
 export default function POSPage() {
@@ -110,6 +111,11 @@ export default function POSPage() {
     setIsQuickLinkOpen,
     unrecognizedBarcode,
     handleQuickLinkBarcode,
+    isZeroStockModalOpen,
+    setIsZeroStockModalOpen,
+    selectedZeroStockProduct,
+    handleQuickRestockAndAdd,
+    handleAddWithoutRestock,
     searchInputRef,
     amountPaidInputRef,
     confirmButtonRef,
@@ -598,6 +604,15 @@ export default function POSPage() {
         unrecognizedBarcode={unrecognizedBarcode}
         catalogProducts={catalogProducts}
         onLinkBarcode={handleQuickLinkBarcode}
+      />
+
+      {/* MODAL DE RESTABLECIMIENTO EXPRÉS DE STOCK (CUANDO STOCK ES 0) */}
+      <ZeroStockRestockModal
+        open={isZeroStockModalOpen}
+        onOpenChange={setIsZeroStockModalOpen}
+        product={selectedZeroStockProduct}
+        onRestockAndAdd={handleQuickRestockAndAdd}
+        onAddWithoutRestock={handleAddWithoutRestock}
       />
 
       {/* MODAL DE ESCÁNER DE CÓDIGO DE BARRAS CON CÁMARA */}

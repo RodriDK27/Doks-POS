@@ -45,19 +45,10 @@ export function AuditTab({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-          <div>
-            <span className="text-[9px] text-slate-400 uppercase font-black block">Precio Venta</span>
-            <span className="text-sm font-black text-emerald-600">${selectedProduct.sellPrice.toFixed(2)}</span>
-          </div>
-          <div>
-            <span className="text-[9px] text-slate-400 uppercase font-black block">Precio Compra</span>
-            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">${selectedProduct.purchasePrice.toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-          <span className="text-[10px] font-black text-slate-500 uppercase block mb-1">Conteo Físico de Stock</span>
+        <div className="pt-1 space-y-1.5">
+          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase block tracking-wider">
+            Conteo Físico de Stock
+          </span>
           <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-2 rounded-2xl gap-2 border border-slate-200/60 dark:border-slate-800">
             <Button
               type="button"

@@ -56,6 +56,10 @@ export function usePOS() {
   const [isQuickLinkOpen, setIsQuickLinkOpen] = useState(false);
   const [unrecognizedBarcode, setUnrecognizedBarcode] = useState<string>('');
 
+  // Modal Restablecer Stock Express cuando producto tiene 0 existencia
+  const [isZeroStockModalOpen, setIsZeroStockModalOpen] = useState(false);
+  const [selectedZeroStockProduct, setSelectedZeroStockProduct] = useState<Product | null>(null);
+
   // Estados de cobro
   const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'FIADO'>('EFECTIVO');
   const [amountPaid, setAmountPaid] = useState<number>(0);
@@ -125,7 +129,9 @@ export function usePOS() {
     }
 
     if (product.stock <= 0) {
-      toast.warning(`"${product.name}" no tiene existencias en inventario.`);
+      setSelectedZeroStockProduct(product);
+      setIsZeroStockModalOpen(true);
+      return;
     }
     addToCart(product, 1);
     toast.success(`Añadido: ${product.name}`, { id: 'pos-add-toast' });
@@ -193,7 +199,9 @@ export function usePOS() {
         return;
       }
       if (product.stock <= 0) {
-        toast.warning(`"${product.name}" no tiene existencias en inventario.`);
+        setSelectedZeroStockProduct(product);
+        setIsZeroStockModalOpen(true);
+        return;
       }
       addToCart(product, 1);
       toast.success(`+1 ${product.name}`, { id: 'pos-add-toast' });
@@ -212,7 +220,10 @@ export function usePOS() {
     const exactProduct = findProductByCode(query);
     if (exactProduct) {
       if (exactProduct.stock <= 0) {
-        toast.warning(`"${exactProduct.name}" no tiene existencias en inventario.`);
+        setSelectedZeroStockProduct(exactProduct);
+        setIsZeroStockModalOpen(true);
+        setSearchQuery('');
+        return;
       }
       addToCart(exactProduct, 1);
       toast.success(`Añadido: ${exactProduct.name} (código escaneado)`, { id: 'pos-add-toast' });
@@ -224,7 +235,10 @@ export function usePOS() {
     if (filteredCatalog.length === 1) {
       const singleProduct = filteredCatalog[0];
       if (singleProduct.stock <= 0) {
-        toast.warning(`"${singleProduct.name}" no tiene existencias en inventario.`);
+        setSelectedZeroStockProduct(singleProduct);
+        setIsZeroStockModalOpen(true);
+        setSearchQuery('');
+        return;
       }
       addToCart(singleProduct, 1);
       toast.success(`Añadido: ${singleProduct.name}`, { id: 'pos-add-toast' });
@@ -273,6 +287,42 @@ export function usePOS() {
       toast.error(errorMsg);
     }
   }, [catalogProducts, mutateProducts, addToCart]);
+
+  // Handler para restablecer stock rápido en el POS y añadir al ticket
+  const handleQuickRestockAndAdd = useCallback(async (product: Product, newStock: number) => {
+    try {
+      await api.patch(`/products/${product.id}/stock`, { stock: newStock });
+
+      // Actualizar caché de productos SWR
+      await mutateProducts();
+
+      // Actualizar almacenamiento local / IndexedDB
+      if (dbHelper) {
+        const allProds = await dbHelper.getProducts<Product>();
+        const updatedList = allProds.map(p => p.id === product.id ? { ...p, stock: newStock } : p);
+        await dbHelper.saveProducts(updatedList);
+        setLocalProducts(updatedList);
+      }
+
+      // Añadir al ticket con el nuevo stock reflejado
+      const updatedProduct = { ...product, stock: newStock };
+      addToCart(updatedProduct, 1);
+      toast.success(`Stock de "${product.name}" actualizado a ${newStock} y añadido al ticket.`);
+
+      setIsZeroStockModalOpen(false);
+      setSelectedZeroStockProduct(null);
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al restablecer stock.'));
+    }
+  }, [mutateProducts, addToCart]);
+
+  // Permitir vender sin restablecer (en caso de omitir ajuste)
+  const handleAddWithoutRestock = useCallback((product: Product) => {
+    addToCart(product, 1);
+    toast.warning(`"${product.name}" añadido sin ajustar stock.`);
+    setIsZeroStockModalOpen(false);
+    setSelectedZeroStockProduct(null);
+  }, [addToCart]);
 
   const total = getTotal();
   const changeAmount = (paymentMethod === 'EFECTIVO' && amountPaid >= total) ? amountPaid - total : 0;
@@ -527,6 +577,12 @@ export function usePOS() {
     unrecognizedBarcode,
     setUnrecognizedBarcode,
     handleQuickLinkBarcode,
+    isZeroStockModalOpen,
+    setIsZeroStockModalOpen,
+    selectedZeroStockProduct,
+    setSelectedZeroStockProduct,
+    handleQuickRestockAndAdd,
+    handleAddWithoutRestock,
     searchInputRef,
     amountPaidInputRef,
     confirmButtonRef,
