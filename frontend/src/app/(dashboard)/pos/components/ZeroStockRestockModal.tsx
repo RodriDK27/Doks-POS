@@ -93,7 +93,7 @@ function ZeroStockRestockContent({
               type="button"
               variant="outline"
               className="h-11 w-11 p-0 font-black rounded-xl cursor-pointer shrink-0 bg-white dark:bg-slate-900"
-              onClick={() => setStockInput((prev) => Math.max(1, isWeight ? Number((prev - step).toFixed(2)) : prev - 1))}
+              onClick={() => setStockInput((prev) => Math.max(isWeight ? 0.1 : 1, isWeight ? Number((prev - step).toFixed(2)) : prev - 1))}
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -101,10 +101,17 @@ function ZeroStockRestockContent({
             <Input
               ref={inputRef}
               type="number"
-              step={isWeight ? 'any' : '1'}
-              min="0.1"
-              value={stockInput}
-              onChange={(e) => setStockInput(parseFloat(e.target.value) || 0)}
+              step="any"
+              min={isWeight ? "0.01" : "1"}
+              value={stockInput === 0 ? '' : stockInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') {
+                  setStockInput(0);
+                } else {
+                  setStockInput(parseFloat(val) || 0);
+                }
+              }}
               className="h-11 w-32 text-center font-black text-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
             />
 
