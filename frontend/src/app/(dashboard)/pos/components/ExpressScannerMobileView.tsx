@@ -76,9 +76,11 @@ export function ExpressScannerMobileView({
   const [showScanner, setShowScanner] = useState(false);
   const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
 
-  useEffect(() => {
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
+  if (prevSearchQuery !== searchQuery) {
+    setPrevSearchQuery(searchQuery);
     setSelectedSearchIndex(0);
-  }, [searchQuery]);
+  }
 
   // Listener directo para F2 en la vista móvil
   useEffect(() => {
