@@ -45,6 +45,7 @@ export function usePOSKeybindings({
       // F2 enfocar buscador
       if (e.key === 'F2') {
         e.preventDefault();
+        window.dispatchEvent(new CustomEvent('pos-focus-search'));
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
       }
@@ -53,20 +54,10 @@ export function usePOSKeybindings({
         e.preventDefault();
         setIsGenericOpen(true);
       }
-      // F8 cobro: ir a pagar o confirmar venta
+      // F8 cobro: emitir evento para que la vista gestione abrir modal o confirmar venta
       if (e.key === 'F8') {
         e.preventDefault();
-        if (cartItemsCount > 0) {
-          if (posTab !== 'PAYMENT') {
-            setPosTab('PAYMENT');
-          } else {
-            if (canCheckout) {
-              handleCheckout();
-            } else {
-              toast.error('Complete la información de pago requerida.');
-            }
-          }
-        }
+        window.dispatchEvent(new CustomEvent('pos-f8-press'));
       }
       // Esc cerrar modales auxiliares o volver al ticket
       if (e.key === 'Escape') {

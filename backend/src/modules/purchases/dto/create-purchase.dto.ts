@@ -20,6 +20,11 @@ export class CreatePurchaseDto {
   @IsOptional()
   supplierId?: string;
 
+  @IsNumber({}, { message: 'El total debe ser un número' })
+  @Min(0.01, { message: 'El total debe ser mayor a 0' })
+  @IsOptional()
+  total?: number;
+
   @IsBoolean({ message: 'El pago desde caja debe ser un valor booleano' })
   @IsOptional()
   payFromRegister?: boolean;
@@ -32,8 +37,14 @@ export class CreatePurchaseDto {
   @IsOptional()
   notes?: string;
 
+  @IsString({ message: 'El ID del ticket a liquidar debe ser texto' })
+  @IsOptional()
+  settleTicketId?: string;
+
   @IsArray({ message: 'Los artículos comprados deben ser una lista' })
   @ValidateNested({ each: true })
   @Type(() => CreatePurchaseItemDto)
-  items: CreatePurchaseItemDto[];
+  @IsOptional()
+  items?: CreatePurchaseItemDto[];
 }
+

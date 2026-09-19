@@ -48,21 +48,31 @@ export class PurchasesService {
       }
     }
 
-    // 3. Obtener los productos involucrados
-    const productIds = dto.items.map((i) => i.productId);
-    const dbProducts = await this.prisma.product.findMany({
-      where: { id: { in: productIds } },
-    });
-    const productsMap = new Map(dbProducts.map((p) => [p.id, p]));
-
-    // Calcular el total de la compra
+    const hasItems = Array.isArray(dto.items) && dto.items.length > 0;
     let total = 0;
-    for (const item of dto.items) {
-      const product = productsMap.get(item.productId);
-      if (!product) {
-        throw new NotFoundException(`El producto con ID ${item.productId} no existe en el catálogo.`);
+    let productsMap = new Map<string, any>();
+
+    if (hasItems) {
+      // 3. Obtener los productos involucrados
+      const productIds = dto.items!.map((i) => i.productId);
+      const dbProducts = await this.prisma.product.findMany({
+        where: { id: { in: productIds } },
+      });
+      productsMap = new Map(dbProducts.map((p) => [p.id, p]));
+
+      // Calcular el total de la compra
+      for (const item of dto.items!) {
+        const product = productsMap.get(item.productId);
+        if (!product) {
+          throw new NotFoundException(`El producto con ID ${item.productId} no existe en el catálogo.`);
+        }
+        total += item.costPrice * item.quantity;
       }
-      total += item.costPrice * item.quantity;
+    } else {
+      if (!dto.total || dto.total <= 0) {
+        throw new BadRequestException('Debes especificar un monto total o incluir productos para registrar el pago.');
+      }
+      total = dto.total;
     }
 
     // 4. Si se paga desde Caja Grande, verificar que haya saldo suficiente
@@ -89,40 +99,49 @@ export class PurchasesService {
         },
       });
 
-      // B. Procesar cada item: crear el detalle, sumar stock, actualizar costo
-      for (const item of dto.items) {
-        const product = productsMap.get(item.productId)!;
+      // B. Procesar cada item si existen productos especificados
+      if (hasItems) {
+        for (const item of dto.items!) {
+          const product = productsMap.get(item.productId)!;
 
-        // Registrar detalle de la compra
-        await tx.purchaseItem.create({
-          data: {
-            purchaseId: purchase.id,
-            productId: item.productId,
-            costPrice: item.costPrice,
-            quantity: item.quantity,
-            total: item.costPrice * item.quantity,
-          },
+          // Registrar detalle de la compra
+          await tx.purchaseItem.create({
+            data: {
+              purchaseId: purchase.id,
+              productId: item.productId,
+              costPrice: item.costPrice,
+              quantity: item.quantity,
+              total: item.costPrice * item.quantity,
+            },
+          });
+
+          // Actualizar stock e incrementar el costo de compra en el catálogo
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: product.stock + item.quantity,
+              purchasePrice: item.costPrice, // Actualizar costo al último precio de adquisición
+            },
+          });
+
+          // Registrar movimiento de stock tipo ENTRADA
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              type: 'ENTRADA',
+              quantity: item.quantity,
+              reason: `Compra a proveedor: ${supplier.name}`,
+            },
+          });
+        }
+      }
+
+      // Si se especificó un ticket pendiente de liquidar, marcarlo como PAID
+      if (dto.settleTicketId) {
+        await tx.supplierPendingTicket.updateMany({
+          where: { id: dto.settleTicketId, status: 'PENDING' },
+          data: { status: 'PAID' },
         });
-
-        // Actualizar stock e incrementar el costo de compra en el catálogo
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: product.stock + item.quantity,
-            purchasePrice: item.costPrice, // Actualizar costo al último precio de adquisición
-          },
-        });
-
-        // Registrar movimiento de stock tipo ENTRADA
-        await tx.stockMovement.create({
-          data: {
-            productId: item.productId,
-            type: 'ENTRADA',
-            quantity: item.quantity,
-            reason: `Compra a proveedor: ${supplier.name}`,
-          },
-        });
-
       }
 
       // C. Si se pagó con caja chica, restar del cajón y crear un egreso
@@ -141,12 +160,16 @@ export class PurchasesService {
         });
 
         // Registrar el egreso en la bitácora de transacciones
+        const desc = dto.notes
+          ? `Pago a proveedor: ${supplier.name} (${dto.notes})`
+          : `Pago a proveedor: ${supplier.name} - Compra ID: ${purchase.id.substring(0, 8)}`;
+
         await tx.cashTransaction.create({
           data: {
             cashRegisterId: activeRegister.id,
             amount: -total, // egreso negativo
             type: 'EGRESO',
-            description: `Pago a proveedor: ${supplier.name} - Compra ID: ${purchase.id.substring(0, 8)}`,
+            description: desc,
           },
         });
       }

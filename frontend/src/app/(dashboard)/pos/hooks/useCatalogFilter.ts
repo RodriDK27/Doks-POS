@@ -20,13 +20,38 @@ function normalizeText(text: string): string {
     .trim();
 }
 
+export function parseSearchMultiplier(raw: string): { cleanQuery: string; multiplier: number } {
+  const trimmed = raw.trim();
+  // Pattern 1: Starts with "3*" or "3 *"
+  const prefixMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*\*\s*(.*)$/);
+  if (prefixMatch) {
+    const mult = parseFloat(prefixMatch[1]);
+    return {
+      multiplier: isNaN(mult) || mult <= 0 ? 1 : mult,
+      cleanQuery: prefixMatch[2].trim(),
+    };
+  }
+  // Pattern 2: Ends with "*3" or "* 3"
+  const suffixMatch = trimmed.match(/^(.*?)\s*\*\s*(\d+(?:\.\d+)?)$/);
+  if (suffixMatch) {
+    const mult = parseFloat(suffixMatch[2]);
+    return {
+      multiplier: isNaN(mult) || mult <= 0 ? 1 : mult,
+      cleanQuery: suffixMatch[1].trim(),
+    };
+  }
+  return { cleanQuery: trimmed, multiplier: 1 };
+}
+
 export function useCatalogFilter(
   catalogProducts: Product[],
   searchQuery: string,
   activeCategory: string
 ) {
+  const { cleanQuery, multiplier } = useMemo(() => parseSearchMultiplier(searchQuery), [searchQuery]);
+
   const filteredCatalog = useMemo(() => {
-    const rawQuery = searchQuery.trim();
+    const rawQuery = cleanQuery.trim();
     if (!rawQuery) {
       if (activeCategory === 'TODOS') {
         return catalogProducts;

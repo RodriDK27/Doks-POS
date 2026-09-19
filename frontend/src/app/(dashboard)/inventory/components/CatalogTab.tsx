@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy, AlertTriangle, Layers } from 'lucide-react';
+import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy, AlertTriangle, Layers, Check, Zap } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Product } from '../types';
 import { InventoryMetrics } from './InventoryMetrics';
+import api from '@/lib/api';
+import { mutate } from 'swr';
+import { toast } from 'sonner';
 
 interface CatalogTabProps {
 
@@ -76,6 +79,64 @@ export function CatalogTab({
   const [productsPage, setProductsPage] = React.useState(1);
   const [productsPerPage, setProductsPerPage] = React.useState(10);
 
+  // Estados para edición rápida inline de existencias y precios
+  const [inlineStockLoadingId, setInlineStockLoadingId] = React.useState<string | null>(null);
+  const [editingStockId, setEditingStockId] = React.useState<string | null>(null);
+  const [tempStockValue, setTempStockValue] = React.useState<string>('');
+
+  const [editingPriceId, setEditingPriceId] = React.useState<string | null>(null);
+  const [tempPriceValue, setTempPriceValue] = React.useState<string>('');
+
+  const handleQuickStockIncrement = async (product: Product, delta: number) => {
+    const newStock = Math.max(0, (product.stock || 0) + delta);
+    try {
+      setInlineStockLoadingId(product.id);
+      await api.patch(`/products/${product.id}/stock`, { stock: newStock });
+      toast.success(`${product.name}: ${newStock} (${delta > 0 ? `+${delta}` : delta})`, { id: `stock-${product.id}` });
+      await mutate('/products');
+    } catch {
+      toast.error('Error al actualizar existencias.');
+    } finally {
+      setInlineStockLoadingId(null);
+    }
+  };
+
+  const handleSaveDirectStock = async (product: Product) => {
+    const val = parseFloat(tempStockValue);
+    if (isNaN(val) || val < 0) {
+      setEditingStockId(null);
+      return;
+    }
+    try {
+      setInlineStockLoadingId(product.id);
+      await api.patch(`/products/${product.id}/stock`, { stock: val });
+      toast.success(`${product.name}: existencias actualizadas a ${val}`);
+      await mutate('/products');
+    } catch {
+      toast.error('Error al actualizar existencias.');
+    } finally {
+      setInlineStockLoadingId(null);
+      setEditingStockId(null);
+    }
+  };
+
+  const handleSaveDirectPrice = async (product: Product) => {
+    const val = parseFloat(tempPriceValue);
+    if (isNaN(val) || val <= 0) {
+      setEditingPriceId(null);
+      return;
+    }
+    try {
+      await api.patch(`/products/${product.id}`, { sellPrice: val });
+      toast.success(`${product.name}: precio de venta fijado en $${val.toFixed(2)}`);
+      await mutate('/products');
+    } catch {
+      toast.error('Error al actualizar precio.');
+    } finally {
+      setEditingPriceId(null);
+    }
+  };
+
   const [prevSearch, setPrevSearch] = React.useState({ searchQuery, selectedCategory, stockFilter });
 
   if (
@@ -102,47 +163,106 @@ export function CatalogTab({
         lowStockCount={lowStockCount}
       />
 
-      {/* FILTROS + ACCIONES */}
-      <div className="flex flex-col gap-2.5 bg-white dark:bg-slate-900 p-3.5 sm:p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] w-full">
-        {/* FILA SUPERIOR: BUSCADOR + CATEGORÍAS + STOCK */}
+      {/* FILTROS + CATEGORÍAS VISUALES + ACCIONES */}
+      <div className="flex flex-col gap-3 bg-white dark:bg-slate-900 p-3.5 sm:p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] w-full">
+        {/* BUSCADOR PRINCIPAL + CHIPS DE ESTADO DE STOCK */}
         <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center w-full">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               type="text"
-              placeholder="Buscar producto o código..."
+              placeholder="Buscar por nombre, código de barras o categoría..."
               className="pl-10 h-10 border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-xl text-xs font-semibold focus-visible:ring-indigo-500 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:flex shrink-0">
-            <CustomSelect
-              className="w-full sm:w-36 md:w-40 h-10"
-              value={selectedCategory}
-              onChange={setSelectedCategory}
-              placeholder="Categorías"
-              options={[
-                { value: '', label: 'Categorías' },
-                ...categories.map((c) => ({ value: c, label: c })),
-              ]}
-            />
-
-            <CustomSelect
-              className="w-full sm:w-36 md:w-40 h-10"
-              value={stockFilter}
-              onChange={(val) => setStockFilter(val as 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK')}
-              options={[
-                { value: 'ALL', label: 'Todo el Stock' },
-                { value: 'CRITICAL', label: 'Stock Bajo' },
-                { value: 'OUT_OF_STOCK', label: 'Agotados' },
-              ]}
-            />
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none shrink-0">
+            <button
+              type="button"
+              onClick={() => setStockFilter('ALL')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border",
+                stockFilter === 'ALL'
+                  ? "bg-slate-800 dark:bg-slate-700 text-white border-slate-800 shadow-xs"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100"
+              )}
+            >
+              Todo
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockFilter('CRITICAL')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border flex items-center gap-1.5",
+                stockFilter === 'CRITICAL'
+                  ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                  : "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/40 hover:bg-amber-100"
+              )}
+            >
+              <AlertTriangle className="h-3 w-3" /> Stock Bajo ({lowStockCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockFilter('OUT_OF_STOCK')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border flex items-center gap-1.5",
+                stockFilter === 'OUT_OF_STOCK'
+                  ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                  : "bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/40 hover:bg-rose-100"
+              )}
+            >
+              Agotados
+            </button>
           </div>
         </div>
 
-        {/* FILA INFERIOR: BOTÓN NUEVO PRODUCTO (ANCHO COMPLETO 100%) */}
+        {/* NAVEGACIÓN VISUAL DE CATEGORÍAS (PILLS DE 1 TOQUE) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('')}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5",
+              selectedCategory === ''
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-102"
+                : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            <span>TODAS</span>
+            <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-extrabold", selectedCategory === '' ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500")}>
+              {totalProductsCount}
+            </span>
+          </button>
+
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            const count = filteredProducts.filter((p) => p.category === cat).length;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(isSelected ? '' : cat)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5",
+                  isSelected
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-102"
+                    : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                <span>{cat}</span>
+                {count > 0 && (
+                  <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-extrabold", isSelected ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500")}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* FILA INFERIOR: BOTÓN NUEVO PRODUCTO */}
         {(role === 'ADMIN' || role === 'GERENTE') && (
           <Button 
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-6 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
@@ -217,8 +337,8 @@ export function CatalogTab({
                   />
                 </TableHead>
                 <TableHead className="text-xs font-bold text-slate-500 min-w-[140px]">Producto</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Stock</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-24">Venta</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-36">Stock</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Venta</TableHead>
                 {(role === 'ADMIN' || role === 'GERENTE') && (
                   <>
                     <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
@@ -273,13 +393,13 @@ export function CatalogTab({
                           {p.barcodes && p.barcodes.length > 0 && (
                             <span
                               title={`Códigos adicionales: ${p.barcodes.map(b => b.barcode + (b.label ? ` (${b.label})` : '')).join(', ')}`}
-                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40 cursor-help"
+                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-955/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40 cursor-help"
                             >
                               +{p.barcodes.length} cód.
                             </span>
                           )}
                           {p.category && (
-                            <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-300 font-bold border border-indigo-100/50 dark:border-indigo-900/30">
+                            <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-indigo-50 dark:bg-indigo-955/40 text-indigo-650 dark:text-indigo-300 font-bold border border-indigo-100/50 dark:border-indigo-900/30">
                               {p.category}
                             </Badge>
                           )}
@@ -287,20 +407,122 @@ export function CatalogTab({
                       </div>
                     </TableCell>
                     
-                    <TableCell className="text-right font-bold text-xs">
-                      <span className={cn(
-                        isOut ? 'text-rose-600 dark:text-rose-400 font-black' 
-                        : isCritical ? 'text-amber-600 dark:text-amber-400 font-black' 
-                        : 'text-slate-700 dark:text-slate-200'
-                      )}>
-                        {p.stock}
-                      </span>
+                    {/* CELDA DE STOCK CON EDICIÓN RÁPIDA E INCREMENTOS */}
+                    <TableCell className="text-right py-2">
+                      <div className="flex flex-col items-end gap-1">
+                        {editingStockId === p.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              step="any"
+                              autoFocus
+                              className="h-7 w-16 text-xs font-black text-right p-1 rounded-lg"
+                              value={tempStockValue}
+                              onChange={(e) => setTempStockValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveDirectStock(p);
+                                if (e.key === 'Escape') setEditingStockId(null);
+                              }}
+                            />
+                            <Button
+                              size="sm"
+                              className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
+                              onClick={() => handleSaveDirectStock(p)}
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            title="Clic para editar existencia"
+                            onClick={() => {
+                              setEditingStockId(p.id);
+                              setTempStockValue(String(p.stock));
+                            }}
+                            className={cn(
+                              "font-black text-xs px-2 py-0.5 rounded-lg transition-all cursor-pointer border hover:scale-105",
+                              isOut
+                                ? "bg-rose-100 dark:bg-rose-955/60 text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-900/60"
+                                : isCritical
+                                ? "bg-amber-100 dark:bg-amber-955/60 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-900/60"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                            )}
+                          >
+                            {p.stock} {p.unitType === 'WEIGHT' ? 'kg' : ''}
+                          </button>
+                        )}
+
+                        {/* Botones de incremento rápido (+1, +5, +10) */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={inlineStockLoadingId === p.id}
+                            onClick={() => handleQuickStockIncrement(p, 1)}
+                            className="h-5 px-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 text-[10px] font-black rounded text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-90"
+                            title="Sumar 1 pieza"
+                          >
+                            +1
+                          </button>
+                          <button
+                            type="button"
+                            disabled={inlineStockLoadingId === p.id}
+                            onClick={() => handleQuickStockIncrement(p, 5)}
+                            className="h-5 px-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 text-[10px] font-black rounded text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-90"
+                            title="Sumar 5 piezas"
+                          >
+                            +5
+                          </button>
+                          <button
+                            type="button"
+                            disabled={inlineStockLoadingId === p.id}
+                            onClick={() => handleQuickStockIncrement(p, 10)}
+                            className="h-5 px-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 text-[10px] font-black rounded text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-90"
+                            title="Sumar 10 piezas"
+                          >
+                            +10
+                          </button>
+                        </div>
+                      </div>
                     </TableCell>
 
-                    <TableCell className="text-right text-slate-805 dark:text-slate-100 font-black text-xs">
-                      <span className="px-1 py-0.5 text-slate-800 dark:text-slate-100">
-                        ${p.sellPrice.toFixed(2)}
-                      </span>
+                    {/* CELDA DE PRECIO DE VENTA CON EDICIÓN DIRECTA */}
+                    <TableCell className="text-right text-slate-805 dark:text-slate-100 font-black text-xs py-2">
+                      {editingPriceId === p.id ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            step="any"
+                            autoFocus
+                            className="h-7 w-20 text-xs font-black text-right p-1 rounded-lg"
+                            value={tempPriceValue}
+                            onChange={(e) => setTempPriceValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveDirectPrice(p);
+                              if (e.key === 'Escape') setEditingPriceId(null);
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
+                            onClick={() => handleSaveDirectPrice(p)}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          title="Clic para editar precio de venta"
+                          onClick={() => {
+                            setEditingPriceId(p.id);
+                            setTempPriceValue(String(p.sellPrice));
+                          }}
+                          className="px-1.5 py-0.5 rounded text-slate-800 dark:text-slate-100 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 font-black transition-all cursor-pointer"
+                        >
+                          ${p.sellPrice.toFixed(2)}
+                        </button>
+                      )}
                     </TableCell>
 
                     {(role === 'ADMIN' || role === 'GERENTE') && (

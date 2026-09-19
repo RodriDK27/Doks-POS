@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, Minus, Plus, Trash2, User, Pause, ArrowRight, Tag } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, Trash2, User, Pause, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -43,20 +43,32 @@ export function TicketPanel({
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0 min-h-[68px]">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0 min-h-[60px]">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="h-4.5 w-4.5 text-indigo-650" />
+          <ShoppingCart className="h-4.5 w-4.5 text-indigo-600 dark:text-indigo-400" />
           <span className="font-extrabold text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-            Artículos en Ticket
+            Ticket de Venta
           </span>
         </div>
-        <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-none text-[10px] font-black px-2.5 py-0.5 rounded-lg">
-          {cartItemsCount} uds
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-none text-[10px] font-black px-2.5 py-0.5 rounded-lg">
+            {cartItemsCount} uds
+          </Badge>
+          {cartItems.length > 0 && (
+            <button
+              type="button"
+              onClick={onClearCart}
+              title="Vaciar ticket"
+              className="text-slate-400 hover:text-rose-500 transition-colors p-1 rounded-md cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Lista de Artículos */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-2 space-y-1 min-h-0">
+      {/* Lista de Artículos con Scroll Espacioso */}
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-2 space-y-1.5 min-h-0">
         {cartItems.length > 0 ? (
           cartItems.map((item) => (
             <div
@@ -98,7 +110,7 @@ export function TicketPanel({
                 </button>
               </div>
 
-              {/* Total (sin texto "Total") + Botón Borrar Más Grande */}
+              {/* Total + Botón Borrar */}
               <div className="flex items-center gap-3 shrink-0">
                 <span className="font-black text-emerald-600 dark:text-emerald-400 text-base md:text-2xl tracking-tight">
                   ${item.total.toFixed(2)}
@@ -106,18 +118,18 @@ export function TicketPanel({
 
                 <button
                   type="button"
-                  className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 text-rose-500 hover:text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/40 rounded-2xl cursor-pointer transition-all active:scale-90 flex items-center justify-center shrink-0 border-none bg-transparent"
+                  className="h-10 w-10 sm:h-12 sm:w-12 text-rose-500 hover:text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/40 rounded-2xl cursor-pointer transition-all active:scale-90 flex items-center justify-center shrink-0 border-none bg-transparent"
                   onClick={() => removeFromCart(item.id)}
                   title="Eliminar del ticket"
                 >
-                  <Trash2 className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-rose-500 stroke-[2.5]" />
+                  <Trash2 className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 stroke-[2.5]" />
                 </button>
               </div>
             </div>
           ))
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-slate-450 p-6 min-h-[180px] space-y-2">
-            <div className="h-12 w-12 rounded-full bg-slate-50 dark:bg-slate-800/40 flex items-center justify-center text-slate-350 dark:text-slate-700 animate-pulse">
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 p-6 min-h-[180px] space-y-2">
+            <div className="h-12 w-12 rounded-full bg-slate-50 dark:bg-slate-800/40 flex items-center justify-center text-slate-300 dark:text-slate-600 animate-pulse">
               <ShoppingCart className="h-6 w-6" />
             </div>
             <p className="text-xs font-bold text-slate-400 dark:text-slate-500">El ticket de venta está vacío</p>
@@ -125,12 +137,11 @@ export function TicketPanel({
         )}
       </div>
 
-      {/* Sección Inferior de Totales y Cliente - Opción 1 */}
+      {/* Sección Inferior Limpia: Totales y Botón de Cobro Modal */}
       {cartItems.length > 0 && (
         <div className="p-3.5 md:p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 space-y-3 shrink-0">
-          {/* Banner Horizontal Superior: Cliente + Descuento a la izq | Total a la der */}
+          {/* Banner Horizontal: Cliente + Descuento a la izq | Total a la der */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between bg-white dark:bg-slate-950 p-3 md:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs gap-3">
-            {/* Inputs Izquierda */}
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
                 <label className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider">
@@ -183,7 +194,7 @@ export function TicketPanel({
             </div>
           </div>
 
-          {/* Fila Inferior de Acciones: Botón de Cobrar Principal + Pausar & Vaciar al lado */}
+          {/* Fila Inferior de Acciones */}
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -198,25 +209,15 @@ export function TicketPanel({
 
             <Button
               type="button"
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs md:text-sm h-11 md:h-12 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs md:text-sm h-11 md:h-12 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
               onClick={onProceedToPayment}
             >
               <span>Proceder al Cobro</span>
-              <span className="px-2.5 py-0.5 bg-indigo-700 dark:bg-indigo-900 rounded-lg text-xs font-black">
+              <span className="text-[9px] px-1.5 py-0.2 bg-emerald-800/80 rounded font-black text-emerald-100">F8</span>
+              <span className="px-2.5 py-0.5 bg-emerald-700 dark:bg-emerald-800 rounded-lg text-xs font-black">
                 ${currentTotal.toFixed(2)}
               </span>
               <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 md:h-12 px-3 border-rose-200 dark:border-rose-900/60 text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 font-bold text-xs rounded-xl flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer shrink-0"
-              onClick={onClearCart}
-              title="Vaciar Carrito"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Vaciar</span>
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowLeft, User, Banknote, CreditCard, Landmark, AlertCircle, Info, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +51,52 @@ export function PaymentPanel({
       setAmountPaid(Math.round(parsed * 100) / 100);
     }
   };
+
+  // Autofoco automático al abrir en efectivo
+  useEffect(() => {
+    if (paymentMethod === 'EFECTIVO') {
+      const timer = setTimeout(() => {
+        amountPaidInputRef.current?.focus();
+        amountPaidInputRef.current?.select();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentMethod, amountPaidInputRef]);
+
+  // Atajos de teclado en el modal de cobro (Escape, F8, 1-4)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onBackToTicket();
+        return;
+      }
+      if (e.key === 'F8') {
+        e.preventDefault();
+        if (canCheckout && !isSubmitting) {
+          onCheckout();
+        }
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      if (!isInput) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (canCheckout && !isSubmitting) {
+            onCheckout();
+          }
+          return;
+        }
+        if (e.key === '1') setPaymentMethod('EFECTIVO');
+        else if (e.key === '2') setPaymentMethod('TARJETA');
+        else if (e.key === '3') setPaymentMethod('TRANSFERENCIA');
+        else if (e.key === '4') setPaymentMethod('FIADO');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canCheckout, isSubmitting, onCheckout, onBackToTicket, setPaymentMethod]);
 
   return (
     <div className="flex-1 flex flex-col justify-between bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl shadow-xl overflow-hidden p-4 sm:p-6 gap-4">
@@ -167,6 +213,14 @@ export function PaymentPanel({
                     className="pl-7 h-10 text-sm font-black border-slate-200 dark:border-slate-800 dark:bg-slate-900 focus-visible:ring-indigo-500 rounded-xl"
                     value={amountPaid ? String(amountPaid) : ''}
                     onChange={(e) => handleAmountChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (canCheckout && !isSubmitting) {
+                          onCheckout();
+                        }
+                      }
+                    }}
                   />
                 </div>
               </div>

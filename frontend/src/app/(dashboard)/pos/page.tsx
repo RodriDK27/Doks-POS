@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ShoppingCart,
@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { CustomSelect } from '@/components/CustomSelect';
 import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
+import { cn } from '@/lib/utils';
 
 import { usePOS } from './hooks/usePOS';
 import { ProductCard } from './components/ProductCard';
@@ -39,11 +40,13 @@ import { ExpressScannerMobileView } from './components/ExpressScannerMobileView'
 import { QuickLinkBarcodeModal } from './components/QuickLinkBarcodeModal';
 import { ZeroStockRestockModal } from './components/ZeroStockRestockModal';
 import { DailySuppliersModal } from '../register/components/DailySuppliersModal';
+import { QuickSupplierPaymentModal } from '@/components/QuickSupplierPaymentModal';
 
 export default function POSPage() {
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   const [isDailySuppliersOpen, setIsDailySuppliersOpen] = useState(false);
+  const [isQuickSupplierPaymentOpen, setIsQuickSupplierPaymentOpen] = useState(false);
   const [mobileMode, setMobileMode] = useState<'STANDARD' | 'EXPRESS'>(() => {
     if (typeof window !== 'undefined') {
       const savedMode = localStorage.getItem('doks_pos_mobile_mode');
@@ -134,6 +137,8 @@ export default function POSPage() {
     updateQuantity,
     removeFromCart,
     filteredCatalog,
+    selectedCatalogIndex,
+    handleSearchKeyDown,
     isListening,
     toggleVoiceSearch,
     handleSearchSubmit,
@@ -142,162 +147,205 @@ export default function POSPage() {
   } = usePOS();
 
   const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
+  const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const focusSearchInput = useCallback(() => {
+    if (mobileMode === 'EXPRESS' && mobileSearchInputRef.current) {
+      mobileSearchInputRef.current.focus();
+      mobileSearchInputRef.current.select();
+      return;
+    }
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+      searchInputRef.current.select();
+    }
+  }, [mobileMode, searchInputRef]);
+
+  // Captura global prioritaria de F2 y evento pos-focus-search
+  useEffect(() => {
+    const handleF2KeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        e.stopPropagation();
+        focusSearchInput();
+      }
+    };
+    const handleFocusSearchEvent = () => {
+      focusSearchInput();
+    };
+
+    window.addEventListener('keydown', handleF2KeyDown, true);
+    window.addEventListener('pos-focus-search', handleFocusSearchEvent);
+    return () => {
+      window.removeEventListener('keydown', handleF2KeyDown, true);
+      window.removeEventListener('pos-focus-search', handleFocusSearchEvent);
+    };
+  }, [focusSearchInput]);
+
+  // Atajo F7 para abrir Pago Express a Proveedor
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F7') {
+        e.preventDefault();
+        setIsQuickSupplierPaymentOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Coordinación del atajo F8 para abrir modal de cobro o confirmar venta
+  useEffect(() => {
+    const handleF8Event = async () => {
+      if (!isCheckoutDrawerOpen) {
+        if (cartItems.length > 0) {
+          setIsCheckoutDrawerOpen(true);
+        }
+      } else {
+        if (canCheckout && !isSubmitting) {
+          await handleCheckout();
+          setIsCheckoutDrawerOpen(false);
+          focusSearchInput();
+        }
+      }
+    };
+
+    window.addEventListener('pos-f8-press', handleF8Event);
+    return () => window.removeEventListener('pos-f8-press', handleF8Event);
+  }, [isCheckoutDrawerOpen, cartItems.length, canCheckout, isSubmitting, handleCheckout, focusSearchInput]);
+
+  // Atajos de teclado generales (Escape para cerrar cobro, +, -, Delete para editar el ticket)
+  useEffect(() => {
+    const handleTicketKeyboard = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCheckoutDrawerOpen) {
+          e.preventDefault();
+          setIsCheckoutDrawerOpen(false);
+          focusSearchInput();
+        }
+        return;
+      }
+
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      if (!isInput && !isCheckoutDrawerOpen && cartItems.length > 0) {
+        const lastItem = cartItems[cartItems.length - 1];
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          updateQuantity(lastItem.id, lastItem.quantity + 1);
+        } else if (e.key === '-') {
+          e.preventDefault();
+          if (lastItem.quantity > 1) {
+            updateQuantity(lastItem.id, lastItem.quantity - 1);
+          } else {
+            removeFromCart(lastItem.id);
+          }
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
+          removeFromCart(lastItem.id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleTicketKeyboard);
+    return () => window.removeEventListener('keydown', handleTicketKeyboard);
+  }, [isCheckoutDrawerOpen, cartItems, updateQuantity, removeFromCart, focusSearchInput]);
 
   // Autofocus del buscador al iniciar la página o al vaciar/cobrar el carrito
   useEffect(() => {
     if (cartItems.length === 0) {
-      searchInputRef.current?.focus();
+      focusSearchInput();
     }
-  }, [cartItems.length, searchInputRef]);
-
-  return (
-    <div className="flex flex-col h-[calc(100vh-10.8rem)] md:h-[calc(100vh-12rem)] overflow-hidden gap-2 sm:gap-4 select-none pb-1 sm:pb-0">
-
-
-      {/* HEADER DE LA PÁGINA CON BOTONES DE MODO DE VISTA */}
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 bg-indigo-600 rounded-full"></span>
-            Operaciones de Caja
-          </span>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-            Vender Productos
-          </h1>
-        </div>
-
-        {/* BOTONES DE CAMBIO DE MODO (VISIBLES EN MÓVIL Y TABLETS EN VERTICAL `lg:hidden`) */}
-        <div className="flex lg:hidden items-center bg-slate-100/90 dark:bg-slate-800/60 p-1 rounded-2xl border dark:border-slate-800">
-          <Button
-            variant={mobileMode === 'STANDARD' ? 'default' : 'ghost'}
-            className={`h-8 px-2 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'STANDARD'
-              ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs'
-              : 'text-slate-500 hover:bg-slate-50/20'
-              }`}
-            onClick={() => changeMobileMode('STANDARD')}
-            title="Modo Pestañas"
-          >
-            <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          </Button>
-          <Button
-            variant={mobileMode === 'EXPRESS' ? 'default' : 'ghost'}
-            className={`h-8 px-2 font-extrabold text-[11px] rounded-xl transition-all cursor-pointer ${mobileMode === 'EXPRESS'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-500 hover:bg-slate-50/20'
-              }`}
-            onClick={() => changeMobileMode('EXPRESS')}
-            title="Escáner Express"
-          >
-            <Zap className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>      {/* BARRA SUPERIOR DE ACCIONES Y CONECTIVIDAD */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 px-3 sm:px-5 py-2.5 sm:py-4 rounded-2xl shadow-sm">
-        <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 sm:gap-4 w-full sm:w-auto">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="h-9 w-9 sm:h-12 sm:w-12 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl sm:rounded-2xl flex items-center justify-center text-indigo-650 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30 shrink-0 shadow-xs">
-              <ShoppingCart className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="font-black text-xs sm:text-lg text-slate-800 dark:text-slate-100 tracking-tight truncate">Punto de Venta</h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {isOnline ? (
-                  <span className="inline-flex items-center gap-1 text-[9px] sm:text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 sm:px-2.5 py-0.5 rounded-full border border-emerald-200/40 shrink-0">
-                    <Wifi className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> En Línea
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[9px] sm:text-xs font-extrabold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/20 px-2 sm:px-2.5 py-0.5 rounded-full border border-amber-200/40 animate-pulse shrink-0">
-                    <WifiOff className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Offline
-                  </span>
-                )}
-
-                {syncQueueCount > 0 && (
-                  <button
-                    onClick={() => setIsOfflineSyncModalOpen(true)}
-                    className="inline-flex items-center gap-1 text-[9px] sm:text-xs font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 sm:px-2.5 py-0.5 rounded-full border border-indigo-200/40 animate-pulse cursor-pointer shrink-0"
-                  >
-                    <RefreshCw className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span>
-                      {isSyncing
-                        ? 'Sincronizando...'
-                        : syncErrorCount > 0
-                          ? `${syncErrorCount} con error (${syncQueueCount})`
-                          : `${syncQueueCount} por sincronizar`}
-                    </span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ACCIONES RÁPIDAS EN MÓVIL (COMPACTAS Y SIN DESBORDAMIENTO) */}
-          <div className="flex items-center gap-1.5 sm:hidden shrink-0">
+  }, [cartItems.length, focusSearchInput]);
+  return (
+    <div className="flex flex-col h-[calc(100vh-9.8rem)] md:h-[calc(100vh-10.2rem)] overflow-hidden gap-2 select-none pb-1 sm:pb-2">
+      {/* BARRA COMPACTA DE ACCIONES Y HERRAMIENTAS DEL POS (OPTIMIZADA PARA TABLET) */}
+      <div className="flex items-center justify-between gap-2 shrink-0 bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 px-3 py-1.5 rounded-xl shadow-2xs">
+        <div className="flex items-center gap-2">
+          {/* BOTONES DE CAMBIO DE MODO (VISIBLE EN MOBILE/TABLET `lg:hidden`) */}
+          <div className="flex lg:hidden items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border dark:border-slate-800">
             <Button
-              variant="outline"
-              size="sm"
-              className="border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-bold text-xs h-9 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer shadow-xs"
-              onClick={() => setIsDailySuppliersOpen(true)}
-              title="Proveedores Diarios (Pan, Tortillas...)"
+              variant={mobileMode === 'STANDARD' ? 'default' : 'ghost'}
+              className={cn(
+                "h-7 px-2 font-bold text-xs rounded-lg transition-all",
+                mobileMode === 'STANDARD'
+                  ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs"
+                  : "text-slate-500"
+              )}
+              onClick={() => changeMobileMode('STANDARD')}
+              title="Modo Pestañas"
             >
-              <Zap className="h-4 w-4" />
+              <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
             </Button>
-
-            {suspendedCarts.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-bold text-xs h-9 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer relative shadow-xs"
-                onClick={() => setIsSuspendedOpen(true)}
-              >
-                <History className="h-4 w-4" />
-                <span className="h-4.5 w-4.5 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center text-[10px] font-black shadow-xs">
-                  {suspendedCarts.length}
-                </span>
-              </Button>
-            )}
-
-            <Link href="/tickets">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs h-9 rounded-xl flex items-center gap-1.5 px-2.5 active:scale-95 transition-all cursor-pointer bg-slate-100/60 dark:bg-slate-800/40 shadow-xs"
-                title="Historial de Tickets"
-              >
-                <Receipt className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                <span className="hidden min-[380px]:inline">Tickets</span>
-              </Button>
-            </Link>
-
             <Button
-              size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-9 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer shadow-xs border-none"
-              onClick={() => setIsGenericOpen(true)}
+              variant={mobileMode === 'EXPRESS' ? 'default' : 'ghost'}
+              className={cn(
+                "h-7 px-2 font-bold text-xs rounded-lg transition-all",
+                mobileMode === 'EXPRESS'
+                  ? "bg-indigo-600 text-white shadow-2xs"
+                  : "text-slate-500"
+              )}
+              onClick={() => changeMobileMode('EXPRESS')}
+              title="Escáner Express"
             >
-              <Plus className="h-4 w-4 text-white stroke-[2.5]" /> Exprés
+              <Zap className="h-3.5 w-3.5" />
             </Button>
           </div>
+
+          {/* ESTADO DE CONEXIÓN */}
+          {!isOnline && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-full border border-rose-200/40">
+              <WifiOff className="h-3 w-3" /> Offline
+            </span>
+          )}
+
+          {syncQueueCount > 0 && (
+            <button
+              onClick={() => setIsOfflineSyncModalOpen(true)}
+              className="inline-flex items-center gap-1 text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-full border border-indigo-200/40 animate-pulse cursor-pointer"
+            >
+              <RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
+              <span>{syncQueueCount} pendientes</span>
+            </button>
+          )}
         </div>
 
-        {/* ACCIONES DEL POS EN ESCRITORIO / TABLET */}
-        <div className="hidden sm:flex items-center justify-end gap-2">
+        {/* ACCIONES RÁPIDAS DEL POS */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+
           <Button
             variant="outline"
-            className="border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-bold text-xs sm:text-sm h-10 rounded-xl flex items-center gap-1.5 shrink-0 px-3.5 active:scale-95 transition-all cursor-pointer shadow-xs"
-            onClick={() => setIsDailySuppliersOpen(true)}
+            size="sm"
+            className="border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 font-bold text-xs h-8 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer shadow-2xs"
+            onClick={() => setIsQuickSupplierPaymentOpen(true)}
+            title="Pago Express a Proveedor (F7)"
           >
-            <Zap className="h-4 w-4 text-amber-500" />
-            <span>Proveedores Diarios</span>
+            <Truck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="hidden sm:inline">Pagar Proveedor</span>
+            <span className="text-[9px] px-1 py-0.2 bg-emerald-500/20 rounded font-black text-emerald-800 dark:text-emerald-300">F7</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-bold text-xs h-8 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer shadow-2xs"
+            onClick={() => setIsDailySuppliersOpen(true)}
+            title="Proveedores Diarios"
+          >
+            <Zap className="h-3.5 w-3.5 text-amber-500" />
+            <span className="hidden md:inline">Preventas</span>
           </Button>
 
           {suspendedCarts.length > 0 && (
             <Button
               variant="outline"
-              className="border-amber-500/30 text-amber-500 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 font-bold text-xs sm:text-sm h-10 rounded-xl flex items-center gap-1.5 shrink-0 px-3.5 active:scale-95 transition-all cursor-pointer relative shadow-xs"
+              size="sm"
+              className="border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10 font-bold text-xs h-8 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer relative shadow-2xs"
               onClick={() => setIsSuspendedOpen(true)}
+              title="Carritos en Espera"
             >
-              <History className="h-4.5 w-4.5" />
-              <span>Espera</span>
-              <span className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-white dark:border-slate-900 shadow-xs">
+              <History className="h-3.5 w-3.5 text-amber-500" />
+              <span className="h-4 w-4 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center text-[9px] font-black">
                 {suspendedCarts.length}
               </span>
             </Button>
@@ -306,27 +354,34 @@ export default function POSPage() {
           <Link href="/tickets">
             <Button
               variant="outline"
-              className="border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm h-10 rounded-xl flex items-center gap-1.5 px-3.5 active:scale-95 transition-all cursor-pointer bg-slate-100/60 dark:bg-slate-800/40 hover:bg-slate-200/60 dark:hover:bg-slate-800"
+              size="sm"
+              className="border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs h-8 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer shadow-2xs"
+              title="Historial de Tickets"
             >
-              <Receipt className="h-4.5 w-4.5 text-slate-500 dark:text-slate-400" /> Tickets
+              <Receipt className="h-3.5 w-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Tickets</span>
             </Button>
           </Link>
 
           <Button
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm h-10 rounded-xl flex items-center gap-1.5 px-4 active:scale-95 transition-all cursor-pointer shadow-xs border-none"
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 rounded-xl flex items-center gap-1 px-2.5 active:scale-95 transition-all cursor-pointer shadow-2xs border-none"
             onClick={() => setIsGenericOpen(true)}
+            title="Venta de producto sin código (F4)"
           >
-            <Plus className="h-4.5 w-4.5 text-white stroke-[2.5]" /> Cobro Rápido
+            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span>Exprés</span>
+            <span className="text-[9px] px-1 py-0.2 bg-white/20 rounded font-black text-white">F4</span>
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
-            className="h-11.5 w-11.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl cursor-pointer"
+            className="h-8 w-8 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg cursor-pointer"
             onClick={() => setIsShortcutsHelpOpen(true)}
             title="Atajos de teclado"
           >
-            <Keyboard className="h-5.5 w-5.5" />
+            <Keyboard className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -360,7 +415,7 @@ export default function POSPage() {
             searchQuery={searchQuery}
             onSearchQueryChange={handleSearchQueryChange}
             onSearchSubmit={handleSearchSubmit}
-            searchInputRef={searchInputRef}
+            searchInputRef={mobileSearchInputRef}
             onBarcodeScanned={handleBarcodeScanned}
             onToggleVoice={toggleVoiceSearch}
             isListening={isListening}
@@ -389,25 +444,25 @@ export default function POSPage() {
         {/* COLUMNA IZQUIERDA: CATÁLOGO TÁCTIL */}
         <div className={`lg:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden h-full ${posTab === 'CATALOG' ? 'flex' : 'hidden lg:flex'
           }`}>
-          {/* BUSCADOR */}
-          <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0">
+          {/* BUSCADOR CON MULTIPLICADOR Y NAVEGACIÓN */}
+          <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0 space-y-2">
             <div className="flex gap-2 items-center w-full">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Nombre o código de barras... [F2]"
-                  className="pl-10 h-11 border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-indigo-500 w-full"
+                  placeholder="Buscar o '3*coca'... [Flechas ↑↓, Enter]"
+                  className="pl-10 pr-12 h-11 border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl text-xs font-bold shadow-xs focus-visible:ring-indigo-500 w-full"
                   value={searchQuery}
                   onChange={(e) => handleSearchQueryChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSearchSubmit();
-                    }
-                  }}
+                  onKeyDown={handleSearchKeyDown}
                 />
+                {!searchQuery && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] px-1.5 py-0.5 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 dark:bg-indigo-500/30 rounded font-black pointer-events-none select-none">
+                    F2
+                  </span>
+                )}
               </div>
               <Button
                 type="button"
@@ -427,13 +482,55 @@ export default function POSPage() {
                 <span className="hidden sm:inline">Buscar por voz</span>
               </Button>
             </div>
+
+            {/* BARRA SUPERIOR DE CATEGORÍAS TIPO PILLS / CHIPS DE 1 TOQUE */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setActiveCategory('TODOS')}
+                className={cn(
+                  "px-3 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1",
+                  activeCategory === 'TODOS'
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-102"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                <span>TODOS</span>
+                <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-extrabold", activeCategory === 'TODOS' ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400")}>
+                  {catalogProducts.length}
+                </span>
+              </button>
+
+              {categories.map((cat) => {
+                const count = catalogProducts.filter((p) => p.category === cat).length;
+                const isSelected = activeCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveCategory(cat)}
+                    className={cn(
+                      "px-3 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5",
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-102"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    )}
+                  >
+                    <span>{cat.toUpperCase()}</span>
+                    <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-extrabold", isSelected ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400")}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* CUADRÍCULA DE PRODUCTOS */}
           <div className="flex-1 overflow-y-auto p-3 bg-slate-50/20 dark:bg-slate-900/10 scrollbar-none">
             {filteredCatalog.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-                {filteredCatalog.map((prod) => {
+                {filteredCatalog.map((prod, idx) => {
                   const cartItem = cartItems.find(item => item.id === prod.id);
                   const qtyInCart = cartItem ? cartItem.quantity : 0;
                   return (
@@ -443,6 +540,7 @@ export default function POSPage() {
                       qtyInCart={qtyInCart}
                       onAdd={handleTouchAdd}
                       searchQuery={searchQuery}
+                      isSelectedByKeyboard={idx === selectedCatalogIndex}
                     />
                   );
                 })}
@@ -455,22 +553,16 @@ export default function POSPage() {
             )}
           </div>
 
-          {/* BARRA INFERIOR / FOOTER: FILTRO DE CATEGORÍAS */}
-          <div className="p-2.5 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-end items-center shrink-0">
-            <div className="w-52">
-              <CustomSelect
-                menuPlacement="top"
-                value={activeCategory}
-                onChange={setActiveCategory}
-                placeholder="Todas las categorías"
-                options={[
-                  { value: 'TODOS', label: 'Todas las categorías' },
-                  ...categories.map((c) => ({
-                    value: c,
-                    label: c.toUpperCase(),
-                  })),
-                ]}
-              />
+          {/* FOOTER: CONTADOR Y GUÍA RÁPIDA DE ATAJOS */}
+          <div className="px-3.5 py-2 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex flex-wrap justify-between items-center text-[10.5px] font-bold text-slate-400 dark:text-slate-500 shrink-0 gap-2">
+            <span>
+              {filteredCatalog.length} de {catalogProducts.length} productos
+            </span>
+            <div className="hidden sm:flex items-center gap-2 text-[10px]">
+              <span><kbd className="px-1 py-0.5 bg-slate-200/80 dark:bg-slate-800 rounded text-slate-700 dark:text-slate-300 font-mono">F2</kbd> Buscar</span>
+              <span><kbd className="px-1 py-0.5 bg-slate-200/80 dark:bg-slate-800 rounded text-slate-700 dark:text-slate-300 font-mono">↑↓</kbd> Navegar</span>
+              <span><kbd className="px-1 py-0.5 bg-slate-200/80 dark:bg-slate-800 rounded text-slate-700 dark:text-slate-300 font-mono">Enter</kbd> Agregar</span>
+              <span><kbd className="px-1 py-0.5 bg-slate-200/80 dark:bg-slate-800 rounded text-slate-700 dark:text-slate-300 font-mono">F7</kbd> Proveedor</span>
             </div>
           </div>
         </div>
@@ -568,7 +660,10 @@ export default function POSPage() {
                 await handleCheckout();
                 setIsCheckoutDrawerOpen(false);
               }}
-              onBackToTicket={() => setIsCheckoutDrawerOpen(false)}
+              onBackToTicket={() => {
+                setIsCheckoutDrawerOpen(false);
+                focusSearchInput();
+              }}
             />
           </div>
         </div>
@@ -630,6 +725,12 @@ export default function POSPage() {
       <DailySuppliersModal
         open={isDailySuppliersOpen}
         onOpenChange={setIsDailySuppliersOpen}
+      />
+
+      {/* MODAL UNIVERSAL PAGO EXPRESS A PROVEEDOR (1 PASO) */}
+      <QuickSupplierPaymentModal
+        open={isQuickSupplierPaymentOpen}
+        onOpenChange={setIsQuickSupplierPaymentOpen}
       />
     </div>
   );

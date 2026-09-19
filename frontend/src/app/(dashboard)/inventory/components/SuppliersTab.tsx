@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Truck, Plus, Edit3, Trash2, Calendar, FileText, Eye, Search, Filter, Tag, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Truck, Plus, Edit3, Trash2, Calendar, FileText, Eye, Search, Filter, Tag, AlertCircle, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { CustomSelect } from '@/components/CustomSelect';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Supplier, Purchase } from '../types';
+import { QuickSupplierPaymentModal } from '@/components/QuickSupplierPaymentModal';
 
 
 interface PendingTicketItem {
@@ -78,6 +79,11 @@ export function SuppliersTab({
 }: SuppliersTabProps) {
   const { role } = useAuthStore();
   const [logView, setLogView] = React.useState<'PURCHASES' | 'TICKETS'>('PURCHASES');
+
+  // Estado para Pago Express Modal
+  const [isQuickPayOpen, setIsQuickPayOpen] = React.useState(false);
+  const [quickPaySupplierId, setQuickPaySupplierId] = React.useState<string | null>(null);
+  const [quickPayTicket, setQuickPayTicket] = React.useState<PendingTicketItem | null>(null);
 
   // Estado para búsqueda, filtrado y paginación del directorio de proveedores
   const [supplierSearch, setSupplierSearch] = React.useState('');
@@ -192,14 +198,27 @@ export function SuppliersTab({
             <Truck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Directorio de Proveedores ({sortedSuppliers.length})
           </h3>
 
-          {(role === 'ADMIN' || role === 'GERENTE') && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer self-start sm:self-auto"
-              onClick={() => setIsSupplierOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-4 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+              onClick={() => {
+                setQuickPaySupplierId(null);
+                setQuickPayTicket(null);
+                setIsQuickPayOpen(true);
+              }}
             >
-              <Plus className="h-4 w-4" /> Registrar Proveedor
+              <Zap className="h-4 w-4" /> Pago Express
             </Button>
-          )}
+
+            {(role === 'ADMIN' || role === 'GERENTE') && (
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-4 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                onClick={() => setIsSupplierOpen(true)}
+              >
+                <Plus className="h-4 w-4" /> Registrar Proveedor
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* BARRA DE BÚSQUEDA Y FILTROS RÁPIDOS PARA PROVEEDORES */}
@@ -336,11 +355,15 @@ export function SuppliersTab({
                               <>
                                 <Button
                                   size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-                                  onClick={() => onOpenPayTicket?.(activeTicket)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1"
+                                  onClick={() => {
+                                    setQuickPaySupplierId(supplier.id);
+                                    setQuickPayTicket(activeTicket);
+                                    setIsQuickPayOpen(true);
+                                  }}
                                   title="Liquidar pago de ticket pendiente"
                                 >
-                                  Pagar Ticket (${activeTicket.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })})
+                                  <Zap className="h-3 w-3" /> Pagar Ticket (${activeTicket.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })})
                                 </Button>
                                 <Button
                                   size="sm"
@@ -349,18 +372,34 @@ export function SuppliersTab({
                                   onClick={() => onCancelPendingTicket?.(activeTicket.id)}
                                   title="Cancelar ticket de preventa"
                                 >
-                                  Cancelar Ticket
+                                  Cancelar
                                 </Button>
                               </>
                             )}
                             {supplier.isActive !== false && (
-                              <Button
-                                size="sm"
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
-                                onClick={() => handleOpenRegisterPurchase(supplier)}
-                              >
-                                {activeTicket ? 'Compra' : 'Registrar Compra / Ticket'}
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] h-7 px-2.5 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1"
+                                  onClick={() => {
+                                    setQuickPaySupplierId(supplier.id);
+                                    setQuickPayTicket(activeTicket || null);
+                                    setIsQuickPayOpen(true);
+                                  }}
+                                  title="Registrar pago express a este proveedor"
+                                >
+                                  <Zap className="h-3 w-3" /> Pagar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-[10px] h-7 px-2 rounded-lg active:scale-95 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
+                                  onClick={() => handleOpenRegisterPurchase(supplier)}
+                                  title="Registrar compra detallada o nota"
+                                >
+                                  Detallada
+                                </Button>
+                              </>
                             )}
                             {(role === 'ADMIN' || role === 'GERENTE') && (
                               <Button
@@ -861,6 +900,14 @@ export function SuppliersTab({
           )}
         </div>
       </div>
+
+      {/* MODAL PAGO EXPRESS A PROVEEDOR */}
+      <QuickSupplierPaymentModal
+        open={isQuickPayOpen}
+        onOpenChange={setIsQuickPayOpen}
+        preselectedSupplierId={quickPaySupplierId}
+        preselectedTicket={quickPayTicket}
+      />
     </div>
   );
 }

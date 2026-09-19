@@ -9,7 +9,7 @@ import dbHelper from '@/lib/indexedDb';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { Product, Customer } from '../types';
 import { useVoiceSearch } from './useVoiceSearch';
-import { useCatalogFilter } from './useCatalogFilter';
+import { useCatalogFilter, parseSearchMultiplier } from './useCatalogFilter';
 import { usePOSKeybindings } from './usePOSKeybindings';
 
 export function usePOS() {
@@ -32,6 +32,7 @@ export function usePOS() {
   } = useCartStore();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCatalogIndex, setSelectedCatalogIndex] = useState<number>(0);
   const [localProducts, setLocalProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('TODOS');
   const [localCategories, setLocalCategories] = useState<string[]>([]);
@@ -214,10 +215,11 @@ export function usePOS() {
 
   const handleSearchQueryChange = useCallback((value: string) => {
     setSearchQuery(value);
-    const query = value.trim();
-    if (!query || query.length < 3) return;
+    setSelectedCatalogIndex(0);
+    const { cleanQuery, multiplier } = parseSearchMultiplier(value);
+    if (!cleanQuery || cleanQuery.length < 3) return;
 
-    const exactProduct = findProductByCode(query);
+    const exactProduct = findProductByCode(cleanQuery);
     if (exactProduct) {
       if (exactProduct.stock <= 0) {
         setSelectedZeroStockProduct(exactProduct);
@@ -225,29 +227,57 @@ export function usePOS() {
         setSearchQuery('');
         return;
       }
-      addToCart(exactProduct, 1);
-      toast.success(`Añadido: ${exactProduct.name} (código escaneado)`, { id: 'pos-add-toast' });
+      addToCart(exactProduct, multiplier);
+      toast.success(`Añadido: ${multiplier > 1 ? `(${multiplier}x) ` : ''}${exactProduct.name}`, { id: 'pos-add-toast' });
       setSearchQuery('');
+      setSelectedCatalogIndex(0);
     }
   }, [findProductByCode, addToCart, setSearchQuery]);
 
   const handleSearchSubmit = useCallback(() => {
-    if (filteredCatalog.length === 1) {
-      const singleProduct = filteredCatalog[0];
-      if (singleProduct.stock <= 0) {
-        setSelectedZeroStockProduct(singleProduct);
-        setIsZeroStockModalOpen(true);
+    const { cleanQuery, multiplier } = parseSearchMultiplier(searchQuery);
+
+    if (filteredCatalog.length > 0) {
+      const targetProduct = filteredCatalog[selectedCatalogIndex] || filteredCatalog[0];
+      if (targetProduct.unitType === 'WEIGHT') {
+        setSelectedBulkProduct(targetProduct);
+        setIsBulkOpen(true);
         setSearchQuery('');
+        setSelectedCatalogIndex(0);
         return;
       }
-      addToCart(singleProduct, 1);
-      toast.success(`Añadido: ${singleProduct.name}`, { id: 'pos-add-toast' });
+
+      if (targetProduct.stock <= 0) {
+        setSelectedZeroStockProduct(targetProduct);
+        setIsZeroStockModalOpen(true);
+        setSearchQuery('');
+        setSelectedCatalogIndex(0);
+        return;
+      }
+
+      addToCart(targetProduct, multiplier);
+      toast.success(`Añadido: ${multiplier > 1 ? `(${multiplier}x) ` : ''}${targetProduct.name}`, { id: 'pos-add-toast' });
       setSearchQuery('');
-    } else if (filteredCatalog.length === 0 && searchQuery.trim()) {
-      handleBarcodeScanned(searchQuery.trim());
+      setSelectedCatalogIndex(0);
+    } else if (cleanQuery) {
+      handleBarcodeScanned(cleanQuery);
       setSearchQuery('');
+      setSelectedCatalogIndex(0);
     }
-  }, [filteredCatalog, addToCart, setSearchQuery, searchQuery, handleBarcodeScanned]);
+  }, [filteredCatalog, selectedCatalogIndex, searchQuery, addToCart, handleBarcodeScanned]);
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedCatalogIndex((prev) => Math.min(filteredCatalog.length - 1, prev + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedCatalogIndex((prev) => Math.max(0, prev - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearchSubmit();
+    }
+  }, [filteredCatalog.length, handleSearchSubmit]);
 
   // Handler para vincular en caliente un código de barras a un producto desde el POS
   const handleQuickLinkBarcode = useCallback(async (productId: string, barcodeToLink: string) => {
@@ -601,6 +631,9 @@ export function usePOS() {
     updateQuantity,
     removeFromCart,
     filteredCatalog,
+    selectedCatalogIndex,
+    setSelectedCatalogIndex,
+    handleSearchKeyDown,
     isListening,
     toggleVoiceSearch,
     handleSearchSubmit,
@@ -608,3 +641,4 @@ export function usePOS() {
     handleBarcodeScanned
   };
 }
+

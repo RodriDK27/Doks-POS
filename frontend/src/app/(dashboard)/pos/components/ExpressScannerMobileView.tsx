@@ -1,10 +1,25 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Camera, CameraOff, Search, Mic, ShoppingCart, Trash2, Plus, Minus, ArrowRight, RefreshCw, Package, Check, X, Tag, Pause } from 'lucide-react';
+import {
+  Camera,
+  CameraOff,
+  Search,
+  Mic,
+  ShoppingCart,
+  Trash2,
+  Plus,
+  Minus,
+  ArrowRight,
+  RefreshCw,
+  Package,
+  X,
+  Pause,
+  Tag,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CustomSelect } from '@/components/CustomSelect';
+import { cn } from '@/lib/utils';
 import { CartItem } from '@/store/useCartStore';
 import { Product } from '../types';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
@@ -42,9 +57,6 @@ export function ExpressScannerMobileView({
   onBarcodeScanned,
   onToggleVoice,
   isListening,
-  activeCategory,
-  onCategoryChange,
-  categories,
   cartItems,
   cartItemsCount,
   getTotal,
@@ -52,7 +64,6 @@ export function ExpressScannerMobileView({
   setDiscount,
   updateQuantity,
   removeFromCart,
-  onClearCart,
   onProceedToPayment,
   onSuspend,
   filteredCatalog,
@@ -63,12 +74,28 @@ export function ExpressScannerMobileView({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
-  const [expressTab, setExpressTab] = useState<'TICKET' | 'CATALOG'>('TICKET');
+  const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedSearchIndex(0);
+  }, [searchQuery]);
+
+  // Listener directo para F2 en la vista móvil
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchInputRef]);
 
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const lastScannedRef = useRef<{ code: string; time: number } | null>(null);
   const viewportId = 'express-inline-viewport';
-  const effectiveTab = searchQuery.trim().length > 0 ? 'CATALOG' : expressTab;
 
   // Sonido Beep táctil
   const playBeep = useCallback(() => {
@@ -120,68 +147,55 @@ export function ExpressScannerMobileView({
       await html5Qrcode.start(
         { facingMode: 'environment' },
         {
-          fps: 25,
-          aspectRatio: 1.7777778,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const width = Math.floor(viewfinderWidth * 0.9);
-            const height = Math.floor(Math.min(viewfinderHeight * 0.8, 140));
-            return { width, height };
-          },
-          videoConstraints: {
-            facingMode: 'environment',
-            width: { ideal: 1920, min: 1280 },
-            height: { ideal: 1080, min: 720 },
-            advanced: [
-              { focusMode: 'continuous' } as MediaTrackConstraintSet,
-              { zoom: 1.2 } as MediaTrackConstraintSet,
-            ],
-          },
+          fps: 15,
+          qrbox: { width: 250, height: 150 },
+          aspectRatio: 1.777,
         },
         (decodedText) => {
           const now = Date.now();
           if (
-            lastScannedRef.current &&
-            lastScannedRef.current.code === decodedText &&
-            now - lastScannedRef.current.time < 1200
+            !lastScannedRef.current ||
+            lastScannedRef.current.code !== decodedText ||
+            now - lastScannedRef.current.time > 1500
           ) {
-            return;
+            lastScannedRef.current = { code: decodedText, time: now };
+            playBeep();
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              navigator.vibrate(80);
+            }
+            onBarcodeScanned(decodedText);
           }
-
-          lastScannedRef.current = { code: decodedText, time: now };
-          playBeep();
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(80);
-          }
-          onBarcodeScanned(decodedText);
         },
-        () => { }
+        () => {
+          // Frame sin código
+        }
       );
 
       setIsCameraActive(true);
 
-      // Chrome acelerado por hardware BarcodeDetector
-      if ('BarcodeDetector' in window) {
+      const track = html5Qrcode.getRunningTrackCameraCapabilities();
+      if (track) {
         try {
-          const barcodeDetector = new (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (src: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector({
-            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
-          });
+          const videoElement = document.querySelector(`#${viewportId} video`) as HTMLVideoElement | null;
+          if (videoElement && 'BarcodeDetector' in window) {
+            const barcodeDetector = new (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (el: HTMLVideoElement) => Promise<{ rawValue: string }[]> } }).BarcodeDetector({
+              formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
+            });
 
-          const videoEl = document.querySelector(`#${viewportId} video`) as HTMLVideoElement | null;
-          if (videoEl) {
-            const detectInterval = setInterval(async () => {
-              if (!html5QrcodeRef.current?.isScanning || videoEl.paused || videoEl.ended) {
-                clearInterval(detectInterval);
+            const nativeScanInterval = setInterval(async () => {
+              if (!html5Qrcode.isScanning) {
+                clearInterval(nativeScanInterval);
                 return;
               }
               try {
-                const barcodes = await barcodeDetector.detect(videoEl);
-                if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                const barcodes = await barcodeDetector.detect(videoElement);
+                if (barcodes.length > 0) {
                   const code = barcodes[0].rawValue;
                   const now = Date.now();
                   if (
                     !lastScannedRef.current ||
                     lastScannedRef.current.code !== code ||
-                    now - lastScannedRef.current.time >= 1200
+                    now - lastScannedRef.current.time > 1500
                   ) {
                     lastScannedRef.current = { code, time: now };
                     playBeep();
@@ -238,15 +252,8 @@ export function ExpressScannerMobileView({
     }
   }, [showScanner, startCamera, stopCamera]);
 
-  const handleSelectSearchResult = (prod: Product) => {
-    onAddProduct(prod);
-    onSearchQueryChange('');
-    setExpressTab('TICKET');
-  };
-
   return (
     <div className="flex flex-col flex-1 h-full min-h-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden p-3 gap-2.5">
-
       {/* BARRA DE BÚSQUEDA TECLADO / VOZ / BOTÓN ESCÁNER PEQUEÑO */}
       <div className="relative shrink-0 flex gap-2 items-center z-30">
         <div className="relative flex-1">
@@ -255,34 +262,55 @@ export function ExpressScannerMobileView({
             ref={searchInputRef}
             type="text"
             placeholder="Buscar producto por nombre..."
-            className="pl-10 pr-8 h-12 border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl text-sm font-extrabold focus-visible:ring-indigo-500 w-full shadow-xs"
+            className="pl-10 pr-12 h-12 border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl text-sm font-extrabold focus-visible:ring-indigo-500 w-full shadow-xs"
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                onSearchSubmit();
+                setSelectedSearchIndex((prev) => Math.min(filteredCatalog.length - 1, prev + 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedSearchIndex((prev) => Math.max(0, prev - 1));
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (searchQuery.includes('*') || filteredCatalog.length === 0) {
+                  onSearchSubmit();
+                } else if (filteredCatalog.length > 0 && selectedSearchIndex >= 0 && selectedSearchIndex < filteredCatalog.length) {
+                  onAddProduct(filteredCatalog[selectedSearchIndex]);
+                  onSearchQueryChange('');
+                  setSelectedSearchIndex(0);
+                } else {
+                  onSearchSubmit();
+                }
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                onSearchQueryChange('');
               }
             }}
           />
-          {searchQuery && (
+          {searchQuery ? (
             <button
               type="button"
               onClick={() => onSearchQueryChange('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
+          ) : (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] px-1.5 py-0.2 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 dark:bg-indigo-500/30 rounded font-black pointer-events-none select-none">
+              F2
+            </span>
           )}
         </div>
 
-        {/* BOTÓN BÚSQUEDA POR VOZ ARMONIZADO CON LA PALETA NEUTRA Y BORDE DESTACADO */}
+        {/* BOTÓN BÚSQUEDA POR VOZ */}
         <Button
           type="button"
           onClick={onToggleVoice}
           className={`h-12 px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all cursor-pointer shrink-0 border ${isListening
-            ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse shadow-xs'
-            : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/60 dark:hover:bg-slate-700/80 border-indigo-400/60 dark:border-indigo-500/50 text-slate-800 dark:text-slate-100 shadow-xs'
+              ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/60 dark:hover:bg-slate-700/80 border-indigo-400/60 dark:border-indigo-500/50 text-slate-800 dark:text-slate-100 shadow-xs'
             }`}
           title="Buscar por Voz"
         >
@@ -296,36 +324,97 @@ export function ExpressScannerMobileView({
           variant="outline"
           onClick={() => setShowScanner(!showScanner)}
           className={`h-12 w-10 p-0 rounded-xl flex items-center justify-center border transition-all cursor-pointer shrink-0 ${showScanner
-            ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
-            : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+              ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
+              : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           title={showScanner ? 'Ocultar Escáner' : 'Mostrar Escáner (Cámara)'}
         >
           <Camera className="h-4 w-4" />
         </Button>
 
-        {/* LISTA DESPLEGABLE FLOTANTE DE RESULTADOS DE BÚSQUEDA (MÁS ESPACIOSA Y ALTURA MAYOR) */}
+        {/* LISTA DESPLEGABLE FLOTANTE DE RESULTADOS DE BÚSQUEDA */}
         {searchQuery.trim() && (
           <div className="absolute left-0 right-0 top-13 z-50 max-h-96 sm:max-h-[75vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-1.5 divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in duration-150">
             {filteredCatalog.length > 0 ? (
-              filteredCatalog.map((prod) => (
-                <div
-                  key={prod.id}
-                  onClick={() => {
-                    onAddProduct(prod);
-                    onSearchQueryChange('');
-                  }}
-                  className="p-2 hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer flex justify-between items-center rounded-xl transition-all"
-                >
-                  <div className="min-w-0 flex-1 pr-2">
-                    <span className="font-extrabold text-xs sm:text-sm text-slate-800 dark:text-slate-100 block truncate">{prod.name}</span>
-                    <span className="text-[11px] text-slate-500 font-bold block">${prod.sellPrice.toFixed(2)} | Stock: {prod.stock}</span>
+              filteredCatalog.map((prod, idx) => {
+                const isSelected = idx === selectedSearchIndex;
+                const isOutOfStock = prod.stock <= 0;
+                return (
+                  <div
+                    key={prod.id}
+                    onClick={() => {
+                      onAddProduct(prod);
+                      onSearchQueryChange('');
+                    }}
+                    className={cn(
+                      "p-2.5 cursor-pointer flex justify-between items-center rounded-xl transition-all border my-0.5",
+                      isOutOfStock
+                        ? isSelected
+                          ? "border-rose-500 bg-rose-500/15 dark:bg-rose-950/40 ring-2 ring-rose-500 shadow-xs"
+                          : "border-rose-500/60 dark:border-rose-500/50 bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-100/50 dark:hover:bg-rose-950/40"
+                        : isSelected
+                          ? "border-indigo-500 bg-indigo-50 dark:bg-slate-800 ring-2 ring-indigo-500 shadow-xs"
+                          : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                    )}
+                  >
+                    <div className="min-w-0 flex-1 pr-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={cn(
+                          "font-extrabold text-xs sm:text-sm block truncate",
+                          isOutOfStock ? "text-rose-700 dark:text-rose-300 font-black" : "text-slate-800 dark:text-slate-100"
+                        )}>
+                          {prod.name}
+                        </span>
+                        {isOutOfStock && (
+                          <span className="text-[9.5px] bg-rose-500/20 border border-rose-500/40 text-rose-600 dark:text-rose-400 font-black px-1.5 py-0.2 rounded shadow-2xs">
+                            Sin Stock
+                          </span>
+                        )}
+                        {isSelected && (
+                          <span className={cn(
+                            "text-[9.5px] text-white font-black px-1.5 py-0.2 rounded",
+                            isOutOfStock ? "bg-rose-600" : "bg-indigo-600"
+                          )}>
+                            Enter ↵
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold mt-0.5">
+                        <span className="text-slate-600 dark:text-slate-400 font-extrabold">
+                          ${prod.sellPrice.toFixed(2)}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        {isOutOfStock ? (
+                          <span className="text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 inline-block animate-pulse" />
+                            Stock: 0 (Agotado)
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 font-bold">
+                            Stock: {prod.stock}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className={cn(
+                        "h-7.5 px-2.5 font-extrabold text-xs rounded-lg shadow-xs shrink-0 cursor-pointer",
+                        isOutOfStock
+                          ? isSelected
+                            ? "bg-rose-600 hover:bg-rose-700 text-white border border-rose-500"
+                            : "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 hover:bg-rose-200 dark:hover:bg-rose-900"
+                          : isSelected
+                            ? "bg-indigo-600 text-white"
+                            : "bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      )}
+                    >
+                      {isOutOfStock ? 'Sin Stock' : '+ Añadir'}
+                    </Button>
                   </div>
-                  <Button type="button" size="sm" className="h-7.5 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-lg shadow-xs shrink-0">
-                    + Añadir
-                  </Button>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="p-4 text-center text-xs text-slate-400 font-bold">
                 No se encontraron productos con &quot;{searchQuery}&quot;.
@@ -335,7 +424,7 @@ export function ExpressScannerMobileView({
         )}
       </div>
 
-      {/* CÁMARA EN VIVO OPCIONAL (DESPLEGABLE PEQUEÑO) */}
+      {/* CÁMARA EN VIVO OPCIONAL */}
       {showScanner && (
         <div className="relative shrink-0 w-full bg-slate-950 dark:bg-black rounded-2xl overflow-hidden shadow-md border border-slate-900 aspect-video max-h-36 flex items-center justify-center animate-in slide-in-from-top-2 duration-200">
           <div
@@ -360,7 +449,6 @@ export function ExpressScannerMobileView({
                 </Button>
               </div>
 
-              {/* Guía visual del lector con línea roja láser */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                 <div className="relative w-[85%] h-[60px] border-2 border-red-500/70 rounded-xl overflow-hidden">
                   <div className="absolute -top-0.5 -left-0.5 w-3 h-3 border-t-2 border-l-2 border-red-500 rounded-tl-sm" />
@@ -389,15 +477,15 @@ export function ExpressScannerMobileView({
         </div>
       )}
 
-      {/* CONTENEDOR PRINCIPAL: TICKET EN VIVO DE ARTÍCULOS REGISTRADOS */}
+      {/* CONTENEDOR PRINCIPAL: TICKET EN VIVO CON ESPACIO AMPLIO */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-1 md:p-2 space-y-1.5 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
         {cartItems.length > 0 ? (
           cartItems.map((item) => (
             <div
               key={item.id}
-              className="flex justify-between items-center p-3 md:p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800/80 shadow-2xs hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all gap-3 md:gap-4"
+              className="flex justify-between items-center p-3 md:p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-3 md:gap-4"
             >
-              {/* Nombre del Producto + Precio Unitario al lado */}
+              {/* Nombre del Producto + Precio Unitario */}
               <div className="min-w-0 flex-1 flex items-baseline gap-2">
                 <span className="font-extrabold text-slate-850 dark:text-slate-100 text-sm md:text-base truncate" title={item.name}>
                   {item.name}
@@ -428,7 +516,7 @@ export function ExpressScannerMobileView({
                 </button>
               </div>
 
-              {/* Total sin etiqueta + Botón Borrar Más Grande */}
+              {/* Total y Botón Eliminar */}
               <div className="flex items-center gap-3 shrink-0">
                 <span className="font-black text-emerald-600 dark:text-emerald-400 text-base md:text-2xl tracking-tight">
                   ${(item.sellPrice * item.quantity).toFixed(2)}
@@ -446,9 +534,65 @@ export function ExpressScannerMobileView({
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-6 text-slate-400">
-            <ShoppingCart className="h-7 w-7 text-slate-300 dark:text-slate-700 mb-1 animate-bounce" />
-            <p className="text-xs font-bold text-center">Escribe el nombre de un producto o apunta la cámara al código.</p>
+          <div className="flex flex-col items-center justify-center py-6 px-3 text-slate-400 space-y-3">
+            <div className="flex flex-col items-center justify-center space-y-1">
+              <ShoppingCart className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-1 animate-pulse" />
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500">Ticket de venta vacío</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-600">Escanea un código o toca un producto para agregarlo:</p>
+            </div>
+
+            {filteredCatalog.length > 0 && (
+              <div className="w-full space-y-1.5 pt-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Artículos Frecuentes
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {filteredCatalog.slice(0, 6).map((prod) => {
+                    const isOutOfStock = prod.stock <= 0;
+                    return (
+                      <button
+                        key={prod.id}
+                        type="button"
+                        onClick={() => onAddProduct(prod)}
+                        className={cn(
+                          "p-2.5 rounded-xl text-left transition-all active:scale-95 shadow-2xs cursor-pointer flex flex-col justify-between h-20 border",
+                          isOutOfStock
+                            ? "bg-rose-50/30 dark:bg-rose-950/20 border-rose-500/60 dark:border-rose-500/50 hover:border-rose-600"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 hover:border-indigo-500"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-1 w-full">
+                          <span className={cn(
+                            "font-extrabold text-xs line-clamp-2 leading-snug flex-1",
+                            isOutOfStock ? "text-rose-700 dark:text-rose-300 font-black" : "text-slate-800 dark:text-slate-100"
+                          )}>
+                            {prod.name}
+                          </span>
+                          {isOutOfStock && (
+                            <span className="text-[8.5px] bg-rose-600 text-white font-black px-1 py-0.2 rounded shrink-0">
+                              0 stock
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-1 w-full">
+                          <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
+                            ${prod.sellPrice.toFixed(2)}
+                          </span>
+                          <span className={cn(
+                            "text-[10px] font-extrabold px-1.5 py-0.5 rounded",
+                            isOutOfStock
+                              ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                              : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400"
+                          )}>
+                            {isOutOfStock ? 'Reponer' : '+ Añadir'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -467,7 +611,7 @@ export function ExpressScannerMobileView({
                 min="0"
                 step="any"
                 placeholder="0.00"
-                className="w-full h-11 md:h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-black text-right text-sm md:text-base focus-visible:ring-indigo-500"
+                className="w-full h-11 md:h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-black text-right text-sm md:text-base focus-visible:ring-emerald-500"
                 value={discount > 0 ? discount : ''}
                 onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
               />
@@ -477,7 +621,7 @@ export function ExpressScannerMobileView({
             <div className="text-left md:text-right shrink-0 md:pl-5 md:border-l border-slate-100 dark:border-slate-800/80 pt-2 md:pt-0 border-t md:border-t-0 flex flex-col justify-center">
               <div className="flex items-center gap-1.5 md:justify-end">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Ticket</span>
-                <span className="text-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-black px-2.5 py-0.5 rounded-md border border-indigo-200/40">
+                <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                   {cartItemsCount} uds
                 </span>
               </div>
@@ -513,10 +657,12 @@ export function ExpressScannerMobileView({
             className="flex-1 h-11 md:h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs md:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 uppercase tracking-wider"
           >
             <span>Cobrar</span>
+            <span className="text-[10px] px-1.5 py-0.5 bg-emerald-800/90 rounded font-mono font-black text-emerald-100 border border-emerald-400/30">
+              F8
+            </span>
             <span className="px-2 py-0.5 bg-emerald-700 dark:bg-emerald-900 rounded-lg text-xs font-black">
               ${currentTotal.toFixed(2)}
             </span>
-            <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
         </div>
       </div>

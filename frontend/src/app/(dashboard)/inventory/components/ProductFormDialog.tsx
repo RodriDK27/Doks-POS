@@ -86,6 +86,10 @@ export function ProductFormDialog({
   const unitType = watch('unitType');
   const selectedCategory = watch('category') || '';
   const mainBarcode = watch('barcode') || '';
+  const purchasePrice = watch('purchasePrice') || 0;
+  const sellPrice = watch('sellPrice') || 0;
+  const profit = sellPrice - purchasePrice;
+  const marginPercent = sellPrice > 0 ? (profit / sellPrice) * 100 : 0;
 
   const handleAddSecondaryBarcode = () => {
     const code = newSecBarcode.trim();
@@ -192,6 +196,27 @@ export function ProductFormDialog({
                   ...categories.map((c) => ({ value: c, label: c })),
                 ]}
               />
+
+              {/* Sugerencias de categorías rápidas */}
+              {categories.length > 0 && (
+                <div className="flex items-center gap-1 overflow-x-auto pt-1 scrollbar-none">
+                  {categories.slice(0, 5).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setValue('category', cat)}
+                      className={cn(
+                        "text-[9px] font-black px-2 py-0.5 rounded-lg border transition-all cursor-pointer whitespace-nowrap",
+                        selectedCategory === cat
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -333,6 +358,18 @@ export function ProductFormDialog({
               />
             </div>
           </div>
+
+          {/* CÁLCULO EN VIVO DE GANANCIA Y MARGEN */}
+          {sellPrice > 0 && (
+            <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-[11px] font-black animate-in fade-in">
+              <span className="text-emerald-800 dark:text-emerald-300">
+                Ganancia estimada: ${profit.toFixed(2)} por unidad
+              </span>
+              <span className={cn("px-2 py-0.5 rounded-md", marginPercent >= 20 ? "bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-100" : "bg-amber-200/80 text-amber-900")}>
+                Margen: {marginPercent.toFixed(1)}%
+              </span>
+            </div>
+          )}
 
           {/* EXISTENCIAS Y STOCK MÍNIMO */}
           <div className="grid grid-cols-2 gap-3">

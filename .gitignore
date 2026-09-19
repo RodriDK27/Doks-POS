@@ -45,3 +45,6 @@ frontend/*.tsbuildinfo
 # Build Artifacts
 **/dist/
 **/build/
+
+# Internal Documentation & Roadmaps
+docs/

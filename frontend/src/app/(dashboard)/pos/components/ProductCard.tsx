@@ -8,6 +8,7 @@ interface ProductCardProps {
   qtyInCart: number;
   onAdd: (product: Product) => void;
   searchQuery?: string;
+  isSelectedByKeyboard?: boolean;
 }
 
 function HighlightText({ text, query }: { text: string; query?: string }) {
@@ -44,7 +45,7 @@ function HighlightText({ text, query }: { text: string; query?: string }) {
 }
 
 
-export function ProductCard({ product, qtyInCart, onAdd, searchQuery }: ProductCardProps) {
+export function ProductCard({ product, qtyInCart, onAdd, searchQuery, isSelectedByKeyboard }: ProductCardProps) {
   const colors = getCategoryColor(product.category);
   const isLowStock = product.stock > 0 && product.stock <= 5;
   const isOutOfStock = product.stock <= 0;
@@ -53,14 +54,29 @@ export function ProductCard({ product, qtyInCart, onAdd, searchQuery }: ProductC
   return (
     <button
       type="button"
-      disabled={isOutOfStock}
       onClick={() => onAdd(product)}
-      className={`group relative flex flex-col text-left rounded-2xl border transition-all duration-200 select-none overflow-hidden
+      className={`group relative flex flex-col text-left rounded-2xl border transition-all duration-150 select-none overflow-hidden
         ${isOutOfStock
-          ? 'opacity-40 bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-          : `cursor-pointer bg-white dark:bg-slate-900 ${colors.bg} ${colors.border} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97]`
+          ? 'border-2 border-rose-500/70 dark:border-rose-500/60 bg-rose-50/20 dark:bg-rose-950/20 hover:border-rose-600 cursor-pointer shadow-xs'
+          : isSelectedByKeyboard
+            ? `cursor-pointer ring-2 ring-indigo-600 dark:ring-indigo-400 shadow-lg scale-[1.02] bg-indigo-50/50 dark:bg-indigo-950/40 ${colors.border}`
+            : `cursor-pointer bg-white dark:bg-slate-900 ${colors.bg} ${colors.border} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97]`
         }`}
     >
+      {/* BADGE SIN STOCK */}
+      {isOutOfStock && (
+        <span className="absolute top-1.5 left-1.5 z-20 px-1.5 py-0.5 bg-rose-600 text-white rounded-md text-[8.5px] font-black shadow-xs tracking-wider animate-in fade-in">
+          Sin Stock
+        </span>
+      )}
+
+      {/* BADGE SELECCIONADO POR TECLADO */}
+      {isSelectedByKeyboard && !isOutOfStock && (
+        <span className="absolute top-1.5 left-1.5 z-20 px-1.5 py-0.5 bg-indigo-600 text-white rounded-md text-[8.5px] font-black shadow-xs tracking-wider animate-in fade-in zoom-in duration-150">
+          ↵ Enter
+        </span>
+      )}
+
       {/* BADGE CARRITO (esquina) */}
       {qtyInCart > 0 && (
         <span className="absolute top-1.5 right-1.5 z-20 h-5 min-w-5 px-1.5 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-md border-2 border-white dark:border-slate-900 animate-in zoom-in duration-200">
