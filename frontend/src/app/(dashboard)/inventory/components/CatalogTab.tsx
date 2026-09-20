@@ -1,24 +1,28 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, Edit3, Trash2, Barcode, Upload, Download, History, UtensilsCrossed, Copy, AlertTriangle, Layers, Check, Zap } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-import { Badge } from '@/components/ui/badge';
+import { Search, Plus, Upload, Download, AlertTriangle, Check, Zap, Package, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Product } from '../types';
+import { Product, UNCATEGORIZED } from '../types';
+import { formatQty, getStockStatus, matchesCategory, STATUS_RANK, StockStatus } from '../utils/stockStatus';
+import { BARCODE_INPUT_ATTR, useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { InventoryMetrics } from './InventoryMetrics';
-import api from '@/lib/api';
-import { mutate } from 'swr';
-import { toast } from 'sonner';
+import { CategoryPicker } from './CategoryPicker';
+import { ProductRow } from './ProductRow';
+import { QuickAddProductBar } from './QuickAddProductBar';
+import { ActionMenu } from './ActionMenu';
+
+type StockFilter = 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK';
 
 interface CatalogTabProps {
-
+  /** Catálogo completo (sin filtros): base de los contadores por categoría. */
+  products: Product[];
   totalProductsCount: number;
   totalInvestment: number;
   expectedProfit: number;
@@ -27,8 +31,8 @@ interface CatalogTabProps {
   setSearchQuery: (query: string) => void;
   selectedCategory: string;
   setSelectedCategory: (category: string) => void;
-  stockFilter: 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK';
-  setStockFilter: (filter: 'ALL' | 'CRITICAL' | 'OUT_OF_STOCK') => void;
+  stockFilter: StockFilter;
+  setStockFilter: (filter: StockFilter) => void;
   categories: string[];
   filteredProducts: Product[];
   loading: boolean;
@@ -36,7 +40,7 @@ interface CatalogTabProps {
   areAllFilteredSelected: boolean;
   toggleSelectProduct: (id: string) => void;
   toggleSelectAllProducts: (products: Product[]) => void;
-  handleOpenAdd: () => void;
+  handleOpenAdd: (category?: string) => void;
   setIsImportOpen: (open: boolean) => void;
   handleExportCSV: () => void;
   handleOpenMovements: (product: Product) => void;
@@ -45,9 +49,24 @@ interface CatalogTabProps {
   handleOpenEdit: (product: Product) => void;
   handleOpenDelete: (product: Product) => void;
   onOpenCategoryManager?: () => void;
+  /** Controlado por la página para poder ocultar el botón flotante mientras se captura */
+  quickAddOpen: boolean;
+  setQuickAddOpen: (open: boolean) => void;
 }
 
+const SECTION_META: Record<StockStatus, { label: string; dot: string; text: string }> = {
+  OUT: { label: 'Agotados', dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400' },
+  LOW: { label: 'Stock bajo', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  OK: { label: 'Con existencias', dot: 'bg-emerald-500', text: 'text-slate-500 dark:text-slate-400' },
+};
+
+const LIST = 'grid grid-cols-1 gap-1.5 items-start';
+
+/** El botón ⚡ Agregar (alta rápida) está oculto por ahora; poner en true para volver a mostrarlo. */
+const SHOW_QUICK_ADD_BUTTON = false;
+
 export function CatalogTab({
+  products,
   totalProductsCount,
   totalInvestment,
   expectedProfit,
@@ -74,585 +93,419 @@ export function CatalogTab({
   handleOpenEdit,
   handleOpenDelete,
   onOpenCategoryManager,
+  quickAddOpen,
+  setQuickAddOpen,
 }: CatalogTabProps) {
   const { role } = useAuthStore();
-  const [productsPage, setProductsPage] = React.useState(1);
-  const [productsPerPage, setProductsPerPage] = React.useState(10);
+  const canManage = role === 'ADMIN' || role === 'GERENTE';
 
-  // Estados para edición rápida inline de existencias y precios
-  const [inlineStockLoadingId, setInlineStockLoadingId] = React.useState<string | null>(null);
-  const [editingStockId, setEditingStockId] = React.useState<string | null>(null);
-  const [tempStockValue, setTempStockValue] = React.useState<string>('');
+  const [page, setPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(25);
+  // Solo una fila desplegada a la vez: mantiene la lista corta y fácil de recorrer
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
-  const [editingPriceId, setEditingPriceId] = React.useState<string | null>(null);
-  const [tempPriceValue, setTempPriceValue] = React.useState<string>('');
-
-  const handleQuickStockIncrement = async (product: Product, delta: number) => {
-    const newStock = Math.max(0, (product.stock || 0) + delta);
-    try {
-      setInlineStockLoadingId(product.id);
-      await api.patch(`/products/${product.id}/stock`, { stock: newStock });
-      toast.success(`${product.name}: ${newStock} (${delta > 0 ? `+${delta}` : delta})`, { id: `stock-${product.id}` });
-      await mutate('/products');
-    } catch {
-      toast.error('Error al actualizar existencias.');
-    } finally {
-      setInlineStockLoadingId(null);
-    }
-  };
-
-  const handleSaveDirectStock = async (product: Product) => {
-    const val = parseFloat(tempStockValue);
-    if (isNaN(val) || val < 0) {
-      setEditingStockId(null);
-      return;
-    }
-    try {
-      setInlineStockLoadingId(product.id);
-      await api.patch(`/products/${product.id}/stock`, { stock: val });
-      toast.success(`${product.name}: existencias actualizadas a ${val}`);
-      await mutate('/products');
-    } catch {
-      toast.error('Error al actualizar existencias.');
-    } finally {
-      setInlineStockLoadingId(null);
-      setEditingStockId(null);
-    }
-  };
-
-  const handleSaveDirectPrice = async (product: Product) => {
-    const val = parseFloat(tempPriceValue);
-    if (isNaN(val) || val <= 0) {
-      setEditingPriceId(null);
-      return;
-    }
-    try {
-      await api.patch(`/products/${product.id}`, { sellPrice: val });
-      toast.success(`${product.name}: precio de venta fijado en $${val.toFixed(2)}`);
-      await mutate('/products');
-    } catch {
-      toast.error('Error al actualizar precio.');
-    } finally {
-      setEditingPriceId(null);
-    }
-  };
-
-  const [prevSearch, setPrevSearch] = React.useState({ searchQuery, selectedCategory, stockFilter });
-
-  if (
-    prevSearch.searchQuery !== searchQuery ||
-    prevSearch.selectedCategory !== selectedCategory ||
-    prevSearch.stockFilter !== stockFilter
-  ) {
-    setPrevSearch({ searchQuery, selectedCategory, stockFilter });
-    setProductsPage(1);
+  // Volver a la página 1 cuando cambia cualquier filtro (patrón de "estado derivado" en render)
+  const filterKey = `${searchQuery}|${selectedCategory}|${stockFilter}|${perPage}`;
+  const [prevFilterKey, setPrevFilterKey] = React.useState(filterKey);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+    setExpandedId(null);
   }
 
-  const totalProductsPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
-  const paginatedProducts = React.useMemo(() => {
-    return filteredProducts.slice((productsPage - 1) * productsPerPage, productsPage * productsPerPage);
-  }, [filteredProducts, productsPage, productsPerPage]);
+  const isAllCategories = selectedCategory === '';
+  const scopeTitle = isAllCategories
+    ? 'Todos los productos'
+    : selectedCategory === UNCATEGORIZED
+      ? 'Sin categoría'
+      : selectedCategory;
+  const realCategory = isAllCategories || selectedCategory === UNCATEGORIZED ? undefined : selectedCategory;
+
+  // Resumen de la categoría activa, sin importar búsqueda ni filtro de stock
+  const scope = React.useMemo(() => {
+    let out = 0;
+    let low = 0;
+    let total = 0;
+    for (const p of products) {
+      if (!matchesCategory(p, selectedCategory)) continue;
+      total += 1;
+      const status = getStockStatus(p);
+      if (status === 'OUT') out += 1;
+      else if (status === 'LOW') low += 1;
+    }
+    return { total, out, low };
+  }, [products, selectedCategory]);
+
+  // Lo urgente primero: agotados, luego stock bajo, luego el resto; alfabético dentro de cada grupo
+  const sortedProducts = React.useMemo(
+    () =>
+      [...filteredProducts].sort(
+        (a, b) =>
+          STATUS_RANK[getStockStatus(a)] - STATUS_RANK[getStockStatus(b)] ||
+          a.name.localeCompare(b.name, 'es')
+      ),
+    [filteredProducts]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / perPage));
+  const currentPage = Math.min(page, totalPages);
+  const pageProducts = React.useMemo(
+    () => sortedProducts.slice((currentPage - 1) * perPage, currentPage * perPage),
+    [sortedProducts, currentPage, perPage]
+  );
+
+  const sections = React.useMemo(() => {
+    const order: StockStatus[] = ['OUT', 'LOW', 'OK'];
+    return order
+      .map((status) => ({
+        status,
+        items: pageProducts.filter((p) => getStockStatus(p) === status),
+        total: sortedProducts.filter((p) => getStockStatus(p) === status).length,
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [pageProducts, sortedProducts]);
+
+  // Los encabezados solo aportan si la lista mezcla estados
+  const showSectionHeaders =
+    stockFilter === 'ALL' &&
+    sortedProducts.length > 0 &&
+    sortedProducts.some((p) => getStockStatus(p) !== getStockStatus(sortedProducts[0]));
+
+  const selectedSet = React.useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
+
+  const stockChips: Array<{ key: StockFilter; label: string; count: number; active: string; idle: string }> = [
+    {
+      key: 'ALL',
+      label: 'Todos',
+      count: scope.total,
+      active: 'bg-slate-500/15 dark:bg-slate-400/15 text-slate-800 dark:text-slate-100 border-slate-500/50 dark:border-slate-400/50',
+      idle: 'bg-slate-500/5 dark:bg-slate-400/5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-500/10 dark:hover:bg-slate-400/10',
+    },
+    {
+      key: 'CRITICAL',
+      label: 'Bajo',
+      count: scope.low,
+      active: 'bg-amber-500 text-white border-amber-500',
+      idle: 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/40 hover:bg-amber-100 dark:hover:bg-amber-950/40',
+    },
+    {
+      key: 'OUT_OF_STOCK',
+      label: 'Agotados',
+      count: scope.out,
+      active: 'bg-rose-600 text-white border-rose-600',
+      idle: 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/40 hover:bg-rose-100 dark:hover:bg-rose-950/40',
+    },
+  ];
+
+  const hasActiveFilters = searchQuery.trim() !== '' || stockFilter !== 'ALL';
+
+  // Lector de código de barras: busca el producto sin importar dónde esté el foco ni qué filtro haya
+  useBarcodeScanner((code) => {
+    setSelectedCategory('');
+    setStockFilter('ALL');
+    setSearchQuery(code);
+    setExpandedId(null);
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const match = products.find((p) => p.barcode === code || p.barcodes?.some((b) => b.barcode === code));
+    if (match) {
+      toast.success(`${match.name} · ${formatQty(match.stock, match.unitType === 'WEIGHT')} en existencia`, { id: 'barcode-scan' });
+    } else {
+      toast.error(`El código ${code} no está registrado.`, { id: 'barcode-scan' });
+    }
+  });
 
   return (
-    <>
-      {/* METRICAS */}
-      <InventoryMetrics
-        totalProductsCount={totalProductsCount}
-        totalInvestment={totalInvestment}
-        expectedProfit={expectedProfit}
-        lowStockCount={lowStockCount}
-      />
+    <div className="mx-auto w-full max-w-5xl">
+      <div className="space-y-3 min-w-0">
+        {/* UN SOLO CARD: categoría, búsqueda y acciones, filtros de stock y resumen plegable */}
+        <div className="flex flex-col gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl">
+          <CategoryPicker
+            products={products}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelect={setSelectedCategory}
+            onManage={canManage ? onOpenCategoryManager : undefined}
+          />
 
-      {/* FILTROS + CATEGORÍAS VISUALES + ACCIONES */}
-      <div className="flex flex-col gap-3 bg-white dark:bg-slate-900 p-3.5 sm:p-4 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.015)] w-full">
-        {/* BUSCADOR PRINCIPAL + CHIPS DE ESTADO DE STOCK */}
-        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center w-full">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Buscar por nombre, código de barras o categoría..."
-              className="pl-10 h-10 border-slate-200 dark:border-slate-800 dark:bg-slate-950 rounded-xl text-xs font-semibold focus-visible:ring-indigo-500 w-full"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                type="text"
+                placeholder={isAllCategories ? 'Buscar o escanear código...' : `Buscar en ${scopeTitle}...`}
+                {...{ [BARCODE_INPUT_ATTR]: '' }}
+                className="pl-10 pr-10 h-12 border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-950/70 rounded-xl text-xs font-semibold focus-visible:ring-indigo-500 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {canManage && SHOW_QUICK_ADD_BUTTON && (
+              <Button
+                type="button"
+                aria-label={quickAddOpen ? 'Cerrar alta rápida' : 'Agregar productos'}
+                onClick={() => setQuickAddOpen(!quickAddOpen)}
+                className={cn(
+                  'h-12 w-12 p-0 sm:w-auto sm:px-4 shrink-0 rounded-xl font-black text-xs gap-1.5 active:scale-95 transition-all cursor-pointer',
+                  quickAddOpen
+                    ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-950'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20'
+                )}
+              >
+                {quickAddOpen ? <X className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+                <span className="hidden sm:inline">{quickAddOpen ? 'Cerrar' : 'Agregar'}</span>
+              </Button>
+            )}
+            <ActionMenu
+              items={[
+                {
+                  label: 'Formulario completo',
+                  icon: <Plus className="h-4 w-4" />,
+                  onClick: () => handleOpenAdd(realCategory),
+                  hidden: !canManage,
+                },
+                {
+                  label: 'Importar CSV',
+                  icon: <Upload className="h-4 w-4" />,
+                  onClick: () => setIsImportOpen(true),
+                  hidden: !canManage,
+                },
+                {
+                  label: 'Exportar CSV',
+                  icon: <Download className="h-4 w-4" />,
+                  onClick: handleExportCSV,
+                },
+              ]}
             />
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none shrink-0">
-            <button
-              type="button"
-              onClick={() => setStockFilter('ALL')}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border",
-                stockFilter === 'ALL'
-                  ? "bg-slate-800 dark:bg-slate-700 text-white border-slate-800 shadow-xs"
-                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100"
-              )}
-            >
-              Todo
-            </button>
-            <button
-              type="button"
-              onClick={() => setStockFilter('CRITICAL')}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border flex items-center gap-1.5",
-                stockFilter === 'CRITICAL'
-                  ? "bg-amber-500 text-white border-amber-500 shadow-xs"
-                  : "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/40 hover:bg-amber-100"
-              )}
-            >
-              <AlertTriangle className="h-3 w-3" /> Stock Bajo ({lowStockCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStockFilter('OUT_OF_STOCK')}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border flex items-center gap-1.5",
-                stockFilter === 'OUT_OF_STOCK'
-                  ? "bg-rose-600 text-white border-rose-600 shadow-xs"
-                  : "bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/40 hover:bg-rose-100"
-              )}
-            >
-              Agotados
-            </button>
-          </div>
-        </div>
-
-        {/* NAVEGACIÓN VISUAL DE CATEGORÍAS (PILLS DE 1 TOQUE) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 dark:border-slate-800/60 pt-2.5">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('')}
-            className={cn(
-              "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5",
-              selectedCategory === ''
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-102"
-                : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
-            )}
-          >
-            <span>TODAS</span>
-            <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-extrabold", selectedCategory === '' ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500")}>
-              {totalProductsCount}
-            </span>
-          </button>
-
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            const count = filteredProducts.filter((p) => p.category === cat).length;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(isSelected ? '' : cat)}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5",
-                  isSelected
-                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-102"
-                    : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
-                )}
-              >
-                <span>{cat}</span>
-                {count > 0 && (
-                  <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-extrabold", isSelected ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500")}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* FILA INFERIOR: BOTÓN NUEVO PRODUCTO */}
-        {(role === 'ADMIN' || role === 'GERENTE') && (
-          <Button 
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-6 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
-            onClick={handleOpenAdd}
-          >
-            <Plus className="h-4 w-4" /> Nuevo Producto
-          </Button>
-        )}
-      </div>
-
-      {/* TABLA CATÁLOGO */}
-      <div className="border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgba(0,0,0,0.015)] overflow-hidden">
-        <div className="px-4 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-3 flex-wrap">
-          <span className="text-xs font-bold text-slate-500">
-            {filteredProducts.length} {filteredProducts.length === 1 ? 'producto encontrado' : 'productos encontrados'}
-          </span>
-          
-          <div className="flex items-center gap-2">
-            {(role === 'ADMIN' || role === 'GERENTE') && onOpenCategoryManager && (
-              <Button
-                className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-indigo-650 dark:text-indigo-400 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
-                onClick={onOpenCategoryManager}
-              >
-                <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Categorías
-              </Button>
-            )}
-            {(role === 'ADMIN' || role === 'GERENTE') && (
-              <Button
-                className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
-                onClick={() => setIsImportOpen(true)}
-              >
-                <Upload className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Importar CSV
-              </Button>
-            )}
-            <Button
-              className="h-8 text-[11px] font-bold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-lg gap-1.5 active:scale-95 transition-all cursor-pointer shadow-xs px-3"
-              onClick={handleExportCSV}
-            >
-              <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Exportar CSV
-            </Button>
-          </div>
-
-        </div>
-        {loading ? (
-          <div className="p-4 space-y-4">
-            {Array.from({ length: 5 }).map((_, idx) => (
-              <div key={idx} className="flex justify-between items-center py-2.5 border-b last:border-0">
-                <div className="space-y-2">
-                  <Skeleton className="h-4.5 w-48" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-                <div className="flex gap-4 items-center">
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-8 w-16 rounded-lg" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredProducts.length > 0 ? (
-          <div className="w-full overflow-x-auto scrollbar-none">
-            <Table className="min-w-[600px] sm:min-w-full">
-
-            <TableHeader className="bg-slate-50/50">
-              <TableRow className="border-b">
-                <TableHead className="w-10 text-center">
-                  <input
-                    type="checkbox"
-                    className="accent-indigo-650 h-4 w-4 rounded cursor-pointer"
-                    checked={areAllFilteredSelected}
-                    onChange={() => toggleSelectAllProducts(filteredProducts)}
-                  />
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-500 min-w-[140px]">Producto</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-36">Stock</TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-500 w-28">Venta</TableHead>
-                {(role === 'ADMIN' || role === 'GERENTE') && (
-                  <>
-                    <TableHead className="text-right text-xs font-bold text-slate-500 w-24 hidden sm:table-cell">Compra</TableHead>
-                    <TableHead className="text-right text-xs font-bold text-slate-500 w-20 hidden sm:table-cell">Margen</TableHead>
-                  </>
-                )}
-                <TableHead className="w-44 min-w-[170px] text-center text-xs font-bold text-slate-500">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y">
-              {paginatedProducts.map((p) => {
-                const isCritical = p.stock <= p.minStock;
-                const isOut = p.stock === 0;
-                
-                const margin = p.sellPrice > 0 
-                  ? ((p.sellPrice - p.purchasePrice) / p.sellPrice) * 100 
-                  : 0;
-
-                const isSelected = selectedProductIds.includes(p.id);
-
-                return (
-                  <TableRow
-                    key={p.id}
+          <div className="grid grid-cols-3 gap-1.5">
+            {stockChips.map((chip) => {
+              const isActive = stockFilter === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => setStockFilter(chip.key)}
+                  className={cn(
+                    'h-10 px-2 rounded-xl text-xs font-black transition-all cursor-pointer border flex items-center justify-center gap-1.5 active:scale-95',
+                    isActive ? cn(chip.active, 'shadow-xs') : chip.idle
+                  )}
+                >
+                  {chip.key === 'CRITICAL' && <AlertTriangle className="h-3.5 w-3.5" />}
+                  {chip.label}
+                  <span
                     className={cn(
-                      "hover:bg-slate-50/20 border-b transition-all border-l-4",
-                      isOut 
-                        ? "bg-rose-50/40 dark:bg-rose-950/15 border-l-rose-500 text-rose-950 dark:text-rose-250" 
-                        : isCritical 
-                        ? "bg-amber-50/40 dark:bg-amber-950/15 border-l-amber-500 text-amber-950 dark:text-amber-250" 
-                        : "border-l-transparent",
-                      isSelected && "bg-indigo-50/30 dark:bg-indigo-950/10"
+                      'text-[10px] px-1.5 rounded-full font-extrabold tabular-nums',
+                      isActive ? 'bg-white/25' : 'bg-black/5 dark:bg-white/10'
                     )}
                   >
-                    <TableCell className="text-center py-3">
-                      <input
-                        type="checkbox"
-                        className="accent-indigo-650 h-4 w-4 rounded cursor-pointer"
-                        checked={isSelected}
-                        onChange={() => toggleSelectProduct(p.id)}
-                      />
-                    </TableCell>
+                    {chip.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-                    <TableCell className="py-3">
-                      <div>
-                        <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">{p.name}</span>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {p.barcode && (
-                            <span className="text-[9px] text-slate-450 dark:text-slate-400 font-mono flex items-center gap-0.5 shrink-0">
-                              <Barcode className="h-3 w-3" /> {p.barcode}
-                            </span>
-                          )}
-                          {p.barcodes && p.barcodes.length > 0 && (
-                            <span
-                              title={`Códigos adicionales: ${p.barcodes.map(b => b.barcode + (b.label ? ` (${b.label})` : '')).join(', ')}`}
-                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-955/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40 cursor-help"
-                            >
-                              +{p.barcodes.length} cód.
-                            </span>
-                          )}
-                          {p.category && (
-                            <Badge variant="secondary" className="text-[8px] px-1.5 py-0 bg-indigo-50 dark:bg-indigo-955/40 text-indigo-650 dark:text-indigo-300 font-bold border border-indigo-100/50 dark:border-indigo-900/30">
-                              {p.category}
-                            </Badge>
-                          )}
-                        </div>
+          <InventoryMetrics
+            totalProductsCount={totalProductsCount}
+            totalInvestment={totalInvestment}
+            expectedProfit={expectedProfit}
+            lowStockCount={lowStockCount}
+          />
+        </div>
+
+        {/* ALTA RÁPIDA */}
+        {canManage && quickAddOpen && (
+          <QuickAddProductBar
+            products={products}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onClose={() => setQuickAddOpen(false)}
+          />
+        )}
+
+        {/* LISTA */}
+        <div className="space-y-2.5">
+          <label className="flex items-center gap-2 px-1 text-[11px] font-bold text-slate-500 cursor-pointer select-none w-fit">
+            <input
+              type="checkbox"
+              className="accent-indigo-650 h-4 w-4 rounded cursor-pointer"
+              checked={areAllFilteredSelected}
+              disabled={filteredProducts.length === 0}
+              onChange={() => toggleSelectAllProducts(filteredProducts)}
+            />
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'producto' : 'productos'}
+            {selectedProductIds.length > 0 && (
+              <span className="text-indigo-600 dark:text-indigo-400">· {selectedProductIds.length} con etiqueta</span>
+            )}
+          </label>
+
+          {loading ? (
+            <div className={LIST}>
+              {Array.from({ length: 8 }).map((_, idx) => (
+                <div key={idx} className="h-14 rounded-xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 flex items-center justify-between gap-3">
+                  <div className="space-y-1.5 flex-1">
+                    <Skeleton className="h-3.5 w-2/3" />
+                    <Skeleton className="h-2.5 w-1/3" />
+                  </div>
+                  <Skeleton className="h-7 w-12" />
+                  <Skeleton className="h-4 w-14" />
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length > 0 ? (
+            <>
+              {sections.map((section) => {
+                const meta = SECTION_META[section.status];
+                return (
+                  <section key={section.status} className="space-y-1.5">
+                    {showSectionHeaders && (
+                      <div className="flex items-center gap-2 px-1 pt-1">
+                        <span className={cn('h-2 w-2 rounded-full', meta.dot)} />
+                        <h3 className={cn('text-[11px] font-black uppercase tracking-wider', meta.text)}>{meta.label}</h3>
+                        <span className="text-[10px] font-extrabold text-slate-400 tabular-nums">{section.total}</span>
+                        <span className="flex-1 h-px bg-slate-200/70 dark:bg-slate-800" />
                       </div>
-                    </TableCell>
-                    
-                    {/* CELDA DE STOCK CON EDICIÓN RÁPIDA E INCREMENTOS */}
-                    <TableCell className="text-right py-2">
-                      <div className="flex flex-col items-end gap-1">
-                        {editingStockId === p.id ? (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              step="any"
-                              autoFocus
-                              className="h-7 w-16 text-xs font-black text-right p-1 rounded-lg"
-                              value={tempStockValue}
-                              onChange={(e) => setTempStockValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveDirectStock(p);
-                                if (e.key === 'Escape') setEditingStockId(null);
-                              }}
-                            />
-                            <Button
-                              size="sm"
-                              className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
-                              onClick={() => handleSaveDirectStock(p)}
-                            >
-                              <Check className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            title="Clic para editar existencia"
-                            onClick={() => {
-                              setEditingStockId(p.id);
-                              setTempStockValue(String(p.stock));
-                            }}
-                            className={cn(
-                              "font-black text-xs px-2 py-0.5 rounded-lg transition-all cursor-pointer border hover:scale-105",
-                              isOut
-                                ? "bg-rose-100 dark:bg-rose-955/60 text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-900/60"
-                                : isCritical
-                                ? "bg-amber-100 dark:bg-amber-955/60 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-900/60"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                            )}
-                          >
-                            {p.stock} {p.unitType === 'WEIGHT' ? 'kg' : ''}
-                          </button>
-                        )}
-
-                        {/* Botones de incremento rápido (+1, +5, +10) */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            disabled={inlineStockLoadingId === p.id}
-                            onClick={() => handleQuickStockIncrement(p, 1)}
-                            className="h-5 px-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 text-[10px] font-black rounded text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-90"
-                            title="Sumar 1 pieza"
-                          >
-                            +1
-                          </button>
-                          <button
-                            type="button"
-                            disabled={inlineStockLoadingId === p.id}
-                            onClick={() => handleQuickStockIncrement(p, 5)}
-                            className="h-5 px-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 text-[10px] font-black rounded text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-90"
-                            title="Sumar 5 piezas"
-                          >
-                            +5
-                          </button>
-                          <button
-                            type="button"
-                            disabled={inlineStockLoadingId === p.id}
-                            onClick={() => handleQuickStockIncrement(p, 10)}
-                            className="h-5 px-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 text-[10px] font-black rounded text-slate-600 dark:text-slate-300 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-90"
-                            title="Sumar 10 piezas"
-                          >
-                            +10
-                          </button>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* CELDA DE PRECIO DE VENTA CON EDICIÓN DIRECTA */}
-                    <TableCell className="text-right text-slate-805 dark:text-slate-100 font-black text-xs py-2">
-                      {editingPriceId === p.id ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <Input
-                            type="number"
-                            step="any"
-                            autoFocus
-                            className="h-7 w-20 text-xs font-black text-right p-1 rounded-lg"
-                            value={tempPriceValue}
-                            onChange={(e) => setTempPriceValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveDirectPrice(p);
-                              if (e.key === 'Escape') setEditingPriceId(null);
-                            }}
-                          />
-                          <Button
-                            size="sm"
-                            className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
-                            onClick={() => handleSaveDirectPrice(p)}
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          title="Clic para editar precio de venta"
-                          onClick={() => {
-                            setEditingPriceId(p.id);
-                            setTempPriceValue(String(p.sellPrice));
-                          }}
-                          className="px-1.5 py-0.5 rounded text-slate-800 dark:text-slate-100 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 font-black transition-all cursor-pointer"
-                        >
-                          ${p.sellPrice.toFixed(2)}
-                        </button>
-                      )}
-                    </TableCell>
-
-                    {(role === 'ADMIN' || role === 'GERENTE') && (
-                      <>
-                        <TableCell className="text-right text-slate-400 text-xs hidden sm:table-cell">
-                          ${p.purchasePrice.toFixed(2)}
-                        </TableCell>
-
-                        <TableCell className="text-right text-emerald-500 font-bold text-xs hidden sm:table-cell">
-                          {margin.toFixed(0)}%
-                        </TableCell>
-                      </>
                     )}
-
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg"
-                          onClick={() => handleOpenMovements(p)}
-                          title="Ver bitácora de stock"
-                        >
-                          <History className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg"
-                          onClick={() => handleOpenWaste(p)}
-                          title="Registrar Merma o Consumo Interno"
-                        >
-                          <UtensilsCrossed className="h-3.5 w-3.5" />
-                        </Button>
-                        {(role === 'ADMIN' || role === 'GERENTE') && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg"
-                              onClick={() => handleOpenDuplicate(p)}
-                              title="Duplicar producto"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                              onClick={() => handleOpenEdit(p)}
-                              title="Editar producto"
-                            >
-                              <Edit3 className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 rounded-lg"
-                              onClick={() => handleOpenDelete(p)}
-                              title="Eliminar producto"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                    <div className={LIST}>
+                      {section.items.map((p) => (
+                        <ProductRow
+                          key={p.id}
+                          product={p}
+                          expanded={expandedId === p.id}
+                          selected={selectedSet.has(p.id)}
+                          canManage={canManage}
+                          showCategory={isAllCategories}
+                          onToggleExpand={(id) => setExpandedId((current) => (current === id ? null : id))}
+                          onToggleSelect={toggleSelectProduct}
+                          onOpenMovements={handleOpenMovements}
+                          onOpenWaste={handleOpenWaste}
+                          onOpenDuplicate={handleOpenDuplicate}
+                          onOpenEdit={handleOpenEdit}
+                          onOpenDelete={handleOpenDelete}
+                        />
+                      ))}
+                    </div>
+                  </section>
                 );
               })}
-            </TableBody>
-          </Table>
 
-          {/* CONTROLES DE PAGINACIÓN ADAPTABLES PARA MÓVIL */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/20 text-xs">
-            <div className="flex items-center justify-between w-full sm:w-auto gap-3">
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] text-slate-500 font-bold">Mostrar:</span>
-                <CustomSelect
-                  className="w-20 h-8 text-xs font-bold"
-                  value={String(productsPerPage)}
-                  onChange={(val) => {
-                    setProductsPerPage(Number(val));
-                    setProductsPage(1);
-                  }}
-                  options={[
-                    { value: '10', label: '10' },
-                    { value: '25', label: '25' },
-                    { value: '50', label: '50' },
-                    { value: '100', label: '100' },
-                  ]}
-                />
+              {/* PAGINACIÓN */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-900 text-xs">
+                <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[11px] text-slate-500 font-bold">Mostrar:</span>
+                    <CustomSelect
+                      className="w-20 h-9 text-xs font-bold"
+                      menuPlacement="top"
+                      value={String(perPage)}
+                      onChange={(val) => setPerPage(Number(val))}
+                      options={[
+                        { value: '25', label: '25' },
+                        { value: '50', label: '50' },
+                        { value: '100', label: '100' },
+                      ]}
+                    />
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap text-right">
+                    {(currentPage - 1) * perPage + 1} - {Math.min(currentPage * perPage, sortedProducts.length)} de {sortedProducts.length}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 px-4 text-xs font-bold rounded-xl cursor-pointer"
+                    disabled={currentPage <= 1}
+                    onClick={() => {
+                      setPage(currentPage - 1);
+                      setExpandedId(null);
+                    }}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="px-1 font-black text-slate-600 dark:text-slate-300 text-xs whitespace-nowrap">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 px-4 text-xs font-bold rounded-xl cursor-pointer"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => {
+                      setPage(currentPage + 1);
+                      setExpandedId(null);
+                    }}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
               </div>
-              <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap text-right">
-                Mostrando {filteredProducts.length > 0 ? (productsPage - 1) * productsPerPage + 1 : 0} - {Math.min(productsPage * productsPerPage, filteredProducts.length)} de {filteredProducts.length}
-              </span>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-14 px-4 text-center bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+              {stockFilter === 'OUT_OF_STOCK' && !searchQuery.trim() && scope.total > 0 ? (
+                <>
+                  <span className="h-11 w-11 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
+                    <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </span>
+                  <p className="text-sm font-black text-slate-700 dark:text-slate-200">Sin agotados en {scopeTitle}</p>
+                  <p className="text-xs text-slate-400">Todo lo de esta vista tiene existencias.</p>
+                </>
+              ) : scope.total === 0 ? (
+                <>
+                  <span className="h-11 w-11 rounded-full bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center">
+                    <Package className="h-5 w-5 text-indigo-500" />
+                  </span>
+                  <p className="text-sm font-black text-slate-700 dark:text-slate-200">
+                    {isAllCategories ? 'Aún no hay productos en el inventario' : `${scopeTitle} todavía no tiene productos`}
+                  </p>
+                  {canManage && (
+                    <Button
+                      type="button"
+                      onClick={() => setQuickAddOpen(true)}
+                      className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs gap-1.5 cursor-pointer"
+                    >
+                      <Zap className="h-3.5 w-3.5" /> Agregar el primero
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-black text-slate-700 dark:text-slate-200">Sin resultados</p>
+                  <p className="text-xs text-slate-400">Ningún producto coincide con los filtros actuales.</p>
+                </>
+              )}
+              {hasActiveFilters && scope.total > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 px-4 text-xs font-bold rounded-xl cursor-pointer"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStockFilter('ALL');
+                  }}
+                >
+                  Limpiar filtros
+                </Button>
+              )}
             </div>
-
-            <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer"
-                disabled={productsPage <= 1}
-                onClick={() => setProductsPage((p) => Math.max(1, p - 1))}
-              >
-                Anterior
-              </Button>
-              <span className="px-2 font-black text-slate-600 dark:text-slate-300 text-xs whitespace-nowrap">
-                Página {productsPage} de {totalProductsPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-3 text-xs font-bold rounded-lg cursor-pointer"
-                disabled={productsPage >= totalProductsPages}
-                onClick={() => setProductsPage((p) => Math.min(totalProductsPages, p + 1))}
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
+          )}
         </div>
-        ) : (
-
-          <div className="py-20 text-center text-slate-400 text-xs">
-            No se encontraron productos en el inventario.
-          </div>
-        )}
       </div>
-    </>
+    </div>
   );
 }

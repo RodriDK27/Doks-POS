@@ -115,6 +115,9 @@ export function MobileInventoryScannerView({
 
   useEffect(() => {
     const handleOpenMobileAddFromRequested = (e: Event) => {
+      // En pantallas anchas (>= 1024px) lo atiende el formulario de escritorio de `useInventory`;
+      // sin esta guarda se abrían los dos diálogos apilados.
+      if (window.innerWidth >= 1024) return;
       const customEv = e as CustomEvent<{ id: string; name: string; sellPrice?: number }>;
       if (customEv.detail) {
         const detail = customEv.detail;

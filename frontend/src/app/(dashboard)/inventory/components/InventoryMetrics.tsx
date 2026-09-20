@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface InventoryMetricsProps {
@@ -9,6 +10,20 @@ interface InventoryMetricsProps {
   lowStockCount: number;
 }
 
+function Stat({ label, value, note, tone }: { label: string; value: string; note: string; tone?: string }) {
+  return (
+    <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 px-3 py-2 min-w-0">
+      <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">{label}</span>
+      <span className={cn('text-base font-black block leading-tight', tone ?? 'text-slate-800 dark:text-slate-100')}>{value}</span>
+      <span className="text-[9px] text-slate-400 dark:text-slate-500 block truncate">{note}</span>
+    </div>
+  );
+}
+
+/**
+ * Resumen general discreto, pensado para ir DENTRO del card del catálogo (sin borde propio):
+ * una línea que se despliega al tocarla.
+ */
 export function InventoryMetrics({
   totalProductsCount,
   totalInvestment,
@@ -16,47 +31,49 @@ export function InventoryMetrics({
   lowStockCount,
 }: InventoryMetricsProps) {
   const { role } = useAuthStore();
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <div className={`grid gap-2.5 sm:gap-3.5 ${role === 'ADMIN' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'}`}>
-      <Card className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-2xs hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all duration-200">
-        <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-0.5">
-          <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Catálogo</span>
-          <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 block">{totalProductsCount}</span>
-          <span className="text-[9px] text-slate-400 dark:text-slate-500 block truncate">Artículos distintos</span>
-        </CardContent>
-      </Card>
+    <div className="border-t border-slate-100 dark:border-slate-800/60 pt-1">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="w-full min-h-[36px] flex items-center justify-between gap-3 text-left cursor-pointer"
+      >
+        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
+          Resumen general
+        </span>
+        <span className="flex items-center gap-2 min-w-0 text-[11px] font-bold text-slate-400 dark:text-slate-500">
+          <span className="truncate">{totalProductsCount} artículos</span>
+          <span className="text-slate-300 dark:text-slate-700">·</span>
+          <span className={cn('truncate', lowStockCount > 0 && 'text-amber-500')}>{lowStockCount} bajo stock</span>
+          <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform duration-200', open && 'rotate-180')} />
+        </span>
+      </button>
 
-      {role === 'ADMIN' && (
-        <>
-          <Card className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-2xs hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all duration-200">
-            <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-0.5">
-              <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Inversión Neta</span>
-              <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 block">${totalInvestment.toFixed(0)}</span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 block truncate">Costo de adquisición</span>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-2xs hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all duration-200">
-            <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-0.5">
-              <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Ganancia Estimada</span>
-              <span className="text-lg sm:text-xl font-black text-indigo-650 dark:text-indigo-400 block">${expectedProfit.toFixed(0)}</span>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 block truncate">Margen potencial</span>
-            </CardContent>
-          </Card>
-        </>
+      {open && (
+        <div
+          className={cn(
+            'grid gap-2 pt-1 pb-1 animate-in fade-in duration-200',
+            role === 'ADMIN' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'
+          )}
+        >
+          <Stat label="Catálogo" value={String(totalProductsCount)} note="Artículos distintos" />
+          {role === 'ADMIN' && (
+            <>
+              <Stat label="Inversión neta" value={`$${totalInvestment.toFixed(0)}`} note="Costo de adquisición" />
+              <Stat label="Ganancia estimada" value={`$${expectedProfit.toFixed(0)}`} note="Margen potencial" tone="text-indigo-600 dark:text-indigo-400" />
+            </>
+          )}
+          <Stat
+            label="Bajo stock"
+            value={String(lowStockCount)}
+            note="Artículos agotándose"
+            tone={lowStockCount > 0 ? 'text-amber-500' : undefined}
+          />
+        </div>
       )}
-
-      <Card className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl shadow-2xs hover:border-amber-200 dark:hover:border-amber-900/50 transition-all duration-200">
-        <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-0.5">
-          <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Bajo Stock</span>
-          <span className={`text-lg sm:text-xl font-black block ${lowStockCount > 0 ? 'text-amber-500' : 'text-slate-800 dark:text-slate-100'}`}>
-            {lowStockCount}
-          </span>
-          <span className="text-[9px] text-slate-400 dark:text-slate-500 block truncate">Artículos agotándose</span>
-        </CardContent>
-      </Card>
     </div>
   );
 }
-

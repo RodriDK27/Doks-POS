@@ -229,7 +229,7 @@ export default function DashboardLayout({
         } else if (!activeReg && role !== 'ADMIN' && pathname !== '/register') {
           // Si la caja está cerrada y no es admin, requerir estar en caja
           router.replace('/register');
-        } else if (role === 'CAJERO' && (pathname === '/reports' || pathname === '/vault' || pathname === '/payroll')) {
+        } else if (role === 'CAJERO' && (pathname === '/reports' || pathname === '/performance' || pathname === '/vault' || pathname === '/payroll')) {
           router.replace('/pos');
         }
       } else {

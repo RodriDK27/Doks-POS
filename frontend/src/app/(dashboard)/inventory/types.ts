@@ -1,3 +1,6 @@
+/** Valor centinela de `selectedCategory` para productos sin categoría asignada. */
+export const UNCATEGORIZED = '__NONE__';
+
 export interface ProductBarcode {
   id: string;
   barcode: string;

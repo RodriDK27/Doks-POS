@@ -6,6 +6,7 @@ import { Product, Supplier, Purchase } from '../types';
 import { ProductFormValues } from '../components/ProductFormDialog';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { exportToCSV, ParsedProductRow } from '../utils/csvUtils';
+import { getStockStatus, matchesCategory } from '../utils/stockStatus';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────
 
@@ -27,8 +28,6 @@ interface InlineEdit {
 // ─── Hook ─────────────────────────────────────────────────────────────────
 
 export function useInventory() {
-  const [activeTab, setActiveTab] = useState<'CATALOG' | 'SUPPLIERS' | 'ANALYTICS' | 'REQUESTED' | 'WASTE'>('CATALOG');
-
   // Modal Merma / Consumo Interno
   const [isWasteOpen, setIsWasteOpen] = useState(false);
   const [selectedProductForWaste, setSelectedProductForWaste] = useState<Product | null>(null);
@@ -242,10 +241,6 @@ export function useInventory() {
   const { data: swrCategories } = useSWR<string[]>('/products/categories');
   const { data: swrSuppliers, mutate: mutateSuppliers, isLoading: suppliersLoading } = useSWR<Supplier[]>('/suppliers');
   const { data: swrPurchases, mutate: mutatePurchases } = useSWR<Purchase[]>('/purchases');
-  const { data: swrAnalytics, isLoading: analyticsLoading } = useSWR<{
-    topSelling: Array<{ id: string; name: string; stock: number; sellPrice: number; category: string | null; quantitySold: number; totalRevenue: number }>;
-    slowMoving: Array<{ id: string; name: string; stock: number; sellPrice: number; category: string | null; quantitySold: number; totalRevenue: number }>;
-  }>(activeTab === 'ANALYTICS' ? '/products/sales-analytics' : null);
 
   // Derived dynamic variables
   const products = swrProducts ?? [];
@@ -277,14 +272,13 @@ export function useInventory() {
       (!!p.barcode && p.barcode.toLowerCase().includes(q)) ||
       (!!p.barcodes && p.barcodes.some(b => (b.barcode || '').toLowerCase().includes(q)));
 
-    const matchesCategory = selectedCategory === '' || p.category === selectedCategory;
-
-    const matchesStock = 
+    const status = getStockStatus(p);
+    const matchesStock =
       stockFilter === 'ALL' ||
-      (stockFilter === 'CRITICAL' && p.stock <= p.minStock && p.stock > 0) ||
-      (stockFilter === 'OUT_OF_STOCK' && p.stock === 0);
+      (stockFilter === 'CRITICAL' && status === 'LOW') ||
+      (stockFilter === 'OUT_OF_STOCK' && status === 'OUT');
 
-    return matchesSearch && matchesCategory && matchesStock;
+    return matchesSearch && matchesCategory(p, selectedCategory) && matchesStock;
   });
 
   // Paginación de productos filtrados
@@ -294,8 +288,14 @@ export function useInventory() {
     currentPage * itemsPerPage
   );
 
-  const handleOpenAdd = () => {
-    setEditingProduct(null);
+  // Con `category`, el formulario abre con la categoría ya seleccionada (stub sin id => se crea uno nuevo)
+  const handleOpenAdd = (category?: string) => {
+    const now = new Date().toISOString();
+    setEditingProduct(
+      category
+        ? { id: '', name: '', barcode: null, category, purchasePrice: 0, sellPrice: 0, stock: 0, minStock: 1, createdAt: now, updatedAt: now }
+        : null
+    );
     setIsFormOpen(true);
     setTimeout(() => barcodeInputRef.current?.focus(), 150);
   };
@@ -632,8 +632,6 @@ export function useInventory() {
 
   return {
     handleCancelEdit,
-    activeTab,
-    setActiveTab,
     products,
     categories,
     loading,
@@ -742,9 +740,6 @@ export function useInventory() {
     setItemsPerPage,
     totalPages,
     paginatedProducts,
-    // Analíticas
-    analytics: swrAnalytics,
-    analyticsLoading,
     // Mermas y Consumos
     isWasteOpen,
     setIsWasteOpen,

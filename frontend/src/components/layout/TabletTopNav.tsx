@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { cn } from '@/lib/utils';
 import {
   Store,
@@ -13,6 +14,10 @@ import {
   Landmark,
   Clock,
   LayoutDashboard,
+  Truck,
+  FileText,
+  Star,
+  UtensilsCrossed,
   WifiOff,
   Sun,
   Moon,
@@ -29,6 +34,16 @@ import {
 interface ActiveRegister {
   openedBy: string;
   expectedBalance: number;
+}
+
+interface DrawerItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  desc: string;
+  adminOnly?: boolean;
+  /** Contador visible junto al nombre (p. ej. solicitudes pendientes) */
+  badge?: number;
 }
 
 interface TabletTopNavProps {
@@ -84,14 +99,33 @@ export function TabletTopNav({
     };
   }, [isMenuOpen]);
 
+  // Solicitudes de productos por atender: se muestra como contador en el menú
+  const { data: requestedProducts } = useSWR<Array<{ status: string }>>(role !== 'NONE' ? '/requested-products' : null);
+  const pendingRequests = requestedProducts?.filter((p) => p.status === 'PENDIENTE').length ?? 0;
+
   // Rutas secundarias / administrativas (en el Drawer deslizable)
-  const drawerSections = [
+  const drawerSections: Array<{ group: string; items: DrawerItem[] }> = [
     {
       group: 'Operación Diaria',
       items: [
         { name: 'Punto de Venta', href: '/pos', icon: ShoppingCart, desc: 'Cobro y venta rápida' },
         { name: 'Corte de Caja', href: '/register', icon: DollarSign, desc: 'Apertura, egresos y arqueo' },
-        { name: 'Inventario & Stock', href: '/inventory', icon: Package, desc: 'Catálogo, existencias y precios' },
+      ],
+    },
+    {
+      group: 'Inventario',
+      items: [
+        { name: 'Catálogo & Stock', href: '/inventory', icon: Package, desc: 'Existencias, precios y categorías' },
+        { name: 'Proveedores y Compras', href: '/suppliers', icon: Truck, desc: 'Compras, visitas y tickets por pagar' },
+        {
+          name: 'Solicitudes',
+          href: '/requests',
+          icon: FileText,
+          desc: 'Productos que piden los clientes',
+          badge: pendingRequests > 0 ? pendingRequests : undefined,
+        },
+        { name: 'Mermas y Consumos', href: '/waste', icon: UtensilsCrossed, desc: 'Pérdidas y consumo interno' },
+        { name: 'Rendimiento y Reportes', href: '/performance', icon: Star, desc: 'Más y menos vendidos', adminOnly: true },
       ],
     },
     {
@@ -112,10 +146,13 @@ export function TabletTopNav({
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
+            className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
             title="Abrir menú de módulos"
           >
             <Menu className="h-5 w-5" />
+            {pendingRequests > 0 && (
+              <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
+            )}
           </button>
 
           <div
@@ -410,7 +447,19 @@ export function TabletTopNav({
                             </span>
                           </div>
                         </div>
-                        <ChevronRight className={cn('h-4 w-4 shrink-0', isActive ? 'text-white' : 'text-slate-400')} />
+                        <div className="flex items-center gap-2 shrink-0">
+                          {it.badge !== undefined && (
+                            <span
+                              className={cn(
+                                'min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center',
+                                isActive ? 'bg-white text-rose-600' : 'bg-rose-500 text-white'
+                              )}
+                            >
+                              {it.badge}
+                            </span>
+                          )}
+                          <ChevronRight className={cn('h-4 w-4', isActive ? 'text-white' : 'text-slate-400')} />
+                        </div>
                       </Link>
                     );
                   })}

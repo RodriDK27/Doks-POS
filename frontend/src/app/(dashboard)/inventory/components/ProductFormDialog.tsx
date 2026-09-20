@@ -125,7 +125,7 @@ export function ProductFormDialog({
       <DialogContent className="sm:max-w-[450px] rounded-3xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <DialogHeader className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800">
           <DialogTitle className="font-black text-base text-slate-800 dark:text-slate-100">
-            {editingProduct ? 'Editar Producto' : 'Registrar Nuevo Producto'}
+            {editingProduct?.id ? 'Editar Producto' : 'Registrar Nuevo Producto'}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-400 dark:text-slate-400">
             Llena los datos del artículo para el catálogo e inventario.
@@ -418,7 +418,7 @@ export function ProductFormDialog({
               className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs h-10 rounded-xl shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : 'Registrar Producto'}
+              {isSubmitting ? 'Guardando...' : editingProduct?.id ? 'Guardar Cambios' : 'Registrar Producto'}
             </Button>
           </div>
         </form>

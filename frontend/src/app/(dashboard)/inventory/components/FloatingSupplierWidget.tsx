@@ -33,11 +33,14 @@ interface SupplierScheduleData {
 interface FloatingSupplierWidgetProps {
   onOpenPayTicket?: (ticket: PendingTicket) => void;
   onCancelTicket?: (id: string) => Promise<void>;
+  /** Oculta el botón mientras otra captura necesita la pantalla (p. ej. alta rápida) */
+  hidden?: boolean;
 }
 
 export function FloatingSupplierWidget({
   onOpenPayTicket,
   onCancelTicket,
+  hidden = false,
 }: FloatingSupplierWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'TICKETS' | 'VISITS'>('TICKETS');
@@ -51,10 +54,12 @@ export function FloatingSupplierWidget({
 
   const totalBadgeCount = activeTicketsList.length + orderList.length + deliveryList.length;
 
+  if (hidden) return null;
+
   return (
     <>
-      {/* 1. BOTÓN CIRCULAR FLOTANTE (FAB) AJUSTADO PARA TABLETS Y MÓVILES SIN RECORTES */}
-      <div className="fixed bottom-28 right-6 sm:bottom-32 sm:right-10 md:right-12 lg:bottom-6 lg:right-10 z-[55] w-14 h-14 pointer-events-auto shrink-0 select-none">
+      {/* 1. BOTÓN CIRCULAR FLOTANTE (FAB): a la izquierda para no tapar los controles de cantidad del catálogo */}
+      <div className="fixed bottom-28 left-4 sm:bottom-32 sm:left-10 md:left-12 lg:bottom-6 lg:left-10 z-[45] w-14 h-14 pointer-events-auto shrink-0 select-none">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
@@ -88,7 +93,7 @@ export function FloatingSupplierWidget({
 
       {/* 2. PANEL DESPLEGABLE ADAPTADO CON MARGEN DERECHO HOLGADO */}
       {isOpen && (
-        <div className="fixed bottom-[180px] right-4 sm:bottom-[196px] sm:right-10 md:right-12 lg:bottom-24 lg:right-10 z-50 w-[92vw] sm:w-[420px] max-h-[58vh] sm:max-h-[70vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.45)] overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-150">
+        <div className="fixed bottom-[180px] left-4 sm:bottom-[196px] sm:left-10 md:left-12 lg:bottom-24 lg:left-10 z-50 w-[92vw] sm:w-[420px] max-h-[58vh] sm:max-h-[70vh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.45)] overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-150">
           
           {/* HEADER DEL PANEL SIN DEGRADADO */}
           <div className="p-4 bg-slate-50 dark:bg-slate-950 text-slate-850 dark:text-slate-100 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">

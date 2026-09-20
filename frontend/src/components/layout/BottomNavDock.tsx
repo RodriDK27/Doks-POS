@@ -11,6 +11,9 @@ interface BottomNavDockProps {
   registerBalance?: number;
 }
 
+// Módulos que cuelgan de Inventario: el botón "Inventario" se ilumina en cualquiera de ellos
+const INVENTORY_ROUTES = ['/inventory', '/suppliers', '/requests', '/waste', '/performance'];
+
 export function BottomNavDock({ isRegisterOpen, registerBalance }: BottomNavDockProps) {
   const pathname = usePathname();
 
@@ -37,7 +40,7 @@ export function BottomNavDock({ isRegisterOpen, registerBalance }: BottomNavDock
   return (
     <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[88%] max-w-[340px] h-14 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border border-slate-200/80 dark:border-slate-800 z-50 flex items-center justify-around p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.12)] rounded-full select-none touch-manipulation">
       {dockItems.map((item) => {
-        const isActive = pathname === item.href;
+        const isActive = item.href === '/inventory' ? INVENTORY_ROUTES.includes(pathname) : pathname === item.href;
         const Icon = item.icon;
 
         return (
