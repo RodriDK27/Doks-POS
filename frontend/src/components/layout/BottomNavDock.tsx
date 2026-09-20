@@ -24,7 +24,8 @@ export function BottomNavDock({ isRegisterOpen, registerBalance }: BottomNavDock
       icon: ShoppingCart,
     },
     {
-      name: 'Caja',
+      // Sin turno esta es la única opción: abrir el turno
+      name: isRegisterOpen ? 'Caja' : 'Abrir turno',
       href: '/register',
       icon: DollarSign,
       badge: isRegisterOpen ? `$${registerBalance?.toFixed(0) || '0'}` : undefined,
@@ -37,9 +38,17 @@ export function BottomNavDock({ isRegisterOpen, registerBalance }: BottomNavDock
     },
   ];
 
+  // Venta e Inventario solo existen mientras hay un turno abierto
+  const visibleItems = isRegisterOpen ? dockItems : dockItems.filter((item) => item.href === '/register');
+
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[88%] max-w-[340px] h-14 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border border-slate-200/80 dark:border-slate-800 z-50 flex items-center justify-around p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.12)] rounded-full select-none touch-manipulation">
-      {dockItems.map((item) => {
+    <nav
+      className={cn(
+        'fixed bottom-4 left-1/2 -translate-x-1/2 h-14 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border border-slate-200/80 dark:border-slate-800 z-50 flex items-center justify-around p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.12)] rounded-full select-none touch-manipulation',
+        visibleItems.length > 1 ? 'w-[88%] max-w-[340px]' : 'w-[60%] max-w-[220px]'
+      )}
+    >
+      {visibleItems.map((item) => {
         const isActive = item.href === '/inventory' ? INVENTORY_ROUTES.includes(pathname) : pathname === item.href;
         const Icon = item.icon;
 

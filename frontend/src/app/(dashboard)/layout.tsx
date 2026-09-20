@@ -34,6 +34,9 @@ interface ActiveRegister {
   expectedBalance: number;
 }
 
+// Pantallas que solo puede ver un administrador: al salir del modo admin se abandonan
+const ADMIN_ONLY_PATHS = ['/', '/vault', '/payroll', '/performance', '/reports'];
+
 export default function DashboardLayout({
   children,
 }: {
@@ -44,7 +47,7 @@ export default function DashboardLayout({
   const [activeRegister, setActiveRegister] = useState<ActiveRegister | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const { role, logout } = useAuthStore();
+  const { role, logout, exitAdminMode } = useAuthStore();
 
   const [isChangePinOpen, setIsChangePinOpen] = useState(false);
   const [isCashiersOpen, setIsCashiersOpen] = useState(false);
@@ -279,7 +282,22 @@ export default function DashboardLayout({
         onOpenChangePin={() => setIsChangePinOpen(true)}
         onOpenTimeClock={() => setIsTimeClockOpen(true)}
         onLogout={() => {
-          logout();
+          if (role === 'ADMIN') {
+            // Modo admin: solo se quita el modo, la sesión del empleado que atiende la caja sigue abierta
+            if (exitAdminMode()) {
+              toast.info(
+                displayRegister?.openedBy
+                  ? `Modo administrador desactivado. Sigue la sesión de ${displayRegister.openedBy}.`
+                  : 'Modo administrador desactivado. Sigue la sesión de caja.'
+              );
+              if (ADMIN_ONLY_PATHS.includes(pathname)) {
+                router.push(displayRegister ? '/pos' : '/register');
+              }
+              return;
+            }
+          } else {
+            logout();
+          }
           router.push('/register');
           toast.info('Sesión finalizada. Regresando a la pantalla de caja.');
         }}

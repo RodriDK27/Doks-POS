@@ -263,7 +263,6 @@ export function TabletTopNav({
                       onClick={() => {
                         setIsMenuOpen(false);
                         onLogout();
-                        router.push('/register');
                       }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
                     >
@@ -343,7 +342,6 @@ export function TabletTopNav({
                     onClick={() => {
                       setIsMenuOpen(false);
                       onLogout();
-                      router.push('/register');
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                   >
