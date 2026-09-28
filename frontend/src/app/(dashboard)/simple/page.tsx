@@ -257,6 +257,7 @@ export default function SimpleModePage() {
         return (
           <PaymentStep
             total={sale.total}
+            itemCount={sale.pieceCount}
             exactAmount={roundUpToCents(sale.total)}
             onBack={goHome}
             onOtherAmount={() => setStep({ kind: 'PAY_OTHER' })}
