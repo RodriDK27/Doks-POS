@@ -21,12 +21,12 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
   const pieces = items.reduce((sum, i) => sum + (i.isWeight ? 1 : i.quantity), 0);
 
   return (
-    <aside className={`w-[380px] xl:w-[440px] portrait:w-full! ${items.length > 0 ? "portrait:h-[42%]" : "portrait:h-auto"} shrink-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0`}>
+    <aside className={`w-[330px] xl:w-[360px] 2xl:w-[440px] portrait:w-full! ${items.length > 0 ? "portrait:h-[42%]" : "portrait:h-auto"} shrink-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0`}>
       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0 min-h-[68px]">
         <div className="flex items-center gap-2.5">
           <ShoppingCart className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
           <span className="font-extrabold text-lg text-slate-700 dark:text-slate-200 uppercase tracking-wider">Venta</span>
-          <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 text-sm font-black px-3 py-1 rounded-lg">
+          <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 text-sm font-black px-3 py-1 rounded-lg whitespace-nowrap">
             {pieces} uds
           </span>
         </div>
@@ -34,9 +34,9 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
           <button
             type="button"
             onClick={onClearAll}
-            className="h-11 px-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-base font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+            className="h-11 px-3 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-base font-bold flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95 transition-all"
           >
-            <Trash2 className="h-5 w-5" /> Borrar todo
+            <Trash2 className="h-5 w-5" /> Borrar
           </button>
         )}
       </div>

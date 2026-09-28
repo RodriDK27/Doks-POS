@@ -58,18 +58,18 @@ function BigProductCard({ name, category, imageSrc, price, isWeight, onClick }: 
         </div>
       </div>
 
-      <p className="flex-1 px-3 pt-2 pb-2 text-xl font-black leading-tight line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+      <p className="flex-1 px-3 pt-2 pb-2 text-2xl font-black leading-tight line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {name}
       </p>
 
       <div className="flex items-center justify-between gap-2 px-3 pb-3">
         {/* Un rango ("$15 a $22") va un poco más chico para que quepa en un solo renglón */}
-        <span className={`${price.length > 7 ? 'text-xl' : 'text-2xl'} font-black leading-none tracking-tight whitespace-nowrap ${colors.accent}`}>
+        <span className={`${price.length > 7 ? 'text-2xl' : 'text-3xl'} font-black leading-none tracking-tight whitespace-nowrap ${colors.accent}`}>
           {price}
           {isWeight && <span className="text-base font-bold text-slate-400 dark:text-slate-500 ml-0.5">/kg</span>}
         </span>
-        <span className="h-12 w-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md group-hover:bg-indigo-700 shrink-0">
-          <Plus className="h-7 w-7 stroke-[2.5]" />
+        <span className="h-14 w-14 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md group-hover:bg-indigo-700 shrink-0">
+          <Plus className="h-8 w-8 stroke-[2.5]" />
         </span>
       </div>
     </button>
@@ -116,7 +116,7 @@ interface FamilyGridProps {
 /** Pantalla de inicio: una tarjeta grande con foto por familia, siempre en el mismo orden */
 export function FamilyGrid({ families, onSelectFamily, onOtherProduct }: FamilyGridProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 portrait:md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
       {families.map((family) => {
         const first = family.products[0];
         return (
@@ -152,7 +152,7 @@ export function VariantPicker({ family, onPick, onUnsure, onBack }: VariantPicke
   const canBeUnsure = familyPiecePrices(family).length > 0;
   return (
     <SimpleOverlay title={`¿Cuál ${family.name}?`} onBack={onBack}>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 portrait:md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
         {family.products.map((product) => (
           <BigProductCard
             key={product.id}
