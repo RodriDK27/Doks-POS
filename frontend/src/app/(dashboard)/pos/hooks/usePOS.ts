@@ -236,6 +236,9 @@ export function usePOS() {
 
   const handleSearchSubmit = useCallback(() => {
     const { cleanQuery, multiplier } = parseSearchMultiplier(searchQuery);
+    // Con el buscador vacío, Enter no agrega nada. Pasa al escanear: el código ya agregó su producto y
+    // limpió el buscador, y el Enter que manda el lector al final agregaba además el primer producto.
+    if (!cleanQuery) return;
 
     if (filteredCatalog.length > 0) {
       const targetProduct = filteredCatalog[selectedCatalogIndex] || filteredCatalog[0];

@@ -100,9 +100,10 @@ export function usePOSKeybindings({
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target) {
+        // Dentro de cualquier campo (incluido el buscador) no se escucha: el buscador ya maneja el escaneo
+        // (agrega el producto al completar el código). Escucharlo aquí también lo agregaba dos veces.
         const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-        const isSearchInput = searchInputRef.current && target === searchInputRef.current;
-        if (isInput && !isSearchInput) {
+        if (isInput) {
           return;
         }
       }
@@ -117,9 +118,6 @@ export function usePOSKeybindings({
         if (buffer.length >= 3) {
           handleBarcodeScanned(buffer);
           buffer = '';
-          if (searchInputRef.current && document.activeElement === searchInputRef.current) {
-            searchInputRef.current.value = '';
-          }
         }
       } else if (e.key.length === 1) {
         buffer += e.key;
