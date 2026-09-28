@@ -374,7 +374,7 @@ export default function AdvancedInventoryEditorPage() {
             disabled={isSaving}
             className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-slate-100 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" /> Fila
+            <Plus className="h-4 w-4" /> Nuevo artículo
           </button>
           <button
             type="button"
@@ -382,7 +382,7 @@ export default function AdvancedInventoryEditorPage() {
             disabled={isSaving}
             className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-slate-100 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" /> 10 filas
+            <Plus className="h-4 w-4" /> 10 artículos
           </button>
           {pendingRows.length > 0 && (
             <button
@@ -491,7 +491,7 @@ export default function AdvancedInventoryEditorPage() {
 
               {visibleRows.length === 0 ? (
                 <p className="p-10 text-center text-sm font-bold text-slate-400">
-                  {rows.length === 0 ? 'No hay productos. Usa "+ Fila" para agregar.' : 'Ningún producto coincide con la búsqueda.'}
+                  {rows.length === 0 ? 'No hay productos. Usa "+ Nuevo artículo" para agregar.' : 'Ningún producto coincide con la búsqueda.'}
                 </p>
               ) : (
                 <div className="relative" style={{ height: visibleRows.length * ROW_HEIGHT }}>

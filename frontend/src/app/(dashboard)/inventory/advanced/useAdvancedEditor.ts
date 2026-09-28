@@ -115,8 +115,14 @@ export function useAdvancedEditor() {
       if (isBlankNewRow(row)) continue;
       const e: Partial<Record<EditableColumn, string>> = {};
       if (!row.name.trim()) e.name = 'El nombre es obligatorio';
+      // Precio de compra y stock vacíos cuentan como 0; el precio de venta sí es obligatorio
       for (const col of ['purchasePrice', 'sellPrice', 'stock'] as const) {
-        const n = parseNumber(row[col]);
+        const raw = row[col].trim();
+        if (!raw) {
+          if (col === 'sellPrice') e[col] = 'Pon el precio de venta';
+          continue;
+        }
+        const n = parseNumber(raw);
         if (n === null) e[col] = 'Debe ser un número';
         else if (n < 0) e[col] = 'No puede ser negativo';
       }
