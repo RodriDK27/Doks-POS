@@ -10,8 +10,8 @@ import { SimpleOverlay } from './SimpleOverlay';
 function ProductPhoto({ src, alt }: { src: string | null; alt: string }) {
   if (!src) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-stone-100">
-        <ImageIcon className="h-16 w-16 text-stone-300" />
+      <div className="h-full w-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+        <ImageIcon className="h-16 w-16 text-slate-300 dark:text-slate-600" />
       </div>
     );
   }
@@ -45,14 +45,14 @@ export function FamilyGrid({ families, onSelectFamily, onOtherProduct }: FamilyG
           key={family.key}
           type="button"
           onClick={() => onSelectFamily(family)}
-          className="flex flex-col rounded-3xl bg-white border-2 border-stone-200 shadow-sm overflow-hidden text-left cursor-pointer active:scale-[0.97] active:border-emerald-500 transition-transform"
+          className="flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-xs hover:shadow-lg overflow-hidden text-left cursor-pointer active:scale-[0.97] active:border-indigo-500 transition-transform"
         >
           <div className="aspect-[4/3] w-full bg-white">
             <ProductPhoto src={family.imageSrc} alt={family.name} />
           </div>
-          <div className="px-4 py-3 border-t-2 border-stone-100">
-            <p className="text-2xl font-black leading-tight line-clamp-2 text-stone-900">{family.name}</p>
-            <p className="text-xl font-bold text-emerald-700 mt-1">{familyPriceLabel(family)}</p>
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-2xl font-black leading-tight line-clamp-2 text-slate-900 dark:text-slate-100">{family.name}</p>
+            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400 mt-1">{familyPriceLabel(family)}</p>
           </div>
         </button>
       ))}
@@ -61,7 +61,7 @@ export function FamilyGrid({ families, onSelectFamily, onOtherProduct }: FamilyG
       <button
         type="button"
         onClick={onOtherProduct}
-        className="flex flex-col items-center justify-center gap-3 rounded-3xl border-4 border-dashed border-stone-300 bg-stone-50 min-h-[240px] cursor-pointer active:scale-[0.97] transition-transform text-stone-600"
+        className="flex flex-col items-center justify-center gap-3 rounded-3xl border-4 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 min-h-[240px] cursor-pointer active:scale-[0.97] transition-transform text-slate-600 dark:text-slate-400"
       >
         <PackagePlus className="h-16 w-16" />
         <span className="text-2xl font-black text-center px-4">Otro producto</span>
@@ -93,18 +93,18 @@ export function VariantPicker({ family, onPick, onUnsure, onBack }: VariantPicke
               key={product.id}
               type="button"
               onClick={() => onPick(product)}
-              className="flex flex-col rounded-3xl bg-white border-2 border-stone-200 shadow-sm overflow-hidden text-left cursor-pointer active:scale-[0.97] active:border-emerald-500 transition-transform"
+              className="flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-xs hover:shadow-lg overflow-hidden text-left cursor-pointer active:scale-[0.97] active:border-indigo-500 transition-transform"
             >
               <div className="aspect-[4/3] w-full bg-white">
                 {/* Sin la foto de la familia como respaldo: dos sabores con la misma foto confunden */}
                 <ProductPhoto src={getProductImageSrc(product.imageUrl)} alt={product.name} />
               </div>
-              <div className="px-4 py-3 border-t-2 border-stone-100">
-                <p className="text-2xl font-black leading-tight line-clamp-3 text-stone-900">{product.name}</p>
-                <p className="text-3xl font-black text-emerald-700 mt-1 flex items-center gap-2">
+              <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-2xl font-black leading-tight line-clamp-3 text-slate-900 dark:text-slate-100">{product.name}</p>
+                <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-2">
                   {formatMoney(product.sellPrice)}
                   {isWeight && (
-                    <span className="text-lg font-bold text-amber-700 flex items-center gap-1">
+                    <span className="text-lg font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1">
                       <Scale className="h-5 w-5" /> el kilo
                     </span>
                   )}
@@ -119,7 +119,7 @@ export function VariantPicker({ family, onPick, onUnsure, onBack }: VariantPicke
           <button
             type="button"
             onClick={onUnsure}
-            className="flex flex-col items-center justify-center gap-3 rounded-3xl border-4 border-dashed border-amber-400 bg-amber-50 min-h-[240px] cursor-pointer active:scale-[0.97] transition-transform text-amber-900"
+            className="flex flex-col items-center justify-center gap-3 rounded-3xl border-4 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/30 min-h-[240px] cursor-pointer active:scale-[0.97] transition-transform text-amber-900 dark:text-amber-300"
           >
             <HelpCircle className="h-16 w-16" />
             <span className="text-2xl font-black text-center px-4">No sé cuál</span>
@@ -150,7 +150,7 @@ export function UnsurePriceStep({ family, onPickPrice, onOtherPrice, onBack }: U
               key={price}
               type="button"
               onClick={() => onPickPrice(price)}
-              className="h-32 rounded-3xl bg-white border-4 border-emerald-500 text-emerald-800 text-5xl font-black shadow-sm cursor-pointer active:scale-95 active:bg-emerald-50 transition-transform"
+              className="h-32 rounded-3xl bg-white dark:bg-slate-900 border-4 border-emerald-500 text-emerald-800 dark:text-emerald-300 text-5xl font-black shadow-sm cursor-pointer active:scale-95 active:bg-emerald-50 transition-transform"
             >
               {formatMoney(price)}
             </button>
@@ -159,7 +159,7 @@ export function UnsurePriceStep({ family, onPickPrice, onOtherPrice, onBack }: U
         <button
           type="button"
           onClick={onOtherPrice}
-          className="h-24 rounded-3xl bg-stone-200 active:bg-stone-300 text-stone-800 text-3xl font-black cursor-pointer"
+          className="h-24 rounded-3xl bg-slate-200 dark:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700 text-slate-800 dark:text-slate-200 text-3xl font-black cursor-pointer"
         >
           Otro precio
         </button>

@@ -58,23 +58,23 @@ export function ExitSimpleModeDialog({ onClose, onUnlocked }: ExitSimpleModeDial
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 animate-in fade-in duration-100">
-      <div className="w-[min(92vw,420px)] rounded-3xl bg-white shadow-2xl p-6 flex flex-col gap-4 text-stone-900">
+      <div className="w-[min(92vw,420px)] rounded-3xl bg-white dark:bg-slate-900 shadow-2xl p-6 flex flex-col gap-4 text-slate-900 dark:text-slate-100">
         <div className="flex items-center gap-3">
-          <Lock className="h-7 w-7 text-stone-500" />
+          <Lock className="h-7 w-7 text-slate-500 dark:text-slate-400" />
           <h2 className="text-2xl font-black">PIN de administrador</h2>
         </div>
-        <p className="text-base font-semibold text-stone-500">Para salir de la pantalla sencilla.</p>
+        <p className="text-base font-semibold text-slate-500 dark:text-slate-400">Para salir de la pantalla sencilla.</p>
 
         <div className="flex justify-center gap-3 py-2">
           {Array.from({ length: PIN_LENGTH }).map((_, i) => (
             <span
               key={i}
-              className={`h-5 w-5 rounded-full ${i < pin.length ? 'bg-stone-900' : 'bg-stone-200'}`}
+              className={`h-5 w-5 rounded-full ${i < pin.length ? 'bg-slate-900 dark:bg-slate-800' : 'bg-slate-200 dark:bg-slate-800'}`}
             />
           ))}
         </div>
 
-        {error && <p className="text-center text-base font-bold text-rose-600">{error}</p>}
+        {error && <p className="text-center text-base font-bold text-rose-600 dark:text-rose-400">{error}</p>}
 
         <div className="grid grid-cols-3 gap-2">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
@@ -82,7 +82,7 @@ export function ExitSimpleModeDialog({ onClose, onUnlocked }: ExitSimpleModeDial
               key={d}
               type="button"
               onClick={() => press(d)}
-              className="h-16 rounded-2xl bg-stone-100 active:bg-stone-200 text-2xl font-black cursor-pointer"
+              className="h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-2xl font-black cursor-pointer"
             >
               {d}
             </button>
@@ -90,14 +90,14 @@ export function ExitSimpleModeDialog({ onClose, onUnlocked }: ExitSimpleModeDial
           <button
             type="button"
             onClick={onClose}
-            className="h-16 rounded-2xl bg-stone-100 active:bg-stone-200 text-base font-bold cursor-pointer"
+            className="h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-base font-bold cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={() => press('0')}
-            className="h-16 rounded-2xl bg-stone-100 active:bg-stone-200 text-2xl font-black cursor-pointer"
+            className="h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-2xl font-black cursor-pointer"
           >
             0
           </button>
@@ -105,7 +105,7 @@ export function ExitSimpleModeDialog({ onClose, onUnlocked }: ExitSimpleModeDial
             type="button"
             onClick={() => setPin((p) => p.slice(0, -1))}
             aria-label="Borrar"
-            className="h-16 rounded-2xl bg-stone-100 active:bg-stone-200 flex items-center justify-center cursor-pointer"
+            className="h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 flex items-center justify-center cursor-pointer"
           >
             {isChecking ? <Loader2 className="h-6 w-6 animate-spin" /> : <Delete className="h-6 w-6" />}
           </button>

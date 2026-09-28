@@ -14,12 +14,12 @@ interface SimpleOverlayProps {
 /** Pantalla completa para cada paso: un solo título, un solo "Regresar" grande */
 export function SimpleOverlay({ title, onBack, backLabel = 'Regresar', children }: SimpleOverlayProps) {
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-stone-100 text-stone-900 animate-in fade-in duration-150">
-      <header className="flex items-center gap-4 px-5 py-4 bg-white border-b-2 border-stone-200 shrink-0">
+    <div className="fixed inset-0 z-40 flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 animate-in fade-in duration-150">
+      <header className="flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 shadow-xs shrink-0">
         <button
           type="button"
           onClick={onBack}
-          className="h-16 px-6 rounded-2xl bg-stone-200 active:bg-stone-300 text-stone-800 text-2xl font-black flex items-center gap-3 cursor-pointer shrink-0"
+          className="h-16 px-6 rounded-2xl bg-slate-200 dark:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700 text-slate-800 dark:text-slate-200 text-2xl font-black flex items-center gap-3 cursor-pointer shrink-0"
         >
           <ArrowLeft className="h-8 w-8 stroke-[3]" />
           {backLabel}
@@ -68,14 +68,14 @@ export function BigKeypad({ title, hint, confirmLabel, minAmount = 0, onConfirm,
   return (
     <SimpleOverlay title={title} onBack={onBack}>
       <div className="max-w-xl mx-auto flex flex-col gap-4">
-        {hint && <p className="text-center text-2xl font-bold text-stone-600">{hint}</p>}
+        {hint && <p className="text-center text-2xl font-bold text-slate-600 dark:text-slate-400">{hint}</p>}
 
-        <div className="h-24 rounded-3xl bg-white border-4 border-stone-300 flex items-center justify-center text-6xl font-black tabular-nums">
-          {value ? `$${value}` : <span className="text-stone-300">$0</span>}
+        <div className="h-24 rounded-3xl bg-white dark:bg-slate-900 border-4 border-slate-300 dark:border-slate-700 flex items-center justify-center text-6xl font-black tabular-nums">
+          {value ? `$${value}` : <span className="text-slate-300 dark:text-slate-600">$0</span>}
         </div>
 
         {minAmount > 0 && amount > 0 && amount < minAmount && (
-          <p className="text-center text-2xl font-black text-rose-600">Tiene que ser {formatMoney(minAmount)} o más</p>
+          <p className="text-center text-2xl font-black text-rose-600 dark:text-rose-400">Tiene que ser {formatMoney(minAmount)} o más</p>
         )}
 
         <div className="grid grid-cols-3 gap-3">
@@ -85,7 +85,7 @@ export function BigKeypad({ title, hint, confirmLabel, minAmount = 0, onConfirm,
               type="button"
               onClick={() => press(key)}
               className={`h-20 rounded-2xl text-4xl font-black cursor-pointer shadow-sm active:scale-95 transition-transform flex items-center justify-center ${
-                key === 'DEL' ? 'bg-stone-300 text-stone-800 active:bg-stone-400' : 'bg-white text-stone-900 border-2 border-stone-200 active:bg-stone-100'
+                key === 'DEL' ? 'bg-slate-300 text-slate-800 dark:text-slate-200 active:bg-slate-400 dark:active:bg-slate-600' : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200/60 dark:border-slate-800 active:bg-slate-100 dark:active:bg-slate-800'
               }`}
             >
               {key === 'DEL' ? <Delete className="h-10 w-10" /> : key}
@@ -97,7 +97,7 @@ export function BigKeypad({ title, hint, confirmLabel, minAmount = 0, onConfirm,
           type="button"
           disabled={!isValid}
           onClick={() => onConfirm(amount)}
-          className="h-24 rounded-3xl bg-emerald-600 active:bg-emerald-700 text-white text-4xl font-black shadow-lg cursor-pointer disabled:bg-stone-300 disabled:text-stone-500 disabled:shadow-none disabled:cursor-not-allowed"
+          className="h-24 rounded-3xl bg-emerald-600 active:bg-emerald-700 text-white text-4xl font-black shadow-lg cursor-pointer disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed"
         >
           {confirmLabel}
         </button>
