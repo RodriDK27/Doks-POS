@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Mic, Search, X } from 'lucide-react';
+import { Mic, Search, Truck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ALL_CATEGORIES } from '../helpers';
 
@@ -14,6 +14,9 @@ interface CatalogToolbarProps {
   onClearSearch: () => void;
   isListening: boolean;
   onToggleVoice: () => void;
+  /** "Llegó el proveedor": registrar un pago que sale de la caja grande */
+  onSupplierArrived: () => void;
+  supplierDisabled: boolean;
 }
 
 /**
@@ -29,6 +32,8 @@ export function CatalogToolbar({
   onClearSearch,
   isListening,
   onToggleVoice,
+  onSupplierArrived,
+  supplierDisabled,
 }: CatalogToolbarProps) {
   const isSearching = searchQuery.trim().length > 0;
 
@@ -41,9 +46,8 @@ export function CatalogToolbar({
             <span className="text-xl font-black text-indigo-700 dark:text-indigo-300 truncate">&quot;{searchQuery}&quot;</span>
           </div>
         ) : (
-          <p className="flex-1 min-w-0 text-lg font-bold text-slate-400 dark:text-slate-500 truncate px-1">
-            Toque una categoría o busque diciendo el nombre
-          </p>
+          // Sin texto de ayuda: los botones se explican solos y así caben en cualquier tamaño de tableta
+          <div className="flex-1" />
         )}
 
         {isSearching && (
@@ -56,11 +60,23 @@ export function CatalogToolbar({
           </button>
         )}
 
+        {/* Mismo estilo que "Pagar Proveedor" del punto de venta; se esconde mientras se busca un producto */}
+        {!isSearching && (
+          <button
+            type="button"
+            disabled={supplierDisabled}
+            onClick={onSupplierArrived}
+            className="h-14 px-5 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 text-lg font-black flex items-center gap-2 whitespace-nowrap cursor-pointer active:scale-95 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Truck className="h-6 w-6" /> Llegó el proveedor
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onToggleVoice}
           className={cn(
-            'h-14 px-5 rounded-xl flex items-center justify-center gap-2 text-lg font-black cursor-pointer active:scale-95 transition-all shrink-0 shadow-xs',
+            'h-14 px-5 rounded-xl flex items-center justify-center gap-2 text-lg font-black whitespace-nowrap cursor-pointer active:scale-95 transition-all shrink-0 shadow-xs',
             isListening
               ? 'bg-rose-500 hover:bg-rose-600 text-white animate-pulse'
               : 'bg-indigo-600 hover:bg-indigo-700 text-white'

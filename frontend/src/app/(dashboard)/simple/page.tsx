@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
-import { Loader2, Lock, Store, Truck, WifiOff } from 'lucide-react';
+import { Loader2, Lock, Store, WifiOff } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSimpleModeStore } from '@/store/useSimpleModeStore';
 import { getProductImageSrc } from '@/lib/productImages';
@@ -366,19 +366,6 @@ export default function SimpleModePage() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-        {/* Mismo estilo que "Pagar Proveedor" del punto de venta. Sin internet no se puede registrar el pago. */}
-        <button
-          type="button"
-          disabled={!sale.isOnline || isRegisterClosed}
-          onClick={() => {
-            setSaveError(null);
-            setStep({ kind: 'SUPPLIER_PICK' });
-          }}
-          className="h-12 px-4 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 text-lg font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Truck className="h-6 w-6" /> Llegó el proveedor
-        </button>
         {/* Discreto a propósito: es para el administrador, no para quien vende */}
         <button
           type="button"
@@ -388,7 +375,6 @@ export default function SimpleModePage() {
         >
           <Lock className="h-4.5 w-4.5" />
         </button>
-        </div>
       </header>
 
       {isRegisterClosed ? (
@@ -414,6 +400,12 @@ export default function SimpleModePage() {
               onClearSearch={() => setSearchQuery('')}
               isListening={isListening}
               onToggleVoice={() => void toggleVoiceSearch()}
+              // Sin internet no se puede registrar el pago al proveedor
+              supplierDisabled={!sale.isOnline}
+              onSupplierArrived={() => {
+                setSaveError(null);
+                setStep({ kind: 'SUPPLIER_PICK' });
+              }}
             />
             <div className="flex-1 min-h-0 overflow-y-auto p-3">
               {sale.isLoadingProducts ? (
