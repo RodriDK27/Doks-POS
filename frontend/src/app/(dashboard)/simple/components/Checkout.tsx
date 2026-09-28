@@ -5,14 +5,41 @@ import { Banknote, CheckCircle2, Keyboard, Loader2, ShoppingCart, WifiOff } from
 import { SimpleOverlay } from './SimpleOverlay';
 import { formatMoney } from '../helpers';
 
-/** Colores parecidos a los billetes mexicanos, para reconocerlos de un vistazo */
+/**
+ * Colores parecidos a los billetes mexicanos, para reconocerlos de un vistazo.
+ * En modo oscuro el mismo color en tono profundo con texto claro, para no deslumbrar sobre el fondo negro.
+ */
 const BILL_STYLES: Record<number, { card: string; medal: string; text: string }> = {
-  20: { card: 'from-sky-50 to-sky-100 border-sky-400', medal: 'bg-sky-500', text: 'text-sky-900' },
-  50: { card: 'from-pink-50 to-pink-100 border-pink-400', medal: 'bg-pink-500', text: 'text-pink-900' },
-  100: { card: 'from-red-50 to-red-100 border-red-400', medal: 'bg-red-500', text: 'text-red-900' },
-  200: { card: 'from-green-50 to-green-100 border-green-500', medal: 'bg-green-600', text: 'text-green-900' },
-  500: { card: 'from-amber-50 to-amber-100 border-amber-500', medal: 'bg-amber-600', text: 'text-amber-900' },
-  1000: { card: 'from-violet-50 to-violet-100 border-violet-400', medal: 'bg-violet-500', text: 'text-violet-900' },
+  20: {
+    card: 'from-sky-50 to-sky-100 border-sky-400 dark:from-sky-950 dark:to-sky-900/70 dark:border-sky-700',
+    medal: 'bg-sky-500',
+    text: 'text-sky-900 dark:text-sky-100',
+  },
+  50: {
+    card: 'from-pink-50 to-pink-100 border-pink-400 dark:from-pink-950 dark:to-pink-900/70 dark:border-pink-700',
+    medal: 'bg-pink-500',
+    text: 'text-pink-900 dark:text-pink-100',
+  },
+  100: {
+    card: 'from-red-50 to-red-100 border-red-400 dark:from-red-950 dark:to-red-900/70 dark:border-red-700',
+    medal: 'bg-red-500',
+    text: 'text-red-900 dark:text-red-100',
+  },
+  200: {
+    card: 'from-green-50 to-green-100 border-green-500 dark:from-green-950 dark:to-green-900/70 dark:border-green-700',
+    medal: 'bg-green-600',
+    text: 'text-green-900 dark:text-green-100',
+  },
+  500: {
+    card: 'from-amber-50 to-amber-100 border-amber-500 dark:from-amber-950 dark:to-amber-900/70 dark:border-amber-700',
+    medal: 'bg-amber-600',
+    text: 'text-amber-900 dark:text-amber-100',
+  },
+  1000: {
+    card: 'from-violet-50 to-violet-100 border-violet-400 dark:from-violet-950 dark:to-violet-900/70 dark:border-violet-700',
+    medal: 'bg-violet-500',
+    text: 'text-violet-900 dark:text-violet-100',
+  },
 };
 const BILLS = [20, 50, 100, 200, 500, 1000];
 const COINS = [10, 5, 2, 1, 0.5];
@@ -39,7 +66,7 @@ function BillButton({ value, total, onClick }: { value: number; total: number; o
       className={`relative h-36 rounded-2xl border-2 bg-gradient-to-br ${style.card} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer overflow-hidden text-left px-5 py-3 flex flex-col justify-between`}
     >
       {/* Marco interior como el de un billete */}
-      <span className="pointer-events-none absolute inset-2 rounded-xl border border-white/70" />
+      <span className="pointer-events-none absolute inset-2 rounded-xl border border-white/70 dark:border-white/10" />
       <span className="relative flex items-center gap-2">
         <span className={`h-9 w-9 rounded-full ${style.medal} text-white flex items-center justify-center shadow-xs`}>
           <Banknote className="h-5 w-5" />
@@ -96,7 +123,7 @@ export function PaymentStep({ total, itemCount, exactAmount, onPaid, onOtherAmou
             <button
               type="button"
               onClick={onOtherAmount}
-              className="h-36 rounded-2xl bg-white dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 shadow-xs active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center gap-2"
+              className="h-36 rounded-2xl bg-white dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-white/15 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 shadow-xs active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center gap-2"
             >
               <Keyboard className="h-10 w-10" />
               <span className="text-2xl font-extrabold">Otra cantidad</span>
@@ -135,7 +162,7 @@ function ChangePiece({ value, count, isBill }: { value: number; count: number; i
           {label}
         </span>
       ) : (
-        <span className="h-16 w-16 rounded-full border-4 border-amber-300 bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 flex items-center justify-center text-xl font-black tabular-nums shadow-xs">
+        <span className="h-16 w-16 rounded-full border-4 border-amber-300 bg-gradient-to-br from-amber-100 to-amber-200 text-amber-900 dark:border-amber-600 dark:from-amber-900 dark:to-amber-800 dark:text-amber-100 flex items-center justify-center text-xl font-black tabular-nums shadow-xs">
           {label}
         </span>
       )}
