@@ -38,31 +38,31 @@ function BigProductCard({ name, category, imageSrc, price, isWeight, onClick }: 
       onClick={onClick}
       className={`group relative flex flex-col text-left rounded-2xl border overflow-hidden select-none cursor-pointer bg-white dark:bg-slate-900 ${colors.bg} ${colors.border} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-150`}
     >
-      <div className="flex items-center gap-1.5 flex-wrap px-3 pt-3">
-        <span className={`text-xs font-black uppercase px-2 py-0.5 rounded-md tracking-wider truncate max-w-[160px] ${colors.badge}`}>
-          {category || 'General'}
-        </span>
-        {isWeight && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-black bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-800/50">
-            <Scale className="h-3.5 w-3.5" /> Granel
-          </span>
-        )}
-      </div>
-
-      <div className="mx-3 mt-2 aspect-[4/3] portrait:aspect-[16/10] rounded-xl bg-white border border-slate-100 dark:border-slate-800 overflow-hidden flex items-center justify-center">
+      {/* La foto es la protagonista: ocupa todo el ancho y las etiquetas van encima de ella */}
+      <div className="relative aspect-square w-full bg-white border-b border-slate-100 dark:border-slate-800/60 overflow-hidden flex items-center justify-center">
         {imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
-          <img src={imageSrc} alt={name} crossOrigin="anonymous" loading="lazy" className="h-full w-full object-contain p-2" />
+          <img src={imageSrc} alt={name} crossOrigin="anonymous" loading="lazy" className="h-full w-full object-contain p-1" />
         ) : (
-          <ImageIcon className="h-14 w-14 text-slate-300" />
+          <ImageIcon className="h-16 w-16 text-slate-300" />
         )}
+        <div className="absolute top-2 left-2 right-2 flex items-center gap-1.5 flex-wrap">
+          <span className={`text-xs font-black uppercase px-2 py-0.5 rounded-md tracking-wider truncate max-w-full shadow-xs ${colors.badge}`}>
+            {category || 'General'}
+          </span>
+          {isWeight && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-black bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-800/50 shadow-xs">
+              <Scale className="h-3.5 w-3.5" /> Granel
+            </span>
+          )}
+        </div>
       </div>
 
-      <p className="flex-1 px-3 pt-2 pb-3 text-xl font-black leading-tight line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+      <p className="flex-1 px-3 pt-2 pb-2 text-xl font-black leading-tight line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
         {name}
       </p>
 
-      <div className="flex items-center justify-between gap-2 px-3 py-3 border-t border-slate-100 dark:border-slate-800/60">
+      <div className="flex items-center justify-between gap-2 px-3 pb-3">
         {/* Un rango ("$15 a $22") va un poco más chico para que quepa en un solo renglón */}
         <span className={`${price.length > 7 ? 'text-xl' : 'text-2xl'} font-black leading-none tracking-tight whitespace-nowrap ${colors.accent}`}>
           {price}
@@ -98,7 +98,7 @@ function DashedOptionCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed min-h-[280px] cursor-pointer active:scale-[0.97] transition-all ${toneClass}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed min-h-[260px] cursor-pointer active:scale-[0.97] transition-all ${toneClass}`}
     >
       <Icon className="h-14 w-14" />
       <span className="text-xl font-black text-center px-4">{title}</span>

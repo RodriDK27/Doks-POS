@@ -21,7 +21,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
   const pieces = items.reduce((sum, i) => sum + (i.isWeight ? 1 : i.quantity), 0);
 
   return (
-    <aside className="w-[380px] xl:w-[440px] portrait:w-full! portrait:h-[42%] shrink-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0">
+    <aside className={`w-[380px] xl:w-[440px] portrait:w-full! ${items.length > 0 ? "portrait:h-[42%]" : "portrait:h-auto"} shrink-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0`}>
       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0 min-h-[68px]">
         <div className="flex items-center gap-2.5">
           <ShoppingCart className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
@@ -43,8 +43,8 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
 
       <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
         {items.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-3 p-6">
-            <div className="h-20 w-20 rounded-full bg-slate-50 dark:bg-slate-800/40 flex items-center justify-center text-slate-300 dark:text-slate-600">
+          <div className="h-full flex flex-col portrait:flex-row items-center justify-center text-center gap-3 p-6 portrait:p-3">
+            <div className="h-20 w-20 portrait:h-12 portrait:w-12 rounded-full bg-slate-50 dark:bg-slate-800/40 flex items-center justify-center text-slate-300 dark:text-slate-600">
               <ShoppingCart className="h-10 w-10" />
             </div>
             <p className="text-xl font-bold text-slate-400 dark:text-slate-500 leading-snug">

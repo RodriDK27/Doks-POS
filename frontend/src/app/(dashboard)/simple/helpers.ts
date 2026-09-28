@@ -65,6 +65,54 @@ export function buildFamilies(products: Product[]): SimpleFamily[] {
   return families.sort((a, b) => collator.compare(a.name, b.name));
 }
 
+export const ALL_CATEGORIES = 'TODOS';
+
+/** Categorías de una familia (sus variantes pueden estar en más de una) */
+export function familyCategories(family: SimpleFamily): string[] {
+  return [...new Set(family.products.map((p) => p.category?.trim() || 'General'))];
+}
+
+/** Categorías con cuántos cuadros tiene cada una, en orden alfabético estable */
+export function categoryCounts(families: SimpleFamily[]): Array<{ name: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const family of families) {
+    for (const category of familyCategories(family)) {
+      counts.set(category, (counts.get(category) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => collator.compare(a.name, b.name));
+}
+
+/** Minúsculas y sin acentos, para comparar lo que se dice por voz con los nombres del catálogo */
+function normalizeText(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Palabras que se dicen al hablar pero no ayudan a encontrar ("un boing de mango")
+const STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'con', 'por', 'favor']);
+
+/**
+ * Filtra la cuadrícula. La búsqueda por voz ignora la categoría elegida y busca en el nombre de la
+ * familia y en el de cada variante ("mango" encuentra el cuadro de Boing). Singular o plural da igual.
+ */
+export function filterFamilies(families: SimpleFamily[], category: string, query: string): SimpleFamily[] {
+  const words = normalizeText(query)
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w && !STOP_WORDS.has(w));
+
+  if (words.length > 0) {
+    return families.filter((family) => {
+      const haystack = normalizeText([family.name, ...family.products.map((p) => p.name)].join(' '));
+      return words.every((w) => haystack.includes(w) || (w.length > 3 && w.endsWith('s') && haystack.includes(w.slice(0, -1))));
+    });
+  }
+
+  if (category === ALL_CATEGORIES) return families;
+  return families.filter((family) => familyCategories(family).includes(category));
+}
+
 /** Precios distintos de las piezas de una familia, de menor a mayor (botones de "No sé cuál") */
 export function familyPiecePrices(family: SimpleFamily): number[] {
   const prices = family.products.filter((p) => p.unitType !== 'WEIGHT').map((p) => p.sellPrice);

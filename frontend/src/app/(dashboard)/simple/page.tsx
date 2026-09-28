@@ -8,8 +8,20 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSimpleModeStore } from '@/store/useSimpleModeStore';
 import { getProductImageSrc } from '@/lib/productImages';
 import { Product } from '../pos/types';
-import { SimpleFamily, buildFamilies, findProductByBarcode, formatMoney, playBeep, roundUpToCents } from './helpers';
+import { useVoiceSearch } from '../pos/hooks/useVoiceSearch';
+import {
+  ALL_CATEGORIES,
+  SimpleFamily,
+  buildFamilies,
+  categoryCounts,
+  filterFamilies,
+  findProductByBarcode,
+  formatMoney,
+  playBeep,
+  roundUpToCents,
+} from './helpers';
 import { useSimpleSale } from './hooks/useSimpleSale';
+import { CatalogToolbar } from './components/CatalogToolbar';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { BigKeypad } from './components/SimpleOverlay';
 import { FamilyGrid, UnsurePriceStep, VariantPicker } from './components/CatalogGrid';
@@ -56,7 +68,20 @@ export default function SimpleModePage() {
 
   const families = useMemo(() => buildFamilies(sale.products), [sale.products]);
 
+  // Con cientos de productos: pestañas de categoría y búsqueda por voz (sin teclado de letras)
+  const [category, setCategory] = useState(ALL_CATEGORIES);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { isListening, toggleVoiceSearch } = useVoiceSearch(setSearchQuery);
+  const categories = useMemo(() => categoryCounts(families), [families]);
+  const visibleFamilies = useMemo(() => filterFamilies(families, category, searchQuery), [families, category, searchQuery]);
+
   const goHome = useCallback(() => setStep(HOME), []);
+
+  /** Después de agregar algo: de vuelta al catálogo. La búsqueda se borra; la categoría se queda. */
+  const backToCatalog = useCallback(() => {
+    setStep(HOME);
+    setSearchQuery('');
+  }, []);
 
   const pickProduct = useCallback((product: Product) => {
     if (product.unitType === 'WEIGHT') {
@@ -65,8 +90,8 @@ export default function SimpleModePage() {
     }
     sale.addPiece(product);
     playBeep('ok');
-    setStep(HOME);
-  }, [sale]);
+    backToCatalog();
+  }, [sale, backToCatalog]);
 
   const selectFamily = useCallback((family: SimpleFamily) => {
     if (family.products.length === 1) {
@@ -79,8 +104,8 @@ export default function SimpleModePage() {
   const addUnsure = useCallback((family: SimpleFamily, price: number) => {
     sale.addUnsure(family, price);
     playBeep('ok');
-    setStep(HOME);
-  }, [sale]);
+    backToCatalog();
+  }, [sale, backToCatalog]);
 
   const handleScan = useCallback((code: string) => {
     const product = findProductByBarcode(sale.products, code);
@@ -96,9 +121,9 @@ export default function SimpleModePage() {
     }
     sale.addPiece(product);
     playBeep('ok');
-    setStep(HOME);
+    backToCatalog();
     setFlash({ kind: 'added', name: product.name, price: product.sellPrice, imageSrc: getProductImageSrc(product.imageUrl) });
-  }, [sale]);
+  }, [sale, backToCatalog]);
 
   // El lector solo agrega productos mientras se está armando la venta (no a media cobranza)
   const scannerEnabled =
@@ -167,7 +192,7 @@ export default function SimpleModePage() {
             onConfirm={(amount) => {
               sale.addWeightByAmount(step.product, amount);
               playBeep('ok');
-              setStep(HOME);
+              backToCatalog();
             }}
           />
         );
@@ -181,7 +206,7 @@ export default function SimpleModePage() {
             onConfirm={(amount) => {
               sale.addGeneric(step.name, amount, step.needsReview);
               playBeep('ok');
-              setStep(HOME);
+              backToCatalog();
             }}
           />
         );
@@ -271,25 +296,42 @@ export default function SimpleModePage() {
       ) : (
         // Mismo acomodo que el punto de venta: catálogo y ticket en paneles separados
         <div className="flex-1 min-h-0 flex portrait:flex-col gap-4 p-4">
-          <main className="flex-1 min-w-0 overflow-y-auto p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm">
-            {sale.isLoadingProducts ? (
-              <div className="h-full flex items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-slate-400 dark:text-slate-500" />
-              </div>
-            ) : (
-              <>
-                {families.length === 0 && (
-                  <p className="mb-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 text-lg font-bold text-slate-500">
-                    Todavía no hay productos con foto. Se pueden cobrar con el lector o con &quot;Otro producto&quot;.
-                  </p>
-                )}
-                <FamilyGrid
-                  families={families}
-                  onSelectFamily={selectFamily}
-                  onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
-                />
-              </>
-            )}
+          <main className="flex-1 min-w-0 min-h-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
+            <CatalogToolbar
+              categories={categories}
+              totalCount={families.length}
+              activeCategory={category}
+              onCategoryChange={setCategory}
+              searchQuery={searchQuery}
+              onClearSearch={() => setSearchQuery('')}
+              isListening={isListening}
+              onToggleVoice={() => void toggleVoiceSearch()}
+            />
+            <div className="flex-1 min-h-0 overflow-y-auto p-3">
+              {sale.isLoadingProducts ? (
+                <div className="h-full flex items-center justify-center">
+                  <Loader2 className="h-16 w-16 animate-spin text-slate-400 dark:text-slate-500" />
+                </div>
+              ) : (
+                <>
+                  {families.length === 0 && (
+                    <p className="mb-3 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 text-lg font-bold text-slate-500">
+                      Todavía no hay productos con foto. Se pueden cobrar con el lector o con &quot;Otro producto&quot;.
+                    </p>
+                  )}
+                  {searchQuery.trim() && visibleFamilies.length === 0 && (
+                    <p className="mb-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 p-4 text-lg font-bold text-amber-700 dark:text-amber-400">
+                      No encontré &quot;{searchQuery}&quot;. Intente otra vez, toque &quot;Ver todo&quot; o use &quot;Otro producto&quot;.
+                    </p>
+                  )}
+                  <FamilyGrid
+                    families={visibleFamilies}
+                    onSelectFamily={selectFamily}
+                    onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
+                  />
+                </>
+              )}
+            </div>
           </main>
 
           <SimpleTicket
