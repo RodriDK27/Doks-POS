@@ -83,7 +83,7 @@ interface UndoBarProps {
 /** "Deshacer" en lugar de "¿Está seguro?": quitar algo es inmediato y se puede revertir */
 export function UndoBar({ message, onUndo }: UndoBarProps) {
   return (
-    <div className="fixed bottom-6 left-6 z-30 flex items-center gap-4 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-2xl pl-6 pr-3 py-3 animate-in slide-in-from-bottom-4 duration-200 max-w-[calc(100vw-460px)]">
+    <div className="fixed bottom-6 left-6 z-30 flex items-center gap-4 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-2xl pl-6 pr-3 py-3 animate-in slide-in-from-bottom-4 duration-200 max-w-[calc(100vw-460px)] portrait:bottom-auto portrait:top-20 portrait:max-w-[calc(100vw-3rem)]">
       <span className="text-2xl font-bold truncate">{message}</span>
       <button
         type="button"

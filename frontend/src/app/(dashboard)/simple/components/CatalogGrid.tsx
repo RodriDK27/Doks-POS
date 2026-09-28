@@ -49,7 +49,7 @@ function BigProductCard({ name, category, imageSrc, price, isWeight, onClick }: 
         )}
       </div>
 
-      <div className="mx-3 mt-2 aspect-[4/3] rounded-xl bg-white border border-slate-100 dark:border-slate-800 overflow-hidden flex items-center justify-center">
+      <div className="mx-3 mt-2 aspect-[4/3] portrait:aspect-[16/10] rounded-xl bg-white border border-slate-100 dark:border-slate-800 overflow-hidden flex items-center justify-center">
         {imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
           <img src={imageSrc} alt={name} crossOrigin="anonymous" loading="lazy" className="h-full w-full object-contain p-2" />

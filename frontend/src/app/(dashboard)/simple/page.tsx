@@ -270,7 +270,7 @@ export default function SimpleModePage() {
         </div>
       ) : (
         // Mismo acomodo que el punto de venta: catálogo y ticket en paneles separados
-        <div className="flex-1 min-h-0 flex gap-4 p-4">
+        <div className="flex-1 min-h-0 flex portrait:flex-col gap-4 p-4">
           <main className="flex-1 min-w-0 overflow-y-auto p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm">
             {sale.isLoadingProducts ? (
               <div className="h-full flex items-center justify-center">

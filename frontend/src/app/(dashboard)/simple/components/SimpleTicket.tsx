@@ -21,7 +21,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
   const pieces = items.reduce((sum, i) => sum + (i.isWeight ? 1 : i.quantity), 0);
 
   return (
-    <aside className="w-[380px] xl:w-[440px] shrink-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0">
+    <aside className="w-[380px] xl:w-[440px] portrait:w-full! portrait:h-[42%] shrink-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden min-h-0">
       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 flex justify-between items-center shrink-0 min-h-[68px]">
         <div className="flex items-center gap-2.5">
           <ShoppingCart className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
@@ -57,9 +57,9 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
             return (
               <div
                 key={item.key}
-                className="p-3 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-150 dark:border-slate-800/80 shadow-2xs flex flex-col gap-3 animate-in fade-in duration-100"
+                className="p-3 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-150 dark:border-slate-800/80 shadow-2xs flex flex-col gap-3 portrait:flex-row portrait:items-center animate-in fade-in duration-100"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 portrait:flex-1 portrait:min-w-0">
                   <div className="h-14 w-14 shrink-0 rounded-xl border border-slate-100 dark:border-slate-800 bg-white overflow-hidden flex items-center justify-center">
                     {item.imageSrc ? (
                       // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
@@ -79,9 +79,9 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 portrait:shrink-0">
                   {canChangeQuantity ? (
-                    <div className="flex-1 flex items-center border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 h-14 overflow-hidden">
+                    <div className="flex-1 portrait:flex-none portrait:w-52 flex items-center border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 h-14 overflow-hidden">
                       <button
                         type="button"
                         onClick={() => onDecrement(item.key)}
@@ -101,7 +101,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
                       </button>
                     </div>
                   ) : (
-                    <div className="flex-1" />
+                    <div className="flex-1 portrait:flex-none portrait:w-52" />
                   )}
                   {/* Quitar el renglón completo; con "Deshacer" por si fue un error */}
                   <button
@@ -109,7 +109,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
                     onClick={() => onDecrement(item.key)}
                     aria-label={`Quitar ${item.name}`}
                     className={`h-14 w-14 rounded-2xl text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/40 flex items-center justify-center cursor-pointer active:scale-90 transition-all shrink-0 ${
-                      canChangeQuantity && item.quantity > 1 ? 'hidden' : ''
+                      canChangeQuantity && item.quantity > 1 ? 'hidden portrait:flex portrait:invisible' : ''
                     }`}
                   >
                     <Trash2 className="h-7 w-7 stroke-[2.5]" />
@@ -121,8 +121,8 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
         )}
       </div>
 
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 space-y-3 shrink-0">
-        <div className="flex items-center justify-between bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 space-y-3 portrait:flex portrait:items-stretch portrait:gap-3 portrait:space-y-0 shrink-0">
+        <div className="flex items-center justify-between portrait:flex-1 bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
           <span className="font-black text-base text-slate-400 uppercase tracking-wider">Total</span>
           <span className="text-4xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums leading-none">
             {formatMoney(total)}
@@ -132,7 +132,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
           type="button"
           disabled={items.length === 0}
           onClick={onCharge}
-          className="w-full h-20 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-3xl rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-3 uppercase tracking-wider cursor-pointer disabled:opacity-40 disabled:shadow-none disabled:active:scale-100 disabled:cursor-not-allowed"
+          className="w-full h-20 portrait:flex-1 portrait:h-auto portrait:min-h-20 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-3xl rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-3 uppercase tracking-wider cursor-pointer disabled:opacity-40 disabled:shadow-none disabled:active:scale-100 disabled:cursor-not-allowed"
         >
           Cobrar
           <ArrowRight className="h-8 w-8" />
