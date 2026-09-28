@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, FileX, Landmark, Loader2, RotateCcw, Truck } from 'lucide-react';
 import { getProductImageSrc } from '@/lib/productImages';
 import { formatMoney } from '../helpers';
-import { SimpleOverlay } from './SimpleOverlay';
+import { NumericKeypad, SimpleOverlay } from './SimpleOverlay';
 
 export interface SimpleSupplier {
   id: string;
@@ -132,48 +132,58 @@ function SupplierHeader({ supplier, subtitle }: { supplier: SimpleSupplier; subt
 interface SupplierAmountStepProps {
   supplier: SimpleSupplier;
   onAmount: (amount: number, ticketId?: string) => void;
-  onOtherAmount: () => void;
   onBack: () => void;
 }
 
-/** "¿Cuánto le pagó?": la nota pendiente o lo de siempre en un toque; si no, el teclado */
-export function SupplierAmountStep({ supplier, onAmount, onOtherAmount, onBack }: SupplierAmountStepProps) {
+/**
+ * "¿Cuánto le pagó?": el teclado va directo porque con proveedores el monto casi siempre cambia.
+ * Si hay nota pendiente o "lo de siempre", aparecen como atajos de un toque.
+ */
+export function SupplierAmountStep({ supplier, onAmount, onBack }: SupplierAmountStepProps) {
   const hasTickets = supplier.pendingTickets.length > 0;
+  const showUsual = !hasTickets && supplier.expectedPayment > 0;
+  const hasShortcuts = hasTickets || showUsual;
+
   return (
     <SimpleOverlay title="¿Cuánto le pagó?" onBack={onBack}>
-      <div className="max-w-3xl mx-auto flex flex-col gap-4">
-        <SupplierHeader supplier={supplier} />
+      <div className={`mx-auto grid gap-5 items-start ${hasShortcuts ? 'max-w-6xl landscape:lg:grid-cols-2' : 'max-w-xl'}`}>
+        <section className="flex flex-col gap-4">
+          <SupplierHeader supplier={supplier} />
 
-        {supplier.pendingTickets.map((ticket) => (
-          <button
-            key={ticket.id}
-            type="button"
-            onClick={() => onAmount(ticket.amount, ticket.id)}
-            className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
-          >
-            <span className="text-2xl font-bold">Lo de la nota{ticket.scheduledDate ? ` del ${ticket.scheduledDate}` : ''}</span>
-            <span className="text-6xl font-black tabular-nums leading-none mt-1">{formatMoney(ticket.amount)}</span>
-          </button>
-        ))}
+          {supplier.pendingTickets.map((ticket) => (
+            <button
+              key={ticket.id}
+              type="button"
+              onClick={() => onAmount(ticket.amount, ticket.id)}
+              className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+            >
+              <span className="text-2xl font-bold">Lo de la nota{ticket.scheduledDate ? ` del ${ticket.scheduledDate}` : ''}</span>
+              <span className="text-6xl font-black tabular-nums leading-none mt-1">{formatMoney(ticket.amount)}</span>
+            </button>
+          ))}
 
-        {!hasTickets && supplier.expectedPayment > 0 && (
-          <button
-            type="button"
-            onClick={() => onAmount(supplier.expectedPayment)}
-            className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
-          >
-            <span className="text-2xl font-bold">Lo de siempre</span>
-            <span className="text-6xl font-black tabular-nums leading-none mt-1">{formatMoney(supplier.expectedPayment)}</span>
-          </button>
-        )}
+          {showUsual && (
+            <button
+              type="button"
+              onClick={() => onAmount(supplier.expectedPayment)}
+              className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+            >
+              <span className="text-2xl font-bold">Lo de siempre</span>
+              <span className="text-6xl font-black tabular-nums leading-none mt-1">{formatMoney(supplier.expectedPayment)}</span>
+            </button>
+          )}
 
-        <button
-          type="button"
-          onClick={onOtherAmount}
-          className="h-24 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 shadow-xs active:scale-95 transition-all cursor-pointer text-3xl font-extrabold"
-        >
-          Otra cantidad
-        </button>
+          {hasShortcuts && (
+            <p className="text-center text-xl font-bold text-slate-500">
+              <span className="landscape:lg:hidden">O escriba cuánto le pagó:</span>
+              <span className="hidden landscape:lg:inline">O escriba cuánto le pagó en el teclado →</span>
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-xs p-4">
+          <NumericKeypad hint="Sale de la caja grande" confirmLabel="Siguiente" onConfirm={(amount) => onAmount(amount)} />
+        </section>
       </div>
     </SimpleOverlay>
   );

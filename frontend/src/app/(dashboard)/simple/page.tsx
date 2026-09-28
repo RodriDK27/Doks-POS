@@ -54,7 +54,6 @@ type Step =
   // "Llegó el proveedor": el pago sale de la caja grande
   | { kind: 'SUPPLIER_PICK' }
   | { kind: 'SUPPLIER_AMOUNT'; supplier: SimpleSupplier }
-  | { kind: 'SUPPLIER_OTHER_AMOUNT'; supplier: SimpleSupplier }
   | { kind: 'SUPPLIER_PHOTO'; draft: SupplierPaymentDraft }
   | { kind: 'SUPPLIER_CONFIRM'; draft: SupplierPaymentDraft }
   | { kind: 'SUPPLIER_DONE'; draft: SupplierPaymentDraft; photoFailed: boolean };
@@ -306,18 +305,7 @@ export default function SimpleModePage() {
           <SupplierAmountStep
             supplier={step.supplier}
             onAmount={(amount, ticketId) => setStep({ kind: 'SUPPLIER_PHOTO', draft: { supplier: step.supplier, amount, ticketId } })}
-            onOtherAmount={() => setStep({ kind: 'SUPPLIER_OTHER_AMOUNT', supplier: step.supplier })}
             onBack={() => setStep({ kind: 'SUPPLIER_PICK' })}
-          />
-        );
-      case 'SUPPLIER_OTHER_AMOUNT':
-        return (
-          <BigKeypad
-            title={`¿Cuánto le pagó a ${step.supplier.name}?`}
-            hint="Sale de la caja grande"
-            confirmLabel="Siguiente"
-            onBack={() => setStep({ kind: 'SUPPLIER_AMOUNT', supplier: step.supplier })}
-            onConfirm={(amount) => setStep({ kind: 'SUPPLIER_PHOTO', draft: { supplier: step.supplier, amount } })}
           />
         );
       case 'SUPPLIER_PHOTO':
