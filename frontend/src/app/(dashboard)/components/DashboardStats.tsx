@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { DollarSign, Users, Package, Edit2, Check, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ActiveRegister, DashboardStats } from '../hooks/useDashboard';
@@ -173,7 +174,14 @@ export function DashboardStatsGrid({
           </div>
         </div>
         <div className="pt-3 text-[10px] text-slate-400 dark:text-slate-500">
-          <span>Artículos por agotarse pronto</span>
+          {stats?.pendingReviewCount ? (
+            // Ventas del modo abuela sin producto exacto: el inventario no cuadra hasta aclararlas
+            <Link href="/review" className="font-bold text-amber-600 dark:text-amber-400 hover:underline">
+              {stats.pendingReviewCount} {stats.pendingReviewCount === 1 ? 'venta' : 'ventas'} por aclarar →
+            </Link>
+          ) : (
+            <span>Artículos por agotarse pronto</span>
+          )}
         </div>
       </div>
 

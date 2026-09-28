@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# Fotos de productos subidas en desarrollo local
+/uploads

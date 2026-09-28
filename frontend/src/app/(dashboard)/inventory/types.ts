@@ -21,6 +21,8 @@ export interface Product {
   minStock: number;
   unitType?: 'PIECE' | 'WEIGHT' | string;
   category: string | null;
+  family?: string | null;
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

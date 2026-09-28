@@ -47,6 +47,8 @@ export class SalesService {
       price: number;
       quantity: number;
       total: number;
+      needsReview: boolean;
+      pendingFamily: string | null;
     }> = [];
  
     for (const item of dto.items) {
@@ -72,12 +74,16 @@ export class SalesService {
       const itemSubtotal = itemPrice * item.quantity;
       subtotal += itemSubtotal;
  
+      // Solo los genéricos pueden quedar "por aclarar": un producto de catálogo ya se sabe cuál es
+      const needsReview = !item.productId && !!item.needsReview;
       itemsToCreate.push({
         productId: item.productId || null,
         productName,
         price: itemPrice,
         quantity: item.quantity,
         total: itemSubtotal,
+        needsReview,
+        pendingFamily: needsReview ? item.pendingFamily?.trim() || null : null,
       });
     }
 
@@ -129,6 +135,8 @@ export class SalesService {
             price: item.price as any,
             quantity: item.quantity,
             total: item.total,
+            needsReview: item.needsReview,
+            pendingFamily: item.pendingFamily,
           },
         });
  
@@ -151,7 +159,7 @@ export class SalesService {
               `Alerta: El producto "${currentProduct.name}" ha alcanzado stock crítico (${newStock} unidades restantes).`,
             );
           }
-        } else {
+        } else if (!item.needsReview) {
           // Es venta rápida: Registrar automáticamente en la lista de solicitudes / pendientes de alta
           await tx.requestedProduct.create({
             data: {
@@ -306,6 +314,8 @@ export class SalesService {
       },
     });
 
+    const pendingReviewCount = await this.countPendingReview();
+
     return {
       earningsToday,
       salesCountToday,
@@ -314,6 +324,7 @@ export class SalesService {
       lowStockCount,
       debtorCustomers,
       totalActiveCredit: totalActiveCredit._sum.currentDebt || 0,
+      pendingReviewCount,
     };
   }
 
@@ -416,5 +427,122 @@ export class SalesService {
       paymentDistribution,
       bestSellers,
     };
+  }
+
+  // ─── Bandeja "Por aclarar" (modo abuela) ───
+
+  private readonly pendingReviewWhere: Prisma.SaleItemWhereInput = { needsReview: true, resolvedAt: null };
+
+  /**
+   * Artículos cobrados sin saber el producto exacto, con los candidatos de su familia.
+   * La sugerencia es la variante de la familia con el mismo precio (si hay una sola con ese precio).
+   */
+  async findPendingReview() {
+    const items = await this.prisma.saleItem.findMany({
+      where: this.pendingReviewWhere,
+      include: { sale: { select: { id: true, createdAt: true } } },
+      orderBy: { sale: { createdAt: 'asc' } },
+    });
+
+    // La familia se escribe a mano en el catálogo: se compara sin mayúsculas ni espacios sobrantes
+    const familyProducts = items.some((i) => i.pendingFamily)
+      ? await this.prisma.product.findMany({
+          where: { family: { not: null } },
+          select: { id: true, name: true, sellPrice: true, imageUrl: true, stock: true, unitType: true, family: true },
+          orderBy: [{ sellPrice: 'asc' }, { name: 'asc' }],
+        })
+      : [];
+
+    return items.map((item) => {
+      const familyKey = item.pendingFamily?.trim().toLowerCase();
+      const candidates = familyKey
+        ? familyProducts.filter((p) => p.family?.trim().toLowerCase() === familyKey)
+        : [];
+      const samePrice = candidates.filter((p) => Math.abs(p.sellPrice - item.price) < 0.005);
+      return {
+        id: item.id,
+        saleId: item.sale.id,
+        soldAt: item.sale.createdAt,
+        productName: item.productName,
+        pendingFamily: item.pendingFamily,
+        price: item.price,
+        quantity: item.quantity,
+        total: item.total,
+        candidates,
+        suggestedProductId: samePrice.length === 1 ? samePrice[0].id : null,
+      };
+    });
+  }
+
+  async countPendingReview() {
+    return this.prisma.saleItem.count({ where: this.pendingReviewWhere });
+  }
+
+  /** Asigna el producto real al artículo y descuenta el inventario en ese momento */
+  async resolvePendingItem(itemId: string, productId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      throw new NotFoundException('El producto elegido no existe en el catálogo.');
+    }
+
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const item = await this.lockPendingItem(tx, itemId, { productId: product.id, productName: product.name });
+
+      await tx.product.update({
+        where: { id: product.id },
+        data: { stock: { decrement: item.quantity } },
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          productId: product.id,
+          type: 'SALIDA',
+          quantity: -item.quantity,
+          reason: `Venta #${item.saleId} aclarada (${item.pendingFamily || item.productName})`,
+        },
+      });
+
+      return tx.saleItem.findUnique({ where: { id: itemId } });
+    });
+  }
+
+  /** No corresponde a ningún producto del catálogo: se cierra y pasa a "Solicitudes" para darlo de alta */
+  async dismissPendingItem(itemId: string) {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const item = await this.lockPendingItem(tx, itemId, {});
+
+      await tx.requestedProduct.create({
+        data: {
+          name: item.pendingFamily || item.productName,
+          quantity: item.quantity,
+          notes: `Cobrado en modo sencillo a $${item.price.toFixed(2)} en la venta #${item.saleId} (no está en el catálogo)`,
+          status: 'PENDIENTE',
+        },
+      });
+
+      return tx.saleItem.findUnique({ where: { id: itemId } });
+    });
+  }
+
+  /**
+   * Marca el artículo como aclarado solo si seguía pendiente. El filtro por `resolvedAt: null` dentro del
+   * update evita descontar inventario dos veces si dos pantallas lo aclaran al mismo tiempo.
+   */
+  private async lockPendingItem(
+    tx: Prisma.TransactionClient,
+    itemId: string,
+    data: Prisma.SaleItemUncheckedUpdateManyInput,
+  ) {
+    const { count } = await tx.saleItem.updateMany({
+      where: { id: itemId, ...this.pendingReviewWhere },
+      data: { ...data, resolvedAt: new Date() },
+    });
+    if (count === 0) {
+      const exists = await tx.saleItem.findUnique({ where: { id: itemId }, select: { id: true } });
+      throw exists
+        ? new BadRequestException('Este artículo ya fue aclarado.')
+        : new NotFoundException('El artículo por aclarar no existe.');
+    }
+    return tx.saleItem.findUniqueOrThrow({ where: { id: itemId } });
   }
 }

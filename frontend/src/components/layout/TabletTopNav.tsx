@@ -29,6 +29,8 @@ import {
   X,
   ChevronRight,
   ChevronDown,
+  Hand,
+  HelpCircle,
 } from 'lucide-react';
 
 interface ActiveRegister {
@@ -60,6 +62,8 @@ interface TabletTopNavProps {
   onOpenChangePin: () => void;
   onOpenTimeClock: () => void;
   onLogout: () => void;
+  /** Bloquea la tablet en la pantalla sencilla (modo abuela) */
+  onEnterSimpleMode: () => void;
   cashierName?: string;
 }
 
@@ -77,6 +81,7 @@ export function TabletTopNav({
   onOpenChangePin,
   onOpenTimeClock,
   onLogout,
+  onEnterSimpleMode,
   cashierName,
 }: TabletTopNavProps) {
   const pathname = usePathname();
@@ -103,6 +108,10 @@ export function TabletTopNav({
   const { data: requestedProducts } = useSWR<Array<{ status: string }>>(role !== 'NONE' ? '/requested-products' : null);
   const pendingRequests = requestedProducts?.filter((p) => p.status === 'PENDIENTE').length ?? 0;
 
+  // Ventas del modo abuela cobradas sin saber el producto exacto (solo el administrador las aclara)
+  const { data: pendingReview } = useSWR<{ count: number }>(role === 'ADMIN' ? '/sales/pending-review/count' : null);
+  const pendingReviewCount = pendingReview?.count ?? 0;
+
   // Rutas secundarias / administrativas (en el Drawer deslizable)
   const drawerSections: Array<{ group: string; items: DrawerItem[] }> = [
     {
@@ -123,6 +132,14 @@ export function TabletTopNav({
           icon: FileText,
           desc: 'Productos que piden los clientes',
           badge: pendingRequests > 0 ? pendingRequests : undefined,
+        },
+        {
+          name: 'Por aclarar',
+          href: '/review',
+          icon: HelpCircle,
+          desc: 'Ventas del modo abuela sin producto exacto',
+          adminOnly: true,
+          badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
         },
         { name: 'Mermas y Consumos', href: '/waste', icon: UtensilsCrossed, desc: 'Pérdidas y consumo interno' },
         { name: 'Rendimiento y Reportes', href: '/performance', icon: Star, desc: 'Más y menos vendidos', adminOnly: true },
@@ -281,6 +298,24 @@ export function TabletTopNav({
                       <span>Ingresar como Administrador</span>
                     </button>
                   )}
+
+                  {/* Requiere caja abierta: desde la pantalla sencilla no se puede abrir caja */}
+                  <button
+                    disabled={!displayRegister}
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEnterSimpleMode();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer disabled:text-slate-400 dark:disabled:text-slate-500 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                  >
+                    <Hand className="h-4 w-4 shrink-0" />
+                    <span className="flex flex-col items-start leading-tight">
+                      <span>Activar Modo Abuela</span>
+                      {!displayRegister && (
+                        <span className="text-[10px] font-semibold">Abre la caja primero</span>
+                      )}
+                    </span>
+                  </button>
 
                   {role === 'ADMIN' && (
                     <>

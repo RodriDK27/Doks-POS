@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseIntPipe, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
 import { SalesService } from './sales.service';
-import { CreateSaleDto } from './dto/create-sale.dto';
+import { CreateSaleDto, ResolveSaleItemDto } from './dto/create-sale.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -33,6 +33,31 @@ export class SalesController {
     @Query('endDate') endDate?: string,
   ) {
     return this.salesService.getProfitReport(startDate, endDate);
+  }
+
+  // Bandeja "Por aclarar": artículos del modo abuela cobrados sin saber el producto exacto
+  @Get('pending-review')
+  @Roles('ADMIN', 'GERENTE')
+  findPendingReview() {
+    return this.salesService.findPendingReview();
+  }
+
+  @Get('pending-review/count')
+  @Roles('ADMIN', 'GERENTE')
+  async countPendingReview() {
+    return { count: await this.salesService.countPendingReview() };
+  }
+
+  @Post('items/:itemId/resolve')
+  @Roles('ADMIN', 'GERENTE')
+  resolvePendingItem(@Param('itemId', ParseUUIDPipe) itemId: string, @Body() dto: ResolveSaleItemDto) {
+    return this.salesService.resolvePendingItem(itemId, dto.productId);
+  }
+
+  @Post('items/:itemId/dismiss')
+  @Roles('ADMIN', 'GERENTE')
+  dismissPendingItem(@Param('itemId', ParseUUIDPipe) itemId: string) {
+    return this.salesService.dismissPendingItem(itemId);
   }
 
   @Get(':id')

@@ -2,18 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Barcode, Package, Scale, Layers, Plus, X, Tag } from 'lucide-react';
+import useSWR from 'swr';
+import { Barcode, Package, Scale, Layers, Plus, X, Tag, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Product } from '../types';
 import { cn } from '@/lib/utils';
 import { CustomSelect } from '@/components/CustomSelect';
+import { ProductPhotoPicker } from '@/components/ProductPhotoPicker';
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre del producto es obligatorio'),
   barcode: z.string().nullable().optional().or(z.literal('')),
   category: z.string().nullable().optional().or(z.literal('')),
+  family: z.string().nullable().optional().or(z.literal('')),
   unitType: z.enum(['PIECE', 'WEIGHT']),
   purchasePrice: z.number().min(0, 'El precio de compra no puede ser negativo'),
   sellPrice: z.number().positive('El precio de venta debe ser mayor a cero'),
@@ -47,12 +50,19 @@ export function ProductFormDialog({
   const [additionalBarcodes, setAdditionalBarcodes] = useState<Array<{ barcode: string; label?: string | null }>>([]);
   const [newSecBarcode, setNewSecBarcode] = useState('');
 
+  // Familias ya usadas, como sugerencias (el catálogo ya está en caché de SWR)
+  const { data: catalog } = useSWR<Product[]>(open ? '/products' : null);
+  const families = Array.from(
+    new Set((catalog || []).map((p) => p.family?.trim()).filter((f): f is string => !!f)),
+  ).sort((a, b) => a.localeCompare(b, 'es'));
+
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
       barcode: '',
       category: '',
+      family: '',
       unitType: 'PIECE',
       purchasePrice: 0,
       sellPrice: 0,
@@ -67,6 +77,7 @@ export function ProductFormDialog({
         name: editingProduct?.name || '',
         barcode: editingProduct?.barcode || '',
         category: editingProduct?.category || '',
+        family: editingProduct?.family || '',
         unitType: (editingProduct?.unitType as 'PIECE' | 'WEIGHT') || 'PIECE',
         purchasePrice: editingProduct?.purchasePrice ?? 0,
         sellPrice: editingProduct?.sellPrice ?? 0,
@@ -133,7 +144,10 @@ export function ProductFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-3 py-2 text-xs">
-          
+
+          {/* FOTO DEL PRODUCTO (se sube al momento; al duplicar se pide guardar primero) */}
+          <ProductPhotoPicker product={editingProduct?.id ? editingProduct : null} />
+
           {/* NOMBRE DEL PRODUCTO */}
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
@@ -148,6 +162,26 @@ export function ProductFormDialog({
             {errors.name && (
               <span className="text-[9px] text-rose-500 font-bold block mt-0.5">{errors.name.message}</span>
             )}
+          </div>
+
+          {/* FAMILIA: agrupa variantes en el Modo Abuela (ej. "Boing" → Mango 300ml, Guayaba 500ml) */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <Boxes className="h-3 w-3" /> Familia <span className="normal-case font-bold tracking-normal">(opcional, ej. Boing)</span>
+            </label>
+            <Input
+              type="text"
+              list="product-family-options"
+              placeholder="Agrupa sabores o tamaños del mismo producto"
+              autoComplete="off"
+              className="focus-visible:ring-indigo-500 h-10 text-xs font-bold bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl"
+              {...register('family')}
+            />
+            <datalist id="product-family-options">
+              {families.map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
           </div>
 
           {/* CÓDIGO BARRAS Y CATEGORÍA */}

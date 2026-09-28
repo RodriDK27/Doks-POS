@@ -38,6 +38,8 @@ model Product {
   minStock       Float      @default(0) // Umbral mínimo para alertas de stock bajo
   unitType       String     @default("PIECE") // "PIECE" (Unidad/Pieza) | "WEIGHT" (A Granel / Peso kg)
   category       String?    // Categoría del producto (ej. Abarrotes, Lácteos, etc.)
+  family         String?    // Familia visual para agrupar variantes (ej. "Boing" agrupa Mango 300ml, Guayaba 500ml)
+  imageUrl       String?    // Ruta pública de la foto WebP del producto (ej. /api/images/<id>-<ts>.webp)
   expirationDate DateTime?  // Fecha opcional de caducidad
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -49,6 +51,7 @@ model Product {
 
   @@index([barcode])
   @@index([name])
+  @@index([family])
 }
 
 /// Representa un código de barras adicional/alternativo para un producto
@@ -129,9 +132,13 @@ model SaleItem {
   price          Float    // Precio histórico al que se vendió
   quantity       Float    // Cantidad vendida (Float para venta a granel)
   total          Float    // Subtotal (precio * cantidad)
+  needsReview    Boolean  @default(false) // Modo abuela: se cobró sin saber el producto exacto ("No sé cuál" / "Otro producto")
+  pendingFamily  String?  // Familia que eligió al cobrar (ej. "Boing"); nulo si fue "Otro producto"
+  resolvedAt     DateTime? // Cuándo el administrador lo aclaró (asignó producto o lo descartó)
 
   @@index([saleId])
   @@index([productId])
+  @@index([needsReview, resolvedAt])
 }
 
 /// Representa una sesión o turno de la caja registradora (Arqueo / Corte de caja)

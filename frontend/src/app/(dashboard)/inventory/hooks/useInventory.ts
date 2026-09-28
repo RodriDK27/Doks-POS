@@ -355,6 +355,7 @@ export function useInventory() {
       ...values,
       barcode: values.barcode?.trim() || null,
       category: values.category?.trim() || null,
+      family: values.family?.trim() || null,
       additionalBarcodes: values.additionalBarcodes || [],
     };
 

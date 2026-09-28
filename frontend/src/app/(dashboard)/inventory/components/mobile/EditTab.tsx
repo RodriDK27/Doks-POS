@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Product } from '../../types';
 import { CustomSelect } from '@/components/CustomSelect';
+import { ProductPhotoPicker } from '@/components/ProductPhotoPicker';
 
 interface EditTabProps {
   selectedProduct: Product | null;
@@ -71,6 +72,8 @@ export function EditTab({
       <span className="text-[11px] font-black uppercase tracking-wider text-indigo-600 block">
         {selectedProduct ? `Editando: ${selectedProduct.name}` : 'Registrando Nuevo Producto'}
       </span>
+
+      <ProductPhotoPicker product={selectedProduct} />
 
       <div>
         <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Nombre del Producto *</label>

@@ -14,6 +14,8 @@ export interface Product {
   stock: number;
   category: string | null;
   unitType?: 'PIECE' | 'WEIGHT' | string;
+  family?: string | null;
+  imageUrl?: string | null;
 }
 
 export interface Customer {

@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { CashiersManagementDialog } from '@/components/CashiersManagementDialog';
 import { TabletTopNav } from '@/components/layout/TabletTopNav';
 import { BottomNavDock } from '@/components/layout/BottomNavDock';
+import { useSimpleModeStore } from '@/store/useSimpleModeStore';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -48,6 +49,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const { role, logout, exitAdminMode } = useAuthStore();
+  const { active: isSimpleMode, enter: enterSimpleMode } = useSimpleModeStore();
 
   const [isChangePinOpen, setIsChangePinOpen] = useState(false);
   const [isCashiersOpen, setIsCashiersOpen] = useState(false);
@@ -192,6 +194,8 @@ export default function DashboardLayout({
   useEffect(() => {
     const handleRegisterUpdated = async () => {
       void mutateActiveRegister();
+      // En modo sencillo la pantalla muestra "caja cerrada" por sí misma; no se sale de /simple
+      if (useSimpleModeStore.getState().active) return;
       const activeReg = await checkActiveRegister();
       if (!activeReg) {
         if (pathname !== '/register') {
@@ -208,6 +212,14 @@ export default function DashboardLayout({
   useEffect(() => {
     Promise.resolve().then(async () => {
       setMounted(true);
+      // Modo sencillo: la tablet queda fija en /simple hasta que un administrador lo desactive
+      if (isSimpleMode) {
+        hasInitialRedirectRef.current = true;
+        if (pathname !== '/simple') {
+          router.replace('/simple');
+        }
+        return;
+      }
       if (role !== 'NONE') {
         const activeReg = await checkActiveRegister();
         
@@ -242,7 +254,7 @@ export default function DashboardLayout({
         }
       }
     });
-  }, [pathname, role, router]);
+  }, [pathname, role, router, isSimpleMode]);
 
 
   if (!mounted) {
@@ -257,6 +269,11 @@ export default function DashboardLayout({
   // if (role === 'NONE') {
   //   return <GlobalLockScreen />;
   // }
+
+  // Pantalla sencilla: sin barra superior ni dock, la página ocupa todo
+  if (isSimpleMode || pathname === '/simple') {
+    return <>{children}</>;
+  }
 
   const adminAccount = cashiers.find((c) => c.role === 'ADMIN');
   const activeCashierName = displayRegister?.openedBy || (role === 'ADMIN' ? (adminAccount?.name || 'Administrador') : 'Cajero');
@@ -281,6 +298,10 @@ export default function DashboardLayout({
         onOpenCashiers={() => setIsCashiersOpen(true)}
         onOpenChangePin={() => setIsChangePinOpen(true)}
         onOpenTimeClock={() => setIsTimeClockOpen(true)}
+        onEnterSimpleMode={() => {
+          enterSimpleMode();
+          router.replace('/simple');
+        }}
         onLogout={() => {
           if (role === 'ADMIN') {
             // Modo admin: solo se quita el modo, la sesión del empleado que atiende la caja sigue abierta

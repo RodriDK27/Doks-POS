@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { FileLoggerService } from './common/logger/file-logger.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { getImagesDir, IMAGES_PUBLIC_PREFIX } from './modules/products/product-images.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -71,7 +73,7 @@ async function bootstrap() {
   // Instanciar el logger de archivo y consola
   const logger = new FileLoggerService();
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger,
   });
 
@@ -88,6 +90,16 @@ async function bootstrap() {
   if (expressApp && typeof expressApp.set === 'function') {
     expressApp.set('etag', false);
   }
+
+  // Fotos de productos: públicas (las etiquetas <img> no envían JWT) y con caché inmutable,
+  // ya que cada foto nueva recibe un nombre distinto. Se registra antes del middleware no-store.
+  app.useStaticAssets(getImagesDir(), {
+    prefix: IMAGES_PUBLIC_PREFIX,
+    maxAge: '365d',
+    immutable: true,
+    index: false,
+    dotfiles: 'deny',
+  });
 
   // Middleware global para asegurar que los navegadores y CDN no almacenen caché de las APIs
   app.use((req: any, res: any, next: any) => {

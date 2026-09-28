@@ -2,10 +2,14 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductImagesService } from './product-images.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly productImages: ProductImagesService,
+  ) {}
 
   // Helper para validar que un código de barras no esté asignado a otro producto
   private async checkBarcodeUniqueness(barcode: string, excludeProductId?: string) {
@@ -113,6 +117,7 @@ export class ProductsService {
         { name: { contains: query, mode: 'insensitive' } },
         { barcode: { contains: query } },
         { category: { contains: query, mode: 'insensitive' } },
+        { family: { contains: query, mode: 'insensitive' } },
         { barcodes: { some: { barcode: { contains: query } } } },
       ];
     }
@@ -296,10 +301,12 @@ export class ProductsService {
 
   // Eliminar un producto
   async remove(id: string) {
-    await this.findOne(id); // Valida que exista
-    return this.prisma.product.delete({
+    const product = await this.findOne(id); // Valida que exista
+    const deleted = await this.prisma.product.delete({
       where: { id },
     });
+    await this.productImages.deleteFile(product.imageUrl);
+    return deleted;
   }
 
   // Ajustar stock manualmente o tras una venta

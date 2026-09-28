@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Put, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Put, Param, Delete, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductsService } from './products.service';
+import { ProductImagesService, MAX_IMAGE_BYTES, UploadedImageFile } from './product-images.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -9,7 +11,10 @@ import { Roles } from '../auth/roles.decorator';
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly productImagesService: ProductImagesService,
+  ) {}
 
   @Post()
   @Roles('ADMIN', 'GERENTE')
@@ -98,6 +103,24 @@ export class ProductsController {
     @Param('barcodeId') barcodeId: string,
   ) {
     return this.productsService.removeBarcode(id, barcodeId);
+  }
+
+  /** Subir o reemplazar la foto del producto (multipart, campo "image", WebP o JPEG ya comprimido por el frontend) */
+  @Post(':id/image')
+  @Roles('ADMIN', 'GERENTE')
+  @UseInterceptors(FileInterceptor('image', { limits: { fileSize: MAX_IMAGE_BYTES, files: 1 } }))
+  uploadImage(
+    @Param('id') id: string,
+    @UploadedFile() file?: UploadedImageFile,
+  ) {
+    return this.productImagesService.setImage(id, file);
+  }
+
+  /** Quitar la foto del producto */
+  @Delete(':id/image')
+  @Roles('ADMIN', 'GERENTE')
+  removeImage(@Param('id') id: string) {
+    return this.productImagesService.removeImage(id);
   }
 
   /** Restablecer / actualizar stock rápido (para reposición express en POS o auditoría) */

@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, IsArray, ValidateNested, Min, IsNotEmpty, IsIn } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsArray, ValidateNested, Min, IsNotEmpty, IsIn, IsBoolean, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateSaleItemDto {
@@ -18,6 +18,22 @@ export class CreateSaleItemDto {
   @Min(0, { message: 'El precio genérico no puede ser menor a 0' })
   @IsOptional()
   genericPrice?: number;
+
+  /** Artículo genérico que el administrador debe aclarar después (bandeja "Por aclarar") */
+  @IsBoolean({ message: 'needsReview debe ser verdadero o falso' })
+  @IsOptional()
+  needsReview?: boolean;
+
+  @IsString({ message: 'La familia debe ser texto' })
+  @MaxLength(100, { message: 'La familia no puede tener más de 100 caracteres' })
+  @IsOptional()
+  pendingFamily?: string;
+}
+
+export class ResolveSaleItemDto {
+  @IsString({ message: 'El ID del producto debe ser texto' })
+  @IsNotEmpty({ message: 'Debe elegir un producto' })
+  productId: string;
 }
 
 export class CreateSaleDto {

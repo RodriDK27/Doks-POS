@@ -12,6 +12,8 @@ export interface DashboardStats {
   productsCount: number;
   lowStockCount: number;
   debtorCustomers: number;
+  /** Ventas del modo abuela sin producto exacto */
+  pendingReviewCount?: number;
   totalActiveCredit: number;
 }
 

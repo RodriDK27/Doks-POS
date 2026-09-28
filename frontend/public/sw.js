@@ -33,6 +33,9 @@ if (
 } else {
   // EN PRODUCCIÓN: Configuración de caché Network-First con fallback Offline
   const CACHE_NAME = 'doks-pos-cache-v2';
+  // Fotos de productos: caché aparte que sobrevive a cambios de versión de CACHE_NAME
+  const IMAGES_CACHE = 'doks-pos-images-v1';
+  const MAX_CACHED_IMAGES = 2000;
 
   self.addEventListener('install', () => {
     self.skipWaiting();
@@ -43,7 +46,7 @@ if (
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
+            if (cacheName !== CACHE_NAME && cacheName !== IMAGES_CACHE) {
               return caches.delete(cacheName);
             }
           })
@@ -53,8 +56,38 @@ if (
     self.clients.claim();
   });
 
+  async function serveProductImage(request) {
+    const cache = await caches.open(IMAGES_CACHE);
+    const cached = await cache.match(request);
+    if (cached) return cached;
+
+    const response = await fetch(request);
+    // Solo respuestas CORS completas (<img crossOrigin="anonymous">); las opacas ocupan mucho espacio de cuota
+    if (response.ok && response.type !== 'opaque') {
+      await cache.put(request, response.clone());
+      trimImagesCache(cache);
+    }
+    return response;
+  }
+
+  // Evita que el caché crezca sin límite con fotos reemplazadas: descarta las más antiguas
+  async function trimImagesCache(cache) {
+    const keys = await cache.keys();
+    const excess = keys.length - MAX_CACHED_IMAGES;
+    for (let i = 0; i < excess; i++) {
+      await cache.delete(keys[i]);
+    }
+  }
+
   self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
+
+    // Fotos de productos: Cache-First. Son inmutables (cada foto nueva cambia de nombre),
+    // así la tablet las descarga una sola vez y se ven también sin internet.
+    if (event.request.url.includes('/api/images/')) {
+      event.respondWith(serveProductImage(event.request));
+      return;
+    }
 
     // Ignorar APIs y peticiones dinámicas de Next.js
     if (

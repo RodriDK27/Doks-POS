@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Scale } from 'lucide-react';
 import { Product } from '../types';
 import { getCategoryColor } from '../helpers';
+import { getProductImageSrc } from '@/lib/productImages';
 
 interface ProductCardProps {
   product: Product;
@@ -50,6 +51,7 @@ export function ProductCard({ product, qtyInCart, onAdd, searchQuery, isSelected
   const isLowStock = product.stock > 0 && product.stock <= 5;
   const isOutOfStock = product.stock <= 0;
   const isBulk = product.unitType === 'WEIGHT';
+  const imageSrc = getProductImageSrc(product.imageUrl);
 
   return (
     <button
@@ -103,17 +105,29 @@ export function ProductCard({ product, qtyInCart, onAdd, searchQuery, isSelected
         </div>
 
 
-        {/* NOMBRE DEL PRODUCTO — protagonista */}
-        <p
-          className={`font-black text-[14px] leading-tight line-clamp-2 transition-colors
-            ${isOutOfStock
-              ? 'text-slate-500 dark:text-slate-500'
-              : 'text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
-            }`}
-          title={product.name}
-        >
-          <HighlightText text={product.name} query={searchQuery} />
-        </p>
+        {/* NOMBRE DEL PRODUCTO — protagonista (con miniatura si tiene foto) */}
+        <div className="flex items-start gap-2 min-w-0">
+          {imageSrc && (
+            // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
+            <img
+              src={imageSrc}
+              alt=""
+              loading="lazy"
+              crossOrigin="anonymous"
+              className={`h-11 w-11 shrink-0 rounded-lg object-contain bg-white border border-slate-100 dark:border-slate-800 ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
+            />
+          )}
+          <p
+            className={`font-black text-[14px] leading-tight line-clamp-2 transition-colors min-w-0
+              ${isOutOfStock
+                ? 'text-slate-500 dark:text-slate-500'
+                : 'text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
+              }`}
+            title={product.name}
+          >
+            <HighlightText text={product.name} query={searchQuery} />
+          </p>
+        </div>
       </div>
 
       {/* ZONA INFERIOR — PRECIO + BOTÓN */}

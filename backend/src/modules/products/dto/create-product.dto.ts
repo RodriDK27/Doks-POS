@@ -39,6 +39,10 @@ export class CreateProductDto {
   @IsOptional()
   category?: string;
 
+  @IsString({ message: 'La familia debe ser texto' })
+  @IsOptional()
+  family?: string;
+
   @IsString({ message: 'El tipo de unidad debe ser texto' })
   @IsOptional()
   unitType?: string;
