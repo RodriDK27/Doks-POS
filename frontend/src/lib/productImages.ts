@@ -22,11 +22,14 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob | n
   return new Promise((resolve) => canvas.toBlob(resolve, type, QUALITY));
 }
 
+/** Lado mayor de la foto de una nota de proveedor: más grande para que se pueda leer */
+export const RECEIPT_MAX_SIDE = 1400;
+
 /**
  * Reduce la foto en el navegador antes de subirla, para que el servidor no gaste CPU.
  * Devuelve WebP; si el navegador no sabe codificarlo (Safari), devuelve JPEG.
  */
-export async function compressProductImage(file: File): Promise<Blob> {
+export async function compressImage(file: File, maxSide: number = MAX_SIDE): Promise<Blob> {
   if (!file.type.startsWith('image/')) {
     throw new Error('El archivo seleccionado no es una imagen.');
   }
@@ -34,7 +37,7 @@ export async function compressProductImage(file: File): Promise<Blob> {
   // createImageBitmap respeta la orientación EXIF, así las fotos del celular no salen giradas
   const bitmap = await createImageBitmap(file);
   try {
-    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
@@ -58,16 +61,21 @@ export async function compressProductImage(file: File): Promise<Blob> {
   }
 }
 
-/** Comprime y sube la foto de un producto. Devuelve el producto actualizado. */
-export async function uploadProductImage<T>(productId: string, file: File): Promise<T> {
-  const blob = await compressProductImage(file);
+/** Comprime y sube una imagen (campo "image") a la ruta indicada. Devuelve la respuesta del backend. */
+export async function uploadImage<T>(path: string, file: File, maxSide: number = MAX_SIDE): Promise<T> {
+  const blob = await compressImage(file, maxSide);
   const form = new FormData();
   form.append('image', blob, blob.type === 'image/webp' ? 'foto.webp' : 'foto.jpg');
   // Content-Type explícito: con el 'application/json' por defecto del cliente, axios convertiría el FormData a JSON
-  const res = await api.post<T>(`/products/${productId}/image`, form, {
+  const res = await api.post<T>(path, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return res.data;
+}
+
+/** Comprime y sube la foto de un producto. Devuelve el producto actualizado. */
+export async function uploadProductImage<T>(productId: string, file: File): Promise<T> {
+  return uploadImage<T>(`/products/${productId}/image`, file);
 }
 
 /** Quita la foto de un producto. Devuelve el producto actualizado. */

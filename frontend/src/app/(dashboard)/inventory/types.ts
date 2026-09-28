@@ -45,6 +45,8 @@ export interface Supplier {
   visitFrequency?: 'WEEKLY' | 'BIWEEKLY_A' | 'BIWEEKLY_B' | string;
   expectedPayment?: number;
   isActive?: boolean;
+  /** Logo que ve el modo abuela en "Llegó el proveedor" */
+  logoUrl?: string | null;
   createdAt: string;
   _count?: {
     purchases: number;

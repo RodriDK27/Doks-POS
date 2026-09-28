@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Put, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Put, Param, Delete, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { MAX_IMAGE_BYTES, UploadedImageFile } from '../../common/images/image-storage';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
@@ -25,6 +27,26 @@ export class SuppliersController {
   @Get('schedule/today')
   getTodaySchedule() {
     return this.suppliersService.getTodaySchedule();
+  }
+
+  /** Lista para "Llegó el proveedor" del modo abuela (logo, monto de siempre, notas pendientes, si viene hoy) */
+  @Get('simple')
+  findForSimpleMode() {
+    return this.suppliersService.findForSimpleMode();
+  }
+
+  /** Subir o reemplazar el logo (multipart, campo "image", WebP o JPEG ya comprimido por el frontend) */
+  @Post(':id/logo')
+  @Roles('ADMIN', 'GERENTE')
+  @UseInterceptors(FileInterceptor('image', { limits: { fileSize: MAX_IMAGE_BYTES, files: 1 } }))
+  uploadLogo(@Param('id') id: string, @UploadedFile() file?: UploadedImageFile) {
+    return this.suppliersService.setLogo(id, file);
+  }
+
+  @Delete(':id/logo')
+  @Roles('ADMIN', 'GERENTE')
+  removeLogo(@Param('id') id: string) {
+    return this.suppliersService.removeLogo(id);
   }
 
   @Get(':id')

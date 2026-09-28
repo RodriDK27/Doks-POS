@@ -146,6 +146,7 @@ export default function SuppliersPage() {
         setSupplierForm={setSupplierForm}
         onSubmit={handleSupplierSubmit}
         editingSupplierId={editingSupplierId}
+        editingSupplier={suppliers.find((s) => s.id === editingSupplierId) ?? null}
       />
 
       <PurchaseDialog

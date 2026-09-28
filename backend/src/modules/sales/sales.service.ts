@@ -314,7 +314,9 @@ export class SalesService {
       },
     });
 
-    const pendingReviewCount = await this.countPendingReview();
+    // Por aclarar del modo abuela: ventas sin producto exacto + pagos a proveedores sin productos capturados
+    const pendingReviewCount =
+      (await this.countPendingReview()) + (await this.prisma.purchase.count({ where: { needsDetail: true } }));
 
     return {
       earningsToday,

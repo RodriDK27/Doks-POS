@@ -46,5 +46,18 @@ export class CreatePurchaseDto {
   @Type(() => CreatePurchaseItemDto)
   @IsOptional()
   items?: CreatePurchaseItemDto[];
+
+  /** Pago sin productos (modo abuela): el administrador captura qué llegó después */
+  @IsBoolean({ message: 'needsDetail debe ser verdadero o falso' })
+  @IsOptional()
+  needsDetail?: boolean;
+}
+
+/** Productos que llegaron en una compra pagada sin detalle. Lista vacía = no lleva productos. */
+export class AddPurchaseDetailDto {
+  @IsArray({ message: 'Los artículos comprados deben ser una lista' })
+  @ValidateNested({ each: true })
+  @Type(() => CreatePurchaseItemDto)
+  items: CreatePurchaseItemDto[];
 }
 

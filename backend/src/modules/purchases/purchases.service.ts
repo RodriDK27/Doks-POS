@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreatePurchaseDto } from './dto/create-purchase.dto';
+import { AddPurchaseDetailDto, CreatePurchaseDto } from './dto/create-purchase.dto';
+import { UploadedImageFile, deleteImageFile, saveImageFile } from '../../common/images/image-storage';
 import { RegisterService } from '../register/register.service';
 import { VaultService } from '../vault/vault.service';
 import { Prisma } from '@prisma/client';
@@ -96,6 +97,7 @@ export class PurchasesService {
           payFromRegister: source === 'CAJA_CHICA',
           paymentSource: source,
           cashRegisterId: activeRegister ? activeRegister.id : null,
+          needsDetail: !hasItems && !!dto.needsDetail,
         },
       });
 
@@ -196,6 +198,92 @@ export class PurchasesService {
     }
 
     return createdPurchase;
+  }
+
+  // ─── PAGOS DEL MODO ABUELA: FOTO DE LA NOTA Y DETALLE PENDIENTE ───────────────
+
+  /** Guarda (o reemplaza) la foto de la nota del proveedor */
+  async setReceipt(id: string, file?: UploadedImageFile) {
+    const purchase = await this.prisma.purchase.findUnique({ where: { id } });
+    if (!purchase) {
+      throw new NotFoundException(`La compra con ID ${id} no existe.`);
+    }
+    const receiptImageUrl = await saveImageFile(`receipt-${id}`, file);
+    const updated = await this.prisma.purchase.update({ where: { id }, data: { receiptImageUrl } });
+    await deleteImageFile(purchase.receiptImageUrl);
+    return updated;
+  }
+
+  /** Pagos a proveedores hechos sin capturar productos, para que el administrador los complete */
+  async findPendingDetail() {
+    return this.prisma.purchase.findMany({
+      where: { needsDetail: true },
+      orderBy: { createdAt: 'asc' },
+      include: { supplier: { select: { id: true, name: true, logoUrl: true } } },
+    });
+  }
+
+  async countPendingDetail() {
+    return this.prisma.purchase.count({ where: { needsDetail: true } });
+  }
+
+  /**
+   * Captura los productos que llegaron en un pago sin detalle: sube el inventario y el costo,
+   * pero NO vuelve a mover dinero (ya salió cuando se pagó). Sin productos, solo se marca como revisado.
+   */
+  async addDetail(id: string, dto: AddPurchaseDetailDto) {
+    const items = dto.items ?? [];
+    const productIds = items.map((i) => i.productId);
+    const products = productIds.length
+      ? await this.prisma.product.findMany({ where: { id: { in: productIds } } })
+      : [];
+    const productsMap = new Map(products.map((p) => [p.id, p]));
+    for (const item of items) {
+      if (!productsMap.has(item.productId)) {
+        throw new NotFoundException(`El producto con ID ${item.productId} no existe en el catálogo.`);
+      }
+    }
+
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Filtro por needsDetail dentro del update: si dos pantallas capturan al mismo tiempo, solo una sube el stock
+      const { count } = await tx.purchase.updateMany({ where: { id, needsDetail: true }, data: { needsDetail: false } });
+      if (count === 0) {
+        const exists = await tx.purchase.findUnique({ where: { id }, select: { id: true } });
+        throw exists
+          ? new BadRequestException('Esta compra ya tiene sus productos capturados.')
+          : new NotFoundException(`La compra con ID ${id} no existe.`);
+      }
+
+      const purchase = await tx.purchase.findUniqueOrThrow({ where: { id }, include: { supplier: true } });
+      for (const item of items) {
+        await tx.purchaseItem.create({
+          data: {
+            purchaseId: id,
+            productId: item.productId,
+            costPrice: item.costPrice,
+            quantity: item.quantity,
+            total: item.costPrice * item.quantity,
+          },
+        });
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity }, purchasePrice: item.costPrice },
+        });
+        await tx.stockMovement.create({
+          data: {
+            productId: item.productId,
+            type: 'ENTRADA',
+            quantity: item.quantity,
+            reason: `Compra a proveedor: ${purchase.supplier.name} (capturada después del pago)`,
+          },
+        });
+      }
+
+      return tx.purchase.findUnique({
+        where: { id },
+        include: { supplier: true, items: { include: { product: true } } },
+      });
+    });
   }
 
   // Listar todas las compras

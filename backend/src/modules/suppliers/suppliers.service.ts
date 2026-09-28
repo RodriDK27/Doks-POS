@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { VaultService } from '../vault/vault.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
+import { UploadedImageFile, deleteImageFile, saveImageFile } from '../../common/images/image-storage';
 
 @Injectable()
 export class SuppliersService {
@@ -75,20 +76,77 @@ export class SuppliersService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.supplier.delete({
+    const supplier = await this.findOne(id);
+    const deleted = await this.prisma.supplier.delete({
       where: { id },
     });
+    await deleteImageFile(supplier.logoUrl);
+    return deleted;
   }
 
-  async getTodaySchedule() {
-    // Obtener el día actual respetando la zona horaria de México (America/Mexico_City)
+  // ─── LOGO (MODO ABUELA) ─────────────────────────────────────────────────────
+  async setLogo(id: string, file?: UploadedImageFile) {
+    const supplier = await this.prisma.supplier.findUnique({ where: { id } });
+    if (!supplier) {
+      throw new NotFoundException(`El proveedor con ID ${id} no fue encontrado.`);
+    }
+    const logoUrl = await saveImageFile(`supplier-${id}`, file);
+    const updated = await this.prisma.supplier.update({ where: { id }, data: { logoUrl } });
+    await deleteImageFile(supplier.logoUrl);
+    return updated;
+  }
+
+  async removeLogo(id: string) {
+    const supplier = await this.prisma.supplier.findUnique({ where: { id } });
+    if (!supplier) {
+      throw new NotFoundException(`El proveedor con ID ${id} no fue encontrado.`);
+    }
+    const updated = await this.prisma.supplier.update({ where: { id }, data: { logoUrl: null } });
+    await deleteImageFile(supplier.logoUrl);
+    return updated;
+  }
+
+  /**
+   * Proveedores para "Llegó el proveedor" del modo abuela: activos, con logo, monto de siempre,
+   * notas de preventa pendientes y si hoy les toca entregar (para mostrarlos primero).
+   */
+  async findForSimpleMode() {
+    const todayName = this.getTodayName();
+    const suppliers = await this.prisma.supplier.findMany({
+      where: { isActive: true, name: { not: 'Proveedores Diarios' } },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        expectedPayment: true,
+        deliveryDays: true,
+        pendingTickets: {
+          where: { status: 'PENDING' },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, amount: true, scheduledDate: true, notes: true },
+        },
+      },
+    });
+
+    return suppliers.map(({ deliveryDays, ...supplier }) => ({
+      ...supplier,
+      comesToday: !!deliveryDays?.split(',').includes(todayName),
+    }));
+  }
+
+  // Día actual ("Lunes", "Martes"...) respetando la zona horaria de México (America/Mexico_City)
+  private getTodayName(): string {
     const formatter = new Intl.DateTimeFormat('es-MX', {
       timeZone: 'America/Mexico_City',
       weekday: 'long',
     });
     const rawDayName = formatter.format(new Date());
-    const todayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1);
+    return rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1);
+  }
+
+  async getTodaySchedule() {
+    const todayName = this.getTodayName();
 
     const allSuppliers = await this.prisma.supplier.findMany({
       where: { isActive: true },

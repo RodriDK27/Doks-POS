@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { toast } from 'sonner';
-import { Check, CheckCircle2, HelpCircle, ImageIcon, Loader2, PackageX, Search, Sparkles } from 'lucide-react';
+import { Check, CheckCircle2, HelpCircle, ImageIcon, Loader2, PackageX, Search, Sparkles, Truck } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { parseAxiosError } from '@/lib/errorMapper';
@@ -11,6 +11,7 @@ import { getProductImageSrc } from '@/lib/productImages';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ModulePageHeader } from '../inventory/components/ModulePageHeader';
 import { Product } from '../pos/types';
+import { PendingPurchase, PendingPurchaseCard } from './PendingPurchases';
 
 interface Candidate {
   id: string;
@@ -206,20 +207,29 @@ function PendingCard({ item, allProducts, onDone }: PendingCardProps) {
 }
 
 /**
- * Bandeja "Por aclarar": lo que se cobró en el modo abuela sin saber el producto exacto
- * ("No sé cuál" y "Otro producto"). Al confirmar se asigna el producto y se descuenta el inventario.
+ * Bandeja "Por aclarar" del modo abuela:
+ * - Pagos a proveedores hechos sin productos: se capturan viendo la foto de la nota y sube el inventario.
+ * - Ventas cobradas sin saber el producto exacto ("No sé cuál" y "Otro producto"): se asigna el producto
+ *   y se descuenta el inventario.
  */
 export default function ReviewPage() {
   const role = useAuthStore((s) => s.role);
   const isAdmin = role === 'ADMIN';
   const { data: items, isLoading } = useSWR<PendingItem[]>(isAdmin ? '/sales/pending-review' : null);
   const { data: products } = useSWR<Product[]>(isAdmin ? '/products' : null);
+  const { data: purchases } = useSWR<PendingPurchase[]>(isAdmin ? '/purchases/pending-detail' : null);
 
   const refresh = () => {
     void mutate('/sales/pending-review');
     void mutate('/sales/pending-review/count');
     void mutate('/products');
     void mutate('/requested-products');
+  };
+
+  const refreshPurchases = () => {
+    void mutate('/purchases/pending-detail');
+    void mutate('/purchases/pending-detail/count');
+    void mutate('/products');
   };
 
   if (!isAdmin) {
@@ -235,6 +245,26 @@ export default function ReviewPage() {
     <div className="space-y-4 w-full pb-20">
       <ModulePageHeader title="Por aclarar" eyebrow="Ventas" />
 
+      {purchases && purchases.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <Truck className="h-4 w-4 text-indigo-600" /> Pagos a proveedores sin productos
+            <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 text-[10px] font-black px-2 py-0.5 rounded-lg">
+              {purchases.length}
+            </span>
+          </h2>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 max-w-2xl">
+            El dinero ya salió de la caja grande. Captura qué llegó viendo la foto de la nota y se suma al inventario.
+          </p>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {purchases.map((purchase) => (
+              <PendingPurchaseCard key={purchase.id} purchase={purchase} allProducts={products ?? []} onDone={refreshPurchases} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <h2 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Ventas</h2>
       <p className="flex items-start gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 max-w-2xl">
         <HelpCircle className="h-4 w-4 shrink-0 mt-0.5" />
         Ventas del modo abuela cobradas con &quot;No sé cuál&quot; u &quot;Otro producto&quot;. El dinero ya está en caja;
@@ -248,7 +278,7 @@ export default function ReviewPage() {
       ) : !items || items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
           <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-          <p className="text-sm font-black text-slate-700 dark:text-slate-200">Todo aclarado</p>
+          <p className="text-sm font-black text-slate-700 dark:text-slate-200">Ventas al día</p>
           <p className="text-xs font-semibold text-slate-500">No hay ventas pendientes de revisar.</p>
         </div>
       ) : (

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
-import { Loader2, Lock, Store, WifiOff } from 'lucide-react';
+import { Loader2, Lock, Store, Truck, WifiOff } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSimpleModeStore } from '@/store/useSimpleModeStore';
 import { getProductImageSrc } from '@/lib/productImages';
@@ -22,6 +22,16 @@ import {
 } from './helpers';
 import { useSimpleSale } from './hooks/useSimpleSale';
 import { CatalogToolbar } from './components/CatalogToolbar';
+import { useSupplierPayment } from './hooks/useSupplierPayment';
+import {
+  ReceiptPhotoStep,
+  SimpleSupplier,
+  SupplierAmountStep,
+  SupplierConfirmStep,
+  SupplierDoneStep,
+  SupplierPaymentDraft,
+  SupplierPickStep,
+} from './components/SupplierPayment';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { BigKeypad } from './components/SimpleOverlay';
 import { FamilyGrid, UnsurePriceStep, VariantPicker } from './components/CatalogGrid';
@@ -40,7 +50,14 @@ type Step =
   | { kind: 'GENERIC'; name: string; needsReview: boolean }
   | { kind: 'PAY' }
   | { kind: 'PAY_OTHER' }
-  | { kind: 'CHANGE'; amountPaid: number };
+  | { kind: 'CHANGE'; amountPaid: number }
+  // "Llegó el proveedor": el pago sale de la caja grande
+  | { kind: 'SUPPLIER_PICK' }
+  | { kind: 'SUPPLIER_AMOUNT'; supplier: SimpleSupplier }
+  | { kind: 'SUPPLIER_OTHER_AMOUNT'; supplier: SimpleSupplier }
+  | { kind: 'SUPPLIER_PHOTO'; draft: SupplierPaymentDraft }
+  | { kind: 'SUPPLIER_CONFIRM'; draft: SupplierPaymentDraft }
+  | { kind: 'SUPPLIER_DONE'; draft: SupplierPaymentDraft; photoFailed: boolean };
 
 const HOME: Step = { kind: 'HOME' };
 
@@ -54,6 +71,7 @@ export default function SimpleModePage() {
   const [flash, setFlash] = useState<ScanFlashState | null>(null);
   const [isExitOpen, setIsExitOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const supplierPayment = useSupplierPayment(active && sale.isOnline);
 
   // Si alguien llega aquí sin haber activado el modo, regresa al punto de venta normal
   useEffect(() => {
@@ -142,6 +160,18 @@ export default function SimpleModePage() {
     }
     playBeep('ok');
     setStep(HOME);
+  };
+
+  const handleConfirmSupplierPayment = async (draft: SupplierPaymentDraft) => {
+    setSaveError(null);
+    const result = await supplierPayment.submitPayment(draft);
+    if (result.error) {
+      playBeep('error');
+      setSaveError(result.error);
+      return;
+    }
+    playBeep('ok');
+    setStep({ kind: 'SUPPLIER_DONE', draft, photoFailed: result.photoFailed });
   };
 
   const handleUnlocked = () => {
@@ -249,6 +279,56 @@ export default function SimpleModePage() {
             onConfirm={() => void handleConfirmSale(step.amountPaid)}
           />
         );
+      case 'SUPPLIER_PICK':
+        return (
+          <SupplierPickStep
+            suppliers={supplierPayment.suppliers}
+            onPick={(supplier) => setStep({ kind: 'SUPPLIER_AMOUNT', supplier })}
+            onBack={goHome}
+          />
+        );
+      case 'SUPPLIER_AMOUNT':
+        return (
+          <SupplierAmountStep
+            supplier={step.supplier}
+            onAmount={(amount, ticketId) => setStep({ kind: 'SUPPLIER_PHOTO', draft: { supplier: step.supplier, amount, ticketId } })}
+            onOtherAmount={() => setStep({ kind: 'SUPPLIER_OTHER_AMOUNT', supplier: step.supplier })}
+            onBack={() => setStep({ kind: 'SUPPLIER_PICK' })}
+          />
+        );
+      case 'SUPPLIER_OTHER_AMOUNT':
+        return (
+          <BigKeypad
+            title={`¿Cuánto le pagó a ${step.supplier.name}?`}
+            hint="Sale de la caja grande"
+            confirmLabel="Siguiente"
+            onBack={() => setStep({ kind: 'SUPPLIER_AMOUNT', supplier: step.supplier })}
+            onConfirm={(amount) => setStep({ kind: 'SUPPLIER_PHOTO', draft: { supplier: step.supplier, amount } })}
+          />
+        );
+      case 'SUPPLIER_PHOTO':
+        return (
+          <ReceiptPhotoStep
+            draft={step.draft}
+            onContinue={(photo) => {
+              setSaveError(null);
+              setStep({ kind: 'SUPPLIER_CONFIRM', draft: { ...step.draft, photo } });
+            }}
+            onBack={() => setStep({ kind: 'SUPPLIER_AMOUNT', supplier: step.draft.supplier })}
+          />
+        );
+      case 'SUPPLIER_CONFIRM':
+        return (
+          <SupplierConfirmStep
+            draft={step.draft}
+            isSubmitting={supplierPayment.isSubmitting}
+            error={saveError}
+            onConfirm={() => void handleConfirmSupplierPayment(step.draft)}
+            onBack={() => setStep({ kind: 'SUPPLIER_PHOTO', draft: step.draft })}
+          />
+        );
+      case 'SUPPLIER_DONE':
+        return <SupplierDoneStep draft={step.draft} photoFailed={step.photoFailed} onDone={goHome} />;
       default:
         return null;
     }
@@ -272,6 +352,19 @@ export default function SimpleModePage() {
             </span>
           )}
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+        {/* Mismo estilo que "Pagar Proveedor" del punto de venta. Sin internet no se puede registrar el pago. */}
+        <button
+          type="button"
+          disabled={!sale.isOnline || isRegisterClosed}
+          onClick={() => {
+            setSaveError(null);
+            setStep({ kind: 'SUPPLIER_PICK' });
+          }}
+          className="h-12 px-4 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 text-lg font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Truck className="h-6 w-6" /> Llegó el proveedor
+        </button>
         {/* Discreto a propósito: es para el administrador, no para quien vende */}
         <button
           type="button"
@@ -281,6 +374,7 @@ export default function SimpleModePage() {
         >
           <Lock className="h-4.5 w-4.5" />
         </button>
+        </div>
       </header>
 
       {isRegisterClosed ? (

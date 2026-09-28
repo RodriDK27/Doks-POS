@@ -6,7 +6,8 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { mutate } from 'swr';
 import { parseAxiosError } from '@/lib/errorMapper';
-import { getProductImageSrc, removeProductImage, uploadProductImage } from '@/lib/productImages';
+import api from '@/lib/api';
+import { getProductImageSrc, uploadImage } from '@/lib/productImages';
 
 interface PhotoProduct {
   id: string;
@@ -18,13 +19,34 @@ interface ProductPhotoPickerProps {
   /** Producto ya guardado; si es null o no tiene id, se pide guardarlo primero */
   product: PhotoProduct | null;
   onChange?: (imageUrl: string | null) => void;
+  /**
+   * Para reutilizarlo con otras imágenes (ej. el logo de un proveedor): ruta donde se sube (POST) y
+   * se quita (DELETE), campo de la respuesta que trae la URL, llave de SWR a refrescar y textos.
+   */
+  imagePath?: (id: string) => string;
+  responseField?: 'imageUrl' | 'logoUrl';
+  revalidateKey?: string;
+  label?: string;
+  missingHint?: string;
+  chooseLabel?: string;
+  changeLabel?: string;
 }
 
 /**
  * Foto del producto: se sube en cuanto se elige, sin esperar a "Guardar",
  * y se refresca el catálogo para que el POS la muestre de inmediato.
  */
-export function ProductPhotoPicker({ product, onChange }: ProductPhotoPickerProps) {
+export function ProductPhotoPicker({
+  product,
+  onChange,
+  imagePath = (id) => `/products/${id}/image`,
+  responseField = 'imageUrl',
+  revalidateKey = '/products',
+  label = 'Foto del Producto',
+  missingHint = 'Guarda el producto primero para agregarle foto.',
+  chooseLabel = 'Tomar foto',
+  changeLabel = 'Cambiar foto',
+}: ProductPhotoPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isBusy, setIsBusy] = useState(false);
   // Sobrescribe la foto del producto tras subir/quitar, hasta que cambie el producto seleccionado
@@ -37,7 +59,7 @@ export function ProductPhotoPicker({ product, onChange }: ProductPhotoPickerProp
   const applyChange = (newUrl: string | null) => {
     setOverride({ productId, imageUrl: newUrl });
     onChange?.(newUrl);
-    mutate('/products');
+    mutate(revalidateKey);
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,9 +69,9 @@ export function ProductPhotoPicker({ product, onChange }: ProductPhotoPickerProp
 
     setIsBusy(true);
     try {
-      const updated = await uploadProductImage<PhotoProduct>(productId, file);
-      applyChange(updated.imageUrl ?? null);
-      toast.success(`Foto de "${product?.name}" guardada.`);
+      const updated = await uploadImage<Record<string, string | null | undefined>>(imagePath(productId), file);
+      applyChange(updated[responseField] ?? null);
+      toast.success(`Imagen de "${product?.name}" guardada.`);
     } catch (err) {
       // Errores de compresión (formato no soportado, ej. HEIC en navegadores viejos) no vienen de axios
       toast.error(
@@ -66,9 +88,9 @@ export function ProductPhotoPicker({ product, onChange }: ProductPhotoPickerProp
     if (!productId) return;
     setIsBusy(true);
     try {
-      await removeProductImage(productId);
+      await api.delete(imagePath(productId));
       applyChange(null);
-      toast.success('Foto eliminada.');
+      toast.success('Imagen eliminada.');
     } catch (err) {
       toast.error(parseAxiosError(err, 'No se pudo quitar la foto.'));
     } finally {
@@ -80,7 +102,7 @@ export function ProductPhotoPicker({ product, onChange }: ProductPhotoPickerProp
     return (
       <div className="flex items-center gap-2.5 p-2.5 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500">
         <ImageIcon className="h-5 w-5 shrink-0" />
-        <span className="text-[11px] font-bold">Guarda el producto primero para agregarle foto.</span>
+        <span className="text-[11px] font-bold">{missingHint}</span>
       </div>
     );
   }
@@ -103,7 +125,7 @@ export function ProductPhotoPicker({ product, onChange }: ProductPhotoPickerProp
 
       <div className="flex-1 min-w-0 space-y-1.5">
         <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-          Foto del Producto
+          {label}
         </span>
         <div className="flex items-center gap-1.5">
           <button
@@ -113,7 +135,7 @@ export function ProductPhotoPicker({ product, onChange }: ProductPhotoPickerProp
             className="h-9 px-3 rounded-xl text-xs font-black flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             <Camera className="h-3.5 w-3.5" />
-            <span>{src ? 'Cambiar foto' : 'Tomar foto'}</span>
+            <span>{src ? changeLabel : chooseLabel}</span>
           </button>
           {src && (
             <button

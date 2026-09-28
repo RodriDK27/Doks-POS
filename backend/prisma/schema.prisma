@@ -180,6 +180,7 @@ model Supplier {
   deliveryDays    String?    // Días de entrega separados por comas (ej: "Miércoles,Viernes")
   visitFrequency  String     @default("WEEKLY") // WEEKLY, BIWEEKLY_A, BIWEEKLY_B
   expectedPayment Float      @default(0) // Monto estimado a pagar en cada visita
+  logoUrl         String?    // Logo del proveedor (ruta pública, ej. /api/images/x.webp); se elige en el modo abuela
   isActive        Boolean    @default(true)
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
@@ -216,11 +217,14 @@ model Purchase {
   payFromRegister Boolean       @default(false) // Deprecado / compatibilidad: Si se pagó con dinero de caja chica
   paymentSource  String         @default("CAJA_CHICA") // "CAJA_CHICA" | "CAJA_GRANDE" | "CREDITO"
   cashRegisterId String?        // Caja de la que salió el dinero (si aplica)
+  receiptImageUrl String?       // Foto de la nota del proveedor (modo abuela)
+  needsDetail    Boolean        @default(false) // Se pagó sin capturar productos: el administrador los captura después
   createdAt      DateTime       @default(now())
   items          PurchaseItem[]
   vaultTransactions MainVaultTransaction[]
 
   @@index([supplierId])
+  @@index([needsDetail])
 }
 
 /// Detalle del producto comprado en una orden de adquisición

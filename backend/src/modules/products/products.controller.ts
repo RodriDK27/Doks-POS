@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Body, Patch, Put, Param, Delete, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductsService } from './products.service';
-import { ProductImagesService, MAX_IMAGE_BYTES, UploadedImageFile } from './product-images.service';
+import { ProductImagesService } from './product-images.service';
+import { MAX_IMAGE_BYTES, UploadedImageFile } from '../../common/images/image-storage';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';

@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Calendar, Truck } from 'lucide-react';
+import { ProductPhotoPicker } from '@/components/ProductPhotoPicker';
+import { Supplier } from '../types';
 
 interface SupplierFormDialogProps {
   open: boolean;
@@ -28,6 +30,8 @@ interface SupplierFormDialogProps {
   }>>;
   onSubmit: (e: React.FormEvent) => void;
   editingSupplierId?: string | null;
+  /** Proveedor en edición (para mostrar y cambiar su logo) */
+  editingSupplier?: Supplier | null;
 }
 
 const DAYS_OF_WEEK = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -48,6 +52,7 @@ export function SupplierFormDialog({
   setSupplierForm,
   onSubmit,
   editingSupplierId,
+  editingSupplier,
 }: SupplierFormDialogProps) {
 
   const toggleDay = (field: 'orderDays' | 'deliveryDays', day: string) => {
@@ -76,6 +81,18 @@ export function SupplierFormDialog({
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4 pt-3 text-xs">
+          {/* El logo es lo que ve el modo abuela al registrar un pago: se sube en cuanto se elige */}
+          <ProductPhotoPicker
+            product={editingSupplier ? { id: editingSupplier.id, name: editingSupplier.name, imageUrl: editingSupplier.logoUrl } : null}
+            imagePath={(id) => `/suppliers/${id}/logo`}
+            responseField="logoUrl"
+            revalidateKey="/suppliers"
+            label="Logo del proveedor"
+            missingHint="Guarda el proveedor primero para agregarle su logo."
+            chooseLabel="Elegir logo"
+            changeLabel="Cambiar logo"
+          />
+
           <div className="space-y-1.5">
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
               Nombre de la Empresa / Marca *

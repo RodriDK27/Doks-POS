@@ -2,13 +2,12 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ProductImagesService } from './product-images.service';
+import { deleteImageFile } from '../../common/images/image-storage';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly productImages: ProductImagesService,
   ) {}
 
   // Helper para validar que un código de barras no esté asignado a otro producto
@@ -305,7 +304,7 @@ export class ProductsService {
     const deleted = await this.prisma.product.delete({
       where: { id },
     });
-    await this.productImages.deleteFile(product.imageUrl);
+    await deleteImageFile(product.imageUrl);
     return deleted;
   }
 

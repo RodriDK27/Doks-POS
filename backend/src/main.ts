@@ -4,7 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { FileLoggerService } from './common/logger/file-logger.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { getImagesDir, IMAGES_PUBLIC_PREFIX } from './modules/products/product-images.service';
+import { getImagesDir, IMAGES_PUBLIC_PREFIX } from './common/images/image-storage';
 import * as fs from 'fs';
 import * as path from 'path';
 

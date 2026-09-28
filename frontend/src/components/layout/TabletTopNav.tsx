@@ -110,7 +110,9 @@ export function TabletTopNav({
 
   // Ventas del modo abuela cobradas sin saber el producto exacto (solo el administrador las aclara)
   const { data: pendingReview } = useSWR<{ count: number }>(role === 'ADMIN' ? '/sales/pending-review/count' : null);
-  const pendingReviewCount = pendingReview?.count ?? 0;
+  // Y pagos a proveedores hechos en el modo abuela sin capturar productos
+  const { data: pendingPurchases } = useSWR<{ count: number }>(role === 'ADMIN' ? '/purchases/pending-detail/count' : null);
+  const pendingReviewCount = (pendingReview?.count ?? 0) + (pendingPurchases?.count ?? 0);
 
   // Rutas secundarias / administrativas (en el Drawer deslizable)
   const drawerSections: Array<{ group: string; items: DrawerItem[] }> = [
@@ -137,7 +139,7 @@ export function TabletTopNav({
           name: 'Por aclarar',
           href: '/review',
           icon: HelpCircle,
-          desc: 'Ventas del modo abuela sin producto exacto',
+          desc: 'Ventas y pagos del modo abuela por completar',
           adminOnly: true,
           badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
         },
