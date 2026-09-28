@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, Upload, Download, AlertTriangle, Check, Zap, Package, X } from 'lucide-react';
+import Link from 'next/link';
+import { Search, Plus, Upload, Download, AlertTriangle, Check, Zap, Package, X, Table2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -266,6 +267,17 @@ export function CatalogTab({
                 {quickAddOpen ? <X className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
                 <span className="hidden sm:inline">{quickAddOpen ? 'Cerrar' : 'Agregar'}</span>
               </Button>
+            )}
+            {canManage && (
+              // Editor tipo Excel para crear y editar muchos artículos a la vez
+              <Link
+                href="/inventory/advanced"
+                title="Editor avanzado (tipo Excel)"
+                className="h-12 w-12 sm:w-auto sm:px-4 shrink-0 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              >
+                <Table2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Avanzado</span>
+              </Link>
             )}
             <ActionMenu
               items={[

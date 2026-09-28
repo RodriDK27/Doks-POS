@@ -5,6 +5,8 @@ import { ProductImagesService } from './product-images.service';
 import { MAX_IMAGE_BYTES, UploadedImageFile } from '../../common/images/image-storage';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { BulkProductsDto } from './dto/bulk-products.dto';
+import { ProductsBulkService } from './products-bulk.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -15,6 +17,7 @@ export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly productImagesService: ProductImagesService,
+    private readonly productsBulkService: ProductsBulkService,
   ) {}
 
   @Post()
@@ -24,6 +27,13 @@ export class ProductsController {
   }
 
   /** Importación masiva desde CSV — recibe un array de filas de producto */
+  /** Editor avanzado: crea y actualiza hasta 250 productos por petición, en lotes */
+  @Post('bulk')
+  @Roles('ADMIN', 'GERENTE')
+  bulkSave(@Body() body: BulkProductsDto) {
+    return this.productsBulkService.bulkSave(body.rows);
+  }
+
   @Post('import')
   @Roles('ADMIN', 'GERENTE')
   importProducts(@Body() body: { rows: CreateProductDto[] }) {
