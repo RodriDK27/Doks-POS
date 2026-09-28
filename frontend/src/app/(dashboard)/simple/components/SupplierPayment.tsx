@@ -94,7 +94,7 @@ export function SupplierPickStep({ suppliers, onPick, onBack }: SupplierPickStep
           {today.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-lg font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Vienen hoy</h2>
-              <div className="grid grid-cols-2 portrait:md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(14.5rem,1fr))] portrait:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                 {today.map((s) => <SupplierCard key={s.id} supplier={s} onPick={() => onPick(s)} />)}
               </div>
             </section>
@@ -104,7 +104,7 @@ export function SupplierPickStep({ suppliers, onPick, onBack }: SupplierPickStep
               {today.length > 0 && (
                 <h2 className="text-lg font-black uppercase tracking-wider text-slate-400">Todos los demás</h2>
               )}
-              <div className="grid grid-cols-2 portrait:md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(14.5rem,1fr))] portrait:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                 {others.map((s) => <SupplierCard key={s.id} supplier={s} onPick={() => onPick(s)} />)}
               </div>
             </section>

@@ -116,7 +116,7 @@ interface FamilyGridProps {
 /** Pantalla de inicio: una tarjeta grande con foto por familia, siempre en el mismo orden */
 export function FamilyGrid({ families, onSelectFamily, onOtherProduct }: FamilyGridProps) {
   return (
-    <div className="grid grid-cols-2 portrait:md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(14.5rem,1fr))] portrait:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
       {families.map((family) => {
         const first = family.products[0];
         return (
@@ -152,7 +152,7 @@ export function VariantPicker({ family, onPick, onUnsure, onBack }: VariantPicke
   const canBeUnsure = familyPiecePrices(family).length > 0;
   return (
     <SimpleOverlay title={`¿Cuál ${family.name}?`} onBack={onBack}>
-      <div className="grid grid-cols-2 portrait:md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(14.5rem,1fr))] portrait:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
         {family.products.map((product) => (
           <BigProductCard
             key={product.id}

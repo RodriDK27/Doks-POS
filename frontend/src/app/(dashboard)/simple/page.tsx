@@ -73,6 +73,19 @@ export default function SimpleModePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const supplierPayment = useSupplierPayment(active && sale.isOnline);
 
+  // Todo el modo abuela está en rem: en tabletas grandes (ej. 12" que el navegador reporta de ~1700 px)
+  // la letra base crece con el lado más largo de la pantalla (igual en horizontal y vertical),
+  // y con ella textos, botones y tarjetas.
+  // Mínimo 18 px (lo mismo que ya usa el sistema en tabletas); al salir se restaura.
+  useEffect(() => {
+    const html = document.documentElement;
+    const previous = html.style.fontSize;
+    html.style.fontSize = 'clamp(18px, 1.3vmax, 26px)';
+    return () => {
+      html.style.fontSize = previous;
+    };
+  }, []);
+
   // Si alguien llega aquí sin haber activado el modo, regresa al punto de venta normal
   useEffect(() => {
     if (!active) router.replace('/pos');
