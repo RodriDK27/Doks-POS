@@ -15,6 +15,7 @@ import {
   rowStatus,
   useAdvancedEditor,
 } from './useAdvancedEditor';
+import { CategoryCell } from './CategoryCell';
 
 /** Alto fijo de cada fila: permite dibujar solo las filas visibles (miles de productos sin trabarse) */
 const ROW_HEIGHT = 44;
@@ -95,9 +96,10 @@ interface RowViewProps {
   onRemove: (key: string) => void;
   onKeyNav: (e: React.KeyboardEvent<HTMLElement>, visibleIndex: number, column: EditableColumn) => void;
   onPaste: (e: React.ClipboardEvent<HTMLInputElement>, key: string, column: EditableColumn) => void;
+  categories: string[];
 }
 
-const RowView = memo(function RowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onKeyNav, onPaste }: RowViewProps) {
+const RowView = memo(function RowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onKeyNav, onPaste, categories }: RowViewProps) {
   const hasErrors = !!errors || !!row.serverError;
   const buy = Number(row.purchasePrice) || 0;
   const sell = Number(row.sellPrice) || 0;
@@ -107,12 +109,11 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
   const cellClass = (column: EditableColumn) =>
     cn('h-full border-r border-slate-100 dark:border-slate-800', errors?.[column] && 'bg-rose-100/70 dark:bg-rose-950/40');
 
-  const textCell = (column: Exclude<EditableColumn, 'unitType'>, opts: { numeric?: boolean; list?: string } = {}) => (
+  const textCell = (column: Exclude<EditableColumn, 'unitType' | 'category'>, opts: { numeric?: boolean } = {}) => (
     <div className={cellClass(column)} title={errors?.[column]}>
       <input
         value={row[column]}
         inputMode={opts.numeric ? 'decimal' : undefined}
-        list={opts.list}
         data-cell={`${visibleIndex}:${column}`}
         onChange={(e) => onChange(row.key, column, e.target.value)}
         onKeyDown={(e) => onKeyNav(e, visibleIndex, column)}
@@ -175,7 +176,17 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
         <span className="text-[10px] font-bold opacity-80">{sell > 0 ? `${margin.toFixed(0)}%` : '—'}</span>
       </div>
       {textCell('stock', { numeric: true })}
-      {textCell('category', { list: 'advanced-editor-categories' })}
+      <div className={cellClass('category')} title={errors?.category}>
+        <CategoryCell
+          value={row.category}
+          categories={categories}
+          cellId={`${visibleIndex}:category`}
+          inputClassName={cellInput}
+          onChange={(value) => onChange(row.key, 'category', value)}
+          onKeyNav={(e) => onKeyNav(e, visibleIndex, 'category')}
+          onPaste={(e) => onPaste(e, row.key, 'category')}
+        />
+      </div>
       <div className="h-full flex items-center justify-center">
         {!row.id && (
           <button
@@ -498,6 +509,7 @@ export default function AdvancedInventoryEditorPage() {
                           onRemove={editor.removeRow}
                           onKeyNav={onKeyNav}
                           onPaste={onPaste}
+                          categories={editor.categories}
                         />
                       </div>
                     );
@@ -509,11 +521,6 @@ export default function AdvancedInventoryEditorPage() {
         )}
       </div>
 
-      <datalist id="advanced-editor-categories">
-        {editor.categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
 
       <p className="text-[11px] font-semibold text-slate-400">
         {visibleRows.length} de {rows.length} productos · Enter o ↑↓ para moverte entre filas · Puedes pegar varias celdas
