@@ -231,19 +231,19 @@ export default function SimpleModePage() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-none">
-      <header className="flex items-center justify-between gap-4 px-5 py-3 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 shadow-xs shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Mismo logo que la barra superior del sistema, en grande */}
-          <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
-            <Store className="h-7 w-7" />
+      {/* Misma barra superior que el resto del sistema (TabletTopNav) */}
+      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 px-3 sm:px-5 shrink-0 shadow-xs">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+            <Store className="h-5.5 w-5.5" />
           </div>
-          <div className="min-w-0">
-            <span className="block text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Dok&apos;s POS</span>
-            <h1 className="text-3xl font-black leading-none truncate">Ventas</h1>
-          </div>
+          <span className="font-black text-lg tracking-tight text-slate-800 dark:text-slate-100">Dok&apos;s POS</span>
+          <span className="text-xs font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30 px-2.5 py-1 rounded-full">
+            Modo Abuela
+          </span>
           {!sale.isOnline && (
-            <span className="flex items-center gap-2 rounded-xl bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 px-3 py-1.5 text-lg font-bold">
-              <WifiOff className="h-5 w-5" /> Sin internet
+            <span className="flex items-center gap-1.5 rounded-xl border border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-3 py-1.5 text-sm font-bold">
+              <WifiOff className="h-4 w-4" /> Sin internet
             </span>
           )}
         </div>
@@ -252,21 +252,26 @@ export default function SimpleModePage() {
           type="button"
           onClick={() => setIsExitOpen(true)}
           aria-label="Salir de la pantalla sencilla"
-          className="h-12 w-12 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-500 active:bg-slate-100 dark:active:bg-slate-800 cursor-pointer"
+          className="h-10 w-10 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
         >
-          <Lock className="h-6 w-6" />
+          <Lock className="h-4.5 w-4.5" />
         </button>
       </header>
 
       {isRegisterClosed ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8">
-          <Lock className="h-24 w-24 text-slate-400 dark:text-slate-500" />
-          <p className="text-5xl font-black">La caja está cerrada</p>
-          <p className="text-3xl font-bold text-slate-500 dark:text-slate-400">Pida que abran la caja para poder vender.</p>
+        <div className="flex-1 p-4 flex">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm">
+            <div className="h-24 w-24 rounded-full bg-slate-50 dark:bg-slate-800/40 flex items-center justify-center">
+              <Lock className="h-12 w-12 text-slate-400" />
+            </div>
+            <p className="text-4xl font-black text-slate-800 dark:text-slate-100">La caja está cerrada</p>
+            <p className="text-2xl font-bold text-slate-500">Pida que abran la caja para poder vender.</p>
+          </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex">
-          <main className="flex-1 min-w-0 overflow-y-auto p-5">
+        // Mismo acomodo que el punto de venta: catálogo y ticket en paneles separados
+        <div className="flex-1 min-h-0 flex gap-4 p-4">
+          <main className="flex-1 min-w-0 overflow-y-auto p-4 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm">
             {sale.isLoadingProducts ? (
               <div className="h-full flex items-center justify-center">
                 <Loader2 className="h-16 w-16 animate-spin text-slate-400 dark:text-slate-500" />
@@ -274,7 +279,7 @@ export default function SimpleModePage() {
             ) : (
               <>
                 {families.length === 0 && (
-                  <p className="mb-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-4 text-xl font-bold text-slate-500 dark:text-slate-400">
+                  <p className="mb-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-4 text-lg font-bold text-slate-500">
                     Todavía no hay productos con foto. Se pueden cobrar con el lector o con &quot;Otro producto&quot;.
                   </p>
                 )}

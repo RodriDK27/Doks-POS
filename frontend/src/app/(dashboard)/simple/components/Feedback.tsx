@@ -29,7 +29,7 @@ export function ScanFlash({ flash, onClose, onChargeUnknown }: ScanFlashProps) {
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 animate-in fade-in duration-100"
         onClick={onClose}
       >
-        <div className="w-[min(90vw,520px)] rounded-[2.5rem] bg-white dark:bg-slate-900 border-4 border-emerald-500 shadow-2xl p-6 flex flex-col items-center gap-3 text-center">
+        <div className="w-[min(90vw,520px)] rounded-3xl bg-white dark:bg-slate-900 border-2 border-emerald-500 shadow-2xl p-6 flex flex-col items-center gap-3 text-center">
           <div className="h-56 w-56 rounded-3xl bg-white flex items-center justify-center overflow-hidden">
             {flash.imageSrc ? (
               // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
@@ -50,7 +50,7 @@ export function ScanFlash({ flash, onClose, onChargeUnknown }: ScanFlashProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-in fade-in duration-100">
-      <div className="w-[min(92vw,600px)] rounded-[2.5rem] bg-white dark:bg-slate-900 border-4 border-amber-400 shadow-2xl p-8 flex flex-col items-center gap-5 text-center">
+      <div className="w-[min(92vw,600px)] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-2xl p-8 flex flex-col items-center gap-5 text-center">
         <AlertTriangle className="h-20 w-20 text-amber-500" />
         <p className="text-4xl font-black text-slate-900 dark:text-slate-100 leading-tight">Este producto no está registrado</p>
         <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">Puede cobrarlo poniendo el precio a mano</p>
@@ -58,14 +58,14 @@ export function ScanFlash({ flash, onClose, onChargeUnknown }: ScanFlashProps) {
           <button
             type="button"
             onClick={onClose}
-            className="h-24 rounded-3xl bg-slate-200 dark:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700 text-slate-800 dark:text-slate-200 text-3xl font-black cursor-pointer"
+            className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 text-2xl font-extrabold cursor-pointer active:scale-95 transition-all"
           >
             No cobrar
           </button>
           <button
             type="button"
             onClick={() => onChargeUnknown(flash.code)}
-            className="h-24 rounded-3xl bg-emerald-600 active:bg-emerald-700 text-white text-3xl font-black cursor-pointer"
+            className="h-20 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-2xl font-black shadow-md cursor-pointer active:scale-95 transition-all"
           >
             Poner precio
           </button>
@@ -83,12 +83,12 @@ interface UndoBarProps {
 /** "Deshacer" en lugar de "¿Está seguro?": quitar algo es inmediato y se puede revertir */
 export function UndoBar({ message, onUndo }: UndoBarProps) {
   return (
-    <div className="fixed bottom-6 left-6 z-30 flex items-center gap-4 rounded-3xl bg-slate-900 dark:bg-slate-800 text-white shadow-2xl pl-6 pr-3 py-3 animate-in slide-in-from-bottom-4 duration-200 max-w-[calc(100vw-460px)]">
+    <div className="fixed bottom-6 left-6 z-30 flex items-center gap-4 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-2xl pl-6 pr-3 py-3 animate-in slide-in-from-bottom-4 duration-200 max-w-[calc(100vw-460px)]">
       <span className="text-2xl font-bold truncate">{message}</span>
       <button
         type="button"
         onClick={onUndo}
-        className="h-16 px-6 rounded-2xl bg-amber-400 active:bg-amber-500 text-slate-900 dark:text-slate-100 text-2xl font-black flex items-center gap-2 cursor-pointer shrink-0"
+        className="h-16 px-6 rounded-2xl bg-amber-400 hover:bg-amber-500 text-slate-900 text-2xl font-black flex items-center gap-2 cursor-pointer shrink-0"
       >
         <Undo2 className="h-7 w-7 stroke-[3]" /> Deshacer
       </button>
