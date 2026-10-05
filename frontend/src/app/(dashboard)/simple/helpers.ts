@@ -72,17 +72,35 @@ export function familyCategories(family: SimpleFamily): string[] {
   return [...new Set(family.products.map((p) => p.category?.trim() || 'General'))];
 }
 
-/** Categorías con cuántos cuadros tiene cada una, en orden alfabético estable */
-export function categoryCounts(families: SimpleFamily[]): Array<{ name: string; count: number }> {
-  const counts = new Map<string, number>();
+/** Cuadro de categoría de la pantalla de inicio */
+export interface SimpleCategory {
+  name: string;
+  count: number;
+  imageSrc: string | null;
+}
+
+/** Llave para empatar el nombre de categoría del producto con la categoría oficial */
+export function categoryKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+/**
+ * Categorías con cuántos cuadros tiene cada una, en orden alfabético estable.
+ * La imagen es la que el administrador le puso a la categoría; si no tiene, la foto de su primer producto.
+ */
+export function buildCategories(families: SimpleFamily[], categoryImages: Map<string, string>): SimpleCategory[] {
+  const categories = new Map<string, SimpleCategory>();
   for (const family of families) {
-    for (const category of familyCategories(family)) {
-      counts.set(category, (counts.get(category) ?? 0) + 1);
+    for (const name of familyCategories(family)) {
+      const category = categories.get(name);
+      if (category) {
+        category.count += 1;
+      } else {
+        categories.set(name, { name, count: 1, imageSrc: categoryImages.get(categoryKey(name)) ?? family.imageSrc });
+      }
     }
   }
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => collator.compare(a.name, b.name));
+  return [...categories.values()].sort((a, b) => collator.compare(a.name, b.name));
 }
 
 /** Minúsculas y sin acentos, para comparar lo que se dice por voz con los nombres del catálogo */

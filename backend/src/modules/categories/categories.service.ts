@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, OnModuleInit, Logge
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { UploadedImageFile, deleteImageFile, saveImageFile } from '../../common/images/image-storage';
 
 @Injectable()
 export class CategoriesService implements OnModuleInit {
@@ -124,10 +125,28 @@ export class CategoriesService implements OnModuleInit {
    * Eliminar una categoría por ID
    */
   async remove(id: string) {
-    await this.findOne(id);
+    const category = await this.findOne(id);
 
-    return this.prisma.category.delete({
+    const deleted = await this.prisma.category.delete({
       where: { id },
     });
+    await deleteImageFile(category.imageUrl);
+    return deleted;
+  }
+
+  // ─── IMAGEN (MODO ABUELA) ───────────────────────────────────────────────────
+  async setImage(id: string, file?: UploadedImageFile) {
+    const category = await this.findOne(id);
+    const imageUrl = await saveImageFile(`category-${id}`, file);
+    const updated = await this.prisma.category.update({ where: { id }, data: { imageUrl } });
+    await deleteImageFile(category.imageUrl);
+    return updated;
+  }
+
+  async removeImage(id: string) {
+    const category = await this.findOne(id);
+    const updated = await this.prisma.category.update({ where: { id }, data: { imageUrl: null } });
+    await deleteImageFile(category.imageUrl);
+    return updated;
   }
 }

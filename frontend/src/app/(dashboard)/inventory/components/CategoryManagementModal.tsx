@@ -1,15 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
 import useSWR, { mutate } from 'swr';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit2, Trash2, Layers, Search, Check, X, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Layers, Search, Check, X, AlertCircle, ImageOff, Camera, Loader2 } from 'lucide-react';
 import { Category } from '../types';
 import { parseAxiosError } from '@/lib/errorMapper';
+import { getProductImageSrc, uploadImage } from '@/lib/productImages';
+
+// Errores de compresión (formato no soportado, ej. HEIC en navegadores viejos) no vienen de axios
+function imageErrorMessage(err: unknown): string {
+  return axios.isAxiosError(err)
+    ? parseAxiosError(err, 'No se pudo subir la imagen.')
+    : 'No se pudo leer la imagen. Intenta con otra foto.';
+}
 
 interface CategoryManagementModalProps {
   open: boolean;
@@ -28,6 +37,18 @@ export function CategoryManagementModal({
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryDesc, setNewCategoryDesc] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Imagen de la nueva categoría (lo que ve el modo abuela): se sube justo después de crearla
+  const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
+  const newImageInputRef = useRef<HTMLInputElement>(null);
+  const newImagePreview = useMemo(() => (newCategoryImage ? URL.createObjectURL(newCategoryImage) : null), [newCategoryImage]);
+  useEffect(() => () => {
+    if (newImagePreview) URL.revokeObjectURL(newImagePreview);
+  }, [newImagePreview]);
+
+  // Cambiar/quitar la imagen de una categoría existente directo desde su renglón
+  const rowImageInputRef = useRef<HTMLInputElement>(null);
+  const [imageTargetId, setImageTargetId] = useState<string | null>(null);
+  const [busyImageId, setBusyImageId] = useState<string | null>(null);
 
   // Edición en línea
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,8 +79,16 @@ export function CategoryManagementModal({
 
       toast.success(`Categoría "${response.data.name}" creada correctamente`);
       const createdName = response.data.name;
+      if (newCategoryImage) {
+        try {
+          await uploadImage(`/categories/${response.data.id}/image`, newCategoryImage);
+        } catch (err) {
+          toast.error(`La categoría se creó, pero la imagen no: ${imageErrorMessage(err)}`);
+        }
+      }
       setNewCategoryName('');
       setNewCategoryDesc('');
+      setNewCategoryImage(null);
       refreshCategories();
       if (onCategoryCreated) {
         onCategoryCreated(createdName);
@@ -99,6 +128,41 @@ export function CategoryManagementModal({
       refreshCategories();
     } catch (error) {
       toast.error(parseAxiosError(error, 'Error al actualizar categoría'));
+    }
+  };
+
+  const pickRowImage = (id: string) => {
+    setImageTargetId(id);
+    rowImageInputRef.current?.click();
+  };
+
+  const handleRowImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // Permite volver a elegir el mismo archivo
+    const id = imageTargetId;
+    if (!file || !id) return;
+    setBusyImageId(id);
+    try {
+      await uploadImage(`/categories/${id}/image`, file);
+      toast.success('Imagen de la categoría guardada');
+      refreshCategories();
+    } catch (err) {
+      toast.error(imageErrorMessage(err));
+    } finally {
+      setBusyImageId(null);
+    }
+  };
+
+  const handleRemoveRowImage = async (id: string) => {
+    setBusyImageId(id);
+    try {
+      await api.delete(`/categories/${id}/image`);
+      toast.success('Imagen quitada');
+      refreshCategories();
+    } catch (err) {
+      toast.error(parseAxiosError(err, 'No se pudo quitar la imagen.'));
+    } finally {
+      setBusyImageId(null);
     }
   };
 
@@ -144,6 +208,45 @@ export function CategoryManagementModal({
             <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
               + Agregar Nueva Categoría
             </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => newImageInputRef.current?.click()}
+                title="Imagen para el modo abuela"
+                className="h-16 w-16 shrink-0 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 flex items-center justify-center cursor-pointer"
+              >
+                {newImagePreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:)
+                  <img src={newImagePreview} alt="Imagen de la categoría" className="h-full w-full object-contain" />
+                ) : (
+                  <Camera className="h-6 w-6 text-slate-400" />
+                )}
+              </button>
+              <div className="flex-1 min-w-0 space-y-1">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block">Imagen (opcional)</span>
+                <span className="text-[10px] text-slate-400 block">Es el cuadro que ve el modo abuela. Si no tiene, usa la foto de un producto.</span>
+                {newCategoryImage && (
+                  <button
+                    type="button"
+                    onClick={() => setNewCategoryImage(null)}
+                    className="text-[11px] font-bold text-rose-500 hover:text-rose-600 cursor-pointer"
+                  >
+                    Quitar imagen
+                  </button>
+                )}
+              </div>
+              <input
+                ref={newImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) setNewCategoryImage(file);
+                }}
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <Input
@@ -173,6 +276,9 @@ export function CategoryManagementModal({
               {isSubmitting ? 'Guardando...' : 'Guardar Categoría'}
             </Button>
           </form>
+
+          {/* Un solo selector de archivo para cambiar la imagen de cualquier renglón */}
+          <input ref={rowImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleRowImageFile} />
 
           {/* BÚSQUEDA Y LISTA DE CATEGORÍAS */}
           <div className="space-y-3">
@@ -251,6 +357,25 @@ export function CategoryManagementModal({
                       key={cat.id}
                       className="p-3 bg-white dark:bg-slate-800/60 border border-slate-150 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                     >
+                      <button
+                        type="button"
+                        disabled={busyImageId === cat.id}
+                        onClick={() => pickRowImage(cat.id)}
+                        title={cat.imageUrl ? 'Cambiar imagen' : 'Agregar imagen'}
+                        className="relative h-12 w-12 shrink-0 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 flex items-center justify-center cursor-pointer disabled:cursor-wait"
+                      >
+                        {cat.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- la imagen viene del backend en otro dominio, ya optimizada
+                          <img src={getProductImageSrc(cat.imageUrl) ?? undefined} alt={cat.name} crossOrigin="anonymous" className="h-full w-full object-contain" />
+                        ) : (
+                          <Camera className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+                        )}
+                        {busyImageId === cat.id && (
+                          <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center">
+                            <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                          </div>
+                        )}
+                      </button>
                       <div className="min-w-0 flex-1">
                         <div className="font-extrabold text-slate-800 dark:text-slate-100 text-xs truncate">
                           {cat.name}
@@ -262,6 +387,19 @@ export function CategoryManagementModal({
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {cat.imageUrl && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Quitar imagen"
+                            disabled={busyImageId === cat.id}
+                            onClick={() => handleRemoveRowImage(cat.id)}
+                            className="h-7 w-7 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+                          >
+                            <ImageOff className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"

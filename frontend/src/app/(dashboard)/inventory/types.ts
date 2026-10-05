@@ -31,6 +31,8 @@ export interface Category {
   id: string;
   name: string;
   description?: string | null;
+  /** Imagen que ve el modo abuela en el cuadro de la categoría */
+  imageUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

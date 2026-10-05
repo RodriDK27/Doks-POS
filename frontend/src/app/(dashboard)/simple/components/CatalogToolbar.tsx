@@ -1,15 +1,18 @@
 'use client';
 
 import React from 'react';
-import { Mic, Search, Truck, X } from 'lucide-react';
+import { ArrowLeft, LayoutGrid, Mic, Search, Truck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ALL_CATEGORIES } from '../helpers';
+import { SimpleCategory } from '../helpers';
+import { CategoryImage } from './CatalogGrid';
 
 interface CatalogToolbarProps {
-  categories: Array<{ name: string; count: number }>;
-  totalCount: number;
-  activeCategory: string;
-  onCategoryChange: (category: string) => void;
+  /**
+   * Categoría abierta: null mientras se ven los cuadros de categorías,
+   * 'all' cuando tocó "Ver todo".
+   */
+  activeCategory: SimpleCategory | 'all' | null;
+  onShowCategories: () => void;
   searchQuery: string;
   onClearSearch: () => void;
   isListening: boolean;
@@ -20,14 +23,12 @@ interface CatalogToolbarProps {
 }
 
 /**
- * Barra del catálogo: buscar por voz (sin teclado de letras) y pestañas de categoría de un toque.
- * Mismo estilo que la barra de búsqueda y los chips de categoría del punto de venta, en grande.
+ * Barra del catálogo: buscar por voz (sin teclado de letras) y, dentro de una categoría,
+ * un botón grande para regresar a los cuadros de categorías.
  */
 export function CatalogToolbar({
-  categories,
-  totalCount,
   activeCategory,
-  onCategoryChange,
+  onShowCategories,
   searchQuery,
   onClearSearch,
   isListening,
@@ -38,12 +39,37 @@ export function CatalogToolbar({
   const isSearching = searchQuery.trim().length > 0;
 
   return (
-    <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0 space-y-3">
+    <div className="p-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 shrink-0">
       <div className="flex items-center gap-2">
         {isSearching ? (
           <div className="flex-1 min-w-0 h-14 flex items-center gap-3 px-4 rounded-xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-950/40">
             <Search className="h-6 w-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <span className="text-xl font-black text-indigo-700 dark:text-indigo-300 truncate">&quot;{searchQuery}&quot;</span>
+          </div>
+        ) : activeCategory ? (
+          // Dentro de una categoría: regresar a los cuadros y, junto, cuál está viendo
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onShowCategories}
+              className="h-14 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 text-lg font-extrabold flex items-center gap-2 cursor-pointer active:scale-95 transition-all shrink-0"
+            >
+              <ArrowLeft className="h-6 w-6 stroke-[2.5]" /> Categorías
+            </button>
+            <div className="min-w-0 h-14 flex items-center gap-2.5 pl-1.5 pr-4 rounded-xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-950/40">
+              <div className="h-11 w-11 rounded-lg overflow-hidden bg-white shrink-0">
+                {activeCategory === 'all' ? (
+                  <div className="h-full w-full bg-indigo-600 text-white flex items-center justify-center">
+                    <LayoutGrid className="h-6 w-6" />
+                  </div>
+                ) : (
+                  <CategoryImage category={activeCategory} className="h-full w-full p-0!" />
+                )}
+              </div>
+              <span className="text-xl font-black uppercase text-indigo-700 dark:text-indigo-300 truncate">
+                {activeCategory === 'all' ? 'Todo' : activeCategory.name}
+              </span>
+            </div>
           </div>
         ) : (
           // Sin texto de ayuda: los botones se explican solos y así caben en cualquier tamaño de tableta
@@ -86,38 +112,6 @@ export function CatalogToolbar({
           {isListening ? 'Escuchando…' : 'Buscar por voz'}
         </button>
       </div>
-
-      {/* Pestañas de categoría: se esconden mientras hay una búsqueda por voz, que busca en todo */}
-      {!isSearching && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {[{ name: ALL_CATEGORIES, count: totalCount }, ...categories].map((category) => {
-            const isActive = category.name === activeCategory;
-            return (
-              <button
-                key={category.name}
-                type="button"
-                onClick={() => onCategoryChange(category.name)}
-                className={cn(
-                  'h-12 px-4 rounded-xl text-base font-black uppercase tracking-wide whitespace-nowrap border shrink-0 flex items-center gap-2 cursor-pointer active:scale-95 transition-all',
-                  isActive
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
-                )}
-              >
-                {category.name === ALL_CATEGORIES ? 'Todos' : category.name}
-                <span
-                  className={cn(
-                    'text-sm px-2 py-0.5 rounded-full font-extrabold',
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                  )}
-                >
-                  {category.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

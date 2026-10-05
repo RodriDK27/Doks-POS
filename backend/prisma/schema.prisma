@@ -19,6 +19,7 @@ model Category {
   id          String   @id @default(uuid())
   name        String   @unique // Nombre de la categoría (ej. Bebidas, Abarrotes)
   description String?  // Descripción opcional
+  imageUrl    String?  // Imagen de la categoría (ruta pública, ej. /api/images/x.webp); la ve el modo abuela
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

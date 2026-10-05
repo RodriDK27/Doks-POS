@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { MAX_IMAGE_BYTES, UploadedImageFile } from '../../common/images/image-storage';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -31,6 +33,20 @@ export class CategoriesController {
   @Roles('ADMIN', 'GERENTE')
   update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
     return this.categoriesService.update(id, updateCategoryDto);
+  }
+
+  /** Subir o reemplazar la imagen (multipart, campo "image", WebP o JPEG ya comprimido por el frontend) */
+  @Post(':id/image')
+  @Roles('ADMIN', 'GERENTE')
+  @UseInterceptors(FileInterceptor('image', { limits: { fileSize: MAX_IMAGE_BYTES, files: 1 } }))
+  uploadImage(@Param('id') id: string, @UploadedFile() file?: UploadedImageFile) {
+    return this.categoriesService.setImage(id, file);
+  }
+
+  @Delete(':id/image')
+  @Roles('ADMIN', 'GERENTE')
+  removeImage(@Param('id') id: string) {
+    return this.categoriesService.removeImage(id);
   }
 
   @Delete(':id')

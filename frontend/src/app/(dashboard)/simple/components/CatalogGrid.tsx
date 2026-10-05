@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { HelpCircle, ImageIcon, PackagePlus, Plus, Scale } from 'lucide-react';
+import { HelpCircle, ImageIcon, LayoutGrid, PackagePlus, Plus, Scale } from 'lucide-react';
 import { getProductImageSrc } from '@/lib/productImages';
 import { Product } from '../../pos/types';
 import { getCategoryColor } from '../../pos/helpers';
-import { SimpleFamily, familyPiecePrices, formatMoney } from '../helpers';
+import { SimpleCategory, SimpleFamily, familyPiecePrices, formatMoney } from '../helpers';
 import { SimpleOverlay } from './SimpleOverlay';
 
 function familyPriceLabel(family: SimpleFamily): string {
@@ -133,6 +133,84 @@ export function FamilyGrid({ families, onSelectFamily, onOtherProduct }: FamilyG
       })}
 
       {/* Siempre al final: para lo que no tiene foto ni código de barras */}
+      <DashedOptionCard icon={PackagePlus} title="Otro producto" subtitle="Poner el precio a mano" tone="slate" onClick={onOtherProduct} />
+    </div>
+  );
+}
+
+/** Miniatura de una categoría: su imagen, o un cuadro del color de la categoría con un ícono */
+export function CategoryImage({ category, className = 'h-full w-full' }: { category: SimpleCategory; className?: string }) {
+  if (category.imageSrc) {
+    // eslint-disable-next-line @next/next/no-img-element -- la imagen viene del backend en otro dominio, ya optimizada
+    return <img src={category.imageSrc} alt={category.name} crossOrigin="anonymous" loading="lazy" className={`${className} object-contain p-2`} />;
+  }
+  const colors = getCategoryColor(category.name);
+  return (
+    <div className={`${className} ${colors.badge} flex items-center justify-center`}>
+      <LayoutGrid className="h-1/3 w-1/3" />
+    </div>
+  );
+}
+
+function CategoryCard({ category, onPick }: { category: SimpleCategory; onPick: () => void }) {
+  const colors = getCategoryColor(category.name);
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className={`group flex flex-col text-left rounded-2xl border overflow-hidden bg-white dark:bg-slate-900 ${colors.border} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97] transition-all cursor-pointer`}
+    >
+      <div className="aspect-[4/3] w-full bg-white border-b border-slate-100 dark:border-slate-800/60 overflow-hidden">
+        <CategoryImage category={category} />
+      </div>
+      <div className="px-3 py-3">
+        <p className="text-2xl font-black uppercase leading-tight line-clamp-2 text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+          {category.name}
+        </p>
+        <p className={`text-base font-bold mt-1 ${colors.accent}`}>
+          {category.count} {category.count === 1 ? 'producto' : 'productos'}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+interface CategoryGridProps {
+  categories: SimpleCategory[];
+  totalCount: number;
+  onPickCategory: (name: string) => void;
+  onAllProducts: () => void;
+  onOtherProduct: () => void;
+}
+
+/**
+ * Pantalla de inicio: un cuadro grande con imagen por categoría (igual que "¿Qué proveedor vino?"),
+ * en vez de una tira de pestañas de puro texto. Al tocar una se ven sus productos.
+ */
+export function CategoryGrid({ categories, totalCount, onPickCategory, onAllProducts, onOtherProduct }: CategoryGridProps) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(14.5rem,1fr))] portrait:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
+      {categories.map((category) => (
+        <CategoryCard key={category.name} category={category} onPick={() => onPickCategory(category.name)} />
+      ))}
+
+      {/* Al final, para no mover de lugar las categorías que ya se aprendió */}
+      {totalCount > 0 && (
+        <button
+          type="button"
+          onClick={onAllProducts}
+          className="group flex flex-col text-left rounded-2xl border border-indigo-200 dark:border-indigo-900/50 overflow-hidden bg-white dark:bg-slate-900 shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97] transition-all cursor-pointer"
+        >
+          <div className="aspect-[4/3] w-full bg-indigo-600 flex items-center justify-center text-white">
+            <LayoutGrid className="h-1/3 w-1/3" />
+          </div>
+          <div className="px-3 py-3">
+            <p className="text-2xl font-black uppercase leading-tight text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Ver todo</p>
+            <p className="text-base font-bold mt-1 text-indigo-600 dark:text-indigo-400">{totalCount} productos</p>
+          </div>
+        </button>
+      )}
+
       <DashedOptionCard icon={PackagePlus} title="Otro producto" subtitle="Poner el precio a mano" tone="slate" onClick={onOtherProduct} />
     </div>
   );

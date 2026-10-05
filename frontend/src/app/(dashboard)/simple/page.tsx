@@ -8,12 +8,14 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSimpleModeStore } from '@/store/useSimpleModeStore';
 import { getProductImageSrc } from '@/lib/productImages';
 import { Product } from '../pos/types';
+import { Category } from '../inventory/types';
 import { useVoiceSearch } from '../pos/hooks/useVoiceSearch';
 import {
   ALL_CATEGORIES,
   SimpleFamily,
+  buildCategories,
   buildFamilies,
-  categoryCounts,
+  categoryKey,
   filterFamilies,
   findProductByBarcode,
   formatMoney,
@@ -34,7 +36,7 @@ import {
 } from './components/SupplierPayment';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { BigKeypad } from './components/SimpleOverlay';
-import { FamilyGrid, UnsurePriceStep, VariantPicker } from './components/CatalogGrid';
+import { CategoryGrid, FamilyGrid, UnsurePriceStep, VariantPicker } from './components/CatalogGrid';
 import { SimpleTicket } from './components/SimpleTicket';
 import { ChangeStep, PaymentStep } from './components/Checkout';
 import { ScanFlash, ScanFlashState, UndoBar } from './components/Feedback';
@@ -98,12 +100,28 @@ export default function SimpleModePage() {
 
   const families = useMemo(() => buildFamilies(sale.products), [sale.products]);
 
-  // Con cientos de productos: pestañas de categoría y búsqueda por voz (sin teclado de letras)
-  const [category, setCategory] = useState(ALL_CATEGORIES);
+  // Con cientos de productos: cuadros de categoría con imagen y búsqueda por voz (sin teclado de letras).
+  // category null = se ven los cuadros de categorías; ALL_CATEGORIES = "Ver todo".
+  const [category, setCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { isListening, toggleVoiceSearch } = useVoiceSearch(setSearchQuery);
-  const categories = useMemo(() => categoryCounts(families), [families]);
-  const visibleFamilies = useMemo(() => filterFamilies(families, category, searchQuery), [families, category, searchQuery]);
+  // Imágenes que el administrador le puso a cada categoría (sin internet se usa la foto de un producto)
+  const { data: categoryRecords } = useSWR<Category[]>(role !== 'NONE' ? '/categories' : null);
+  const categoryImages = useMemo(() => {
+    const images = new Map<string, string>();
+    for (const record of categoryRecords ?? []) {
+      const src = getProductImageSrc(record.imageUrl);
+      if (src) images.set(categoryKey(record.name), src);
+    }
+    return images;
+  }, [categoryRecords]);
+  const categories = useMemo(() => buildCategories(families, categoryImages), [families, categoryImages]);
+  const visibleFamilies = useMemo(
+    () => filterFamilies(families, category ?? ALL_CATEGORIES, searchQuery),
+    [families, category, searchQuery]
+  );
+  const isSearching = searchQuery.trim().length > 0;
+  const activeCategory = category === ALL_CATEGORIES ? 'all' : (categories.find((c) => c.name === category) ?? null);
 
   const goHome = useCallback(() => setStep(HOME), []);
 
@@ -172,6 +190,8 @@ export default function SimpleModePage() {
     }
     playBeep('ok');
     setStep(HOME);
+    // Venta nueva, cliente nuevo: de vuelta a los cuadros de categorías
+    setCategory(null);
   };
 
   const handleConfirmSupplierPayment = async (draft: SupplierPaymentDraft) => {
@@ -380,10 +400,8 @@ export default function SimpleModePage() {
         <div className="flex-1 min-h-0 flex portrait:flex-col gap-4 p-4">
           <main className="flex-1 min-w-0 min-h-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
             <CatalogToolbar
-              categories={categories}
-              totalCount={families.length}
-              activeCategory={category}
-              onCategoryChange={setCategory}
+              activeCategory={activeCategory}
+              onShowCategories={() => setCategory(null)}
               searchQuery={searchQuery}
               onClearSearch={() => setSearchQuery('')}
               isListening={isListening}
@@ -407,16 +425,27 @@ export default function SimpleModePage() {
                       Todavía no hay productos con foto. Se pueden cobrar con el lector o con &quot;Otro producto&quot;.
                     </p>
                   )}
-                  {searchQuery.trim() && visibleFamilies.length === 0 && (
+                  {isSearching && visibleFamilies.length === 0 && (
                     <p className="mb-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 p-4 text-lg font-bold text-amber-700 dark:text-amber-400">
                       No encontré &quot;{searchQuery}&quot;. Intente otra vez, toque &quot;Ver todo&quot; o use &quot;Otro producto&quot;.
                     </p>
                   )}
-                  <FamilyGrid
-                    families={visibleFamilies}
-                    onSelectFamily={selectFamily}
-                    onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
-                  />
+                  {/* La búsqueda por voz busca en todo, sin importar la categoría */}
+                  {!isSearching && !activeCategory ? (
+                    <CategoryGrid
+                      categories={categories}
+                      totalCount={families.length}
+                      onPickCategory={setCategory}
+                      onAllProducts={() => setCategory(ALL_CATEGORIES)}
+                      onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
+                    />
+                  ) : (
+                    <FamilyGrid
+                      families={visibleFamilies}
+                      onSelectFamily={selectFamily}
+                      onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
+                    />
+                  )}
                 </>
               )}
             </div>
