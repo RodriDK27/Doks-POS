@@ -51,7 +51,7 @@ export function useRegister() {
   });
 
   // SWR queries
-  const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading } = useSWR<CashRegister | null>('/register/active');
+  const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading, error: activeRegisterError } = useSWR<CashRegister | null>('/register/active');
   const { data: swrLastClosed, mutate: mutateLastClosed } = useSWR<CashRegister | null>('/register/last-closed');
   const { data: swrHistory, mutate: mutateHistory, isLoading: historyLoading } = useSWR<CashRegister[]>(role === 'ADMIN' ? '/register' : null);
   const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>('/auth/cashiers');
@@ -256,6 +256,9 @@ export function useRegister() {
     cashiers,
     mutateCashiers,
     isPinModalOpen,
+    // Falló la consulta y no hay dato previo: no se sabe si la caja está abierta
+    activeRegisterFailed: !!activeRegisterError && swrActiveRegister === undefined,
+    retryActiveRegister: () => mutateActiveRegister(),
     setIsPinModalOpen,
     handleConfirmOpenBox,
     lastClosedRegister,

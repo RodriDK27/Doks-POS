@@ -25,6 +25,11 @@ interface AuthState {
    * Si no se está en modo administrador no hace nada y devuelve false.
    */
   exitAdminMode: () => boolean;
+  /**
+   * Cambia un token renovado por el nuevo, sin tocar roles. Solo si sigue siendo el mismo token
+   * (si mientras tanto alguien entró con su PIN, se respeta esa sesión).
+   */
+  replaceToken: (oldToken: string, newToken: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -58,6 +63,12 @@ export const useAuthStore = create<AuthState>()(
         set({ role: 'NONE', token: null, employeeSession: null });
         return false;
       },
+      replaceToken: (oldToken, newToken) =>
+        set((state) => ({
+          token: state.token === oldToken ? newToken : state.token,
+          employeeSession:
+            state.employeeSession?.token === oldToken ? { ...state.employeeSession, token: newToken } : state.employeeSession,
+        })),
     }),
     {
       name: 'doks-pos-auth-storage',

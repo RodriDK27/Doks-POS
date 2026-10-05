@@ -9,7 +9,9 @@ import {
   Lock, 
   BadgeAlert,
   ChevronRight,
-  FileText
+  FileText,
+  WifiOff,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -62,6 +64,8 @@ export default function RegisterPage() {
     setIsPinModalOpen,
     handleConfirmOpenBox,
     lastClosedRegister,
+    activeRegisterFailed,
+    retryActiveRegister,
   } = useRegister();
 
   const [historyPage, setHistoryPage] = React.useState(1);
@@ -148,7 +152,25 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Caja Registradora</h1>
         </div>
 
-        {!activeRegister ? (
+        {activeRegisterFailed ? (
+          /* NO SE PUDO CONSULTAR: no se muestra "abrir caja" porque puede que sí esté abierta */
+          <div className="max-w-lg mx-auto bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 p-7 rounded-3xl shadow-sm flex flex-col items-center text-center gap-3">
+            <div className="h-14 w-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <WifiOff className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-black text-slate-800 dark:text-slate-100">No se pudo consultar la caja</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[320px]">
+              Revisa la conexión a internet. La caja puede seguir abierta; no la vuelvas a abrir hasta confirmar.
+            </p>
+            <Button
+              type="button"
+              onClick={() => retryActiveRegister()}
+              className="h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer"
+            >
+              <RefreshCw className="h-4 w-4" /> Reintentar
+            </Button>
+          </div>
+        ) : !activeRegister ? (
           /* CAJA CERRADA: FORMULARIO DE APERTURA PREMIUM */
           <div className="max-w-lg mx-auto bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-7 rounded-3xl shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] space-y-6 animate-in fade-in duration-300">
             <div className="flex flex-col items-center text-center space-y-2.5">
@@ -282,7 +304,8 @@ export default function RegisterPage() {
               </Button>
             </form>
           </div>
-        ) : (          /* CAJA ABIERTA: PANEL OPERATIVO DE CAJA */
+        ) : (
+          /* CAJA ABIERTA: PANEL OPERATIVO DE CAJA */
           <div className="space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               

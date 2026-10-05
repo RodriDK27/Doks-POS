@@ -10,7 +10,14 @@ import { parseAxiosError } from '@/lib/errorMapper';
 
 import { useRouter } from 'next/navigation';
 
-export default function GlobalLockScreen() {
+interface GlobalLockScreenProps {
+  /** Texto de ayuda bajo el título (ej. por qué se pide el PIN) */
+  message?: string;
+  /** Si se pasa, al entrar se llama en lugar de navegar (ej. para quedarse en la pantalla actual) */
+  onUnlocked?: () => void;
+}
+
+export default function GlobalLockScreen({ message, onUnlocked }: GlobalLockScreenProps = {}) {
   const router = useRouter();
   const { setRole } = useAuthStore();
   const [pin, setPin] = useState('');
@@ -39,7 +46,9 @@ export default function GlobalLockScreen() {
       setRole(role, token);
       toast.success(`Bienvenido al sistema. Rol: ${role}`);
 
-      if (role === 'ADMIN') {
+      if (onUnlocked) {
+        onUnlocked();
+      } else if (role === 'ADMIN') {
         router.replace('/');
       } else {
         try {
@@ -60,7 +69,7 @@ export default function GlobalLockScreen() {
     } finally {
       setLoading(false);
     }
-  }, [setRole, router]);
+  }, [setRole, router, onUnlocked]);
 
   useEffect(() => {
     if (pin.length === 4) {
@@ -81,7 +90,7 @@ export default function GlobalLockScreen() {
           <div className="space-y-1">
             <h1 className="text-xl font-black text-slate-800 tracking-tight">{"Dok's POS"}</h1>
             <p className="text-xs text-slate-400 font-medium px-4">
-              Introduce tu PIN personal de acceso para ingresar al sistema
+              {message ?? 'Introduce tu PIN personal de acceso para ingresar al sistema'}
             </p>
           </div>
         </div>

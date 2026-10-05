@@ -47,6 +47,16 @@ export class AuthService implements OnModuleInit {
     throw new UnauthorizedException('El PIN de seguridad ingresado es incorrecto.');
   }
 
+  /** Token nuevo para el mismo usuario (si todavía existe), con los datos actuales de su rol */
+  async refreshToken(userId: string): Promise<{ role: string; token: string; name: string }> {
+    const user = userId ? await this.prisma.user.findUnique({ where: { id: userId } }) : null;
+    if (!user) {
+      throw new UnauthorizedException('La sesión ya no es válida. Ingresa tu PIN de nuevo.');
+    }
+    const payload = { role: user.role, sub: user.role, userId: user.id };
+    return { role: user.role, token: this.jwtService.sign(payload), name: user.name };
+  }
+
   async changePin(userId: string, currentPin: string, newPin: string): Promise<{ message: string }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

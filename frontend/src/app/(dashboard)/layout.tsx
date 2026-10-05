@@ -24,6 +24,8 @@ import { CashiersManagementDialog } from '@/components/CashiersManagementDialog'
 import { TabletTopNav } from '@/components/layout/TabletTopNav';
 import { BottomNavDock } from '@/components/layout/BottomNavDock';
 import { useSimpleModeStore } from '@/store/useSimpleModeStore';
+import GlobalLockScreen from '@/components/GlobalLockScreen';
+import { useSessionKeepAlive } from '@/lib/useSessionKeepAlive';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -63,6 +65,9 @@ export default function DashboardLayout({
   const cashiers = swrCashiers || [];
 
   const { theme, setTheme } = useTheme();
+
+  // Renueva el token mientras la app está abierta (si vence, todo falla y parece que la caja se cerró)
+  useSessionKeepAlive();
 
   const { setIsOnline, updateSyncQueueCount, syncQueueCount, isOnline } = useOfflineStore();
 
@@ -166,18 +171,22 @@ export default function DashboardLayout({
     setIsInstallable(false);
   };
 
-  const checkActiveRegister = async () => {
+  /**
+   * Caja abierta, null si de verdad está cerrada, o undefined si no se pudo consultar
+   * (sin internet, servidor caído, sesión vencida): en ese caso no se asume que esté cerrada.
+   */
+  const checkActiveRegister = async (): Promise<ActiveRegister | null | undefined> => {
     try {
       const response = await api.get('/register/active');
-      const activeReg = response.data;
+      // Sin caja abierta el backend responde con cuerpo vacío ("")
+      const activeReg: ActiveRegister | null = response.data || null;
       setActiveRegister(activeReg);
       return activeReg;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status !== 401) {
         console.error('Error checking active register:', error);
       }
-      setActiveRegister(null);
-      return null;
+      return undefined;
     } finally {
       setLoading(false);
     }
@@ -185,6 +194,12 @@ export default function DashboardLayout({
 
   const { data: swrActiveRegister, mutate: mutateActiveRegister } = useSWR<ActiveRegister | null>(
     role !== 'NONE' ? '/register/active' : null
+  );
+
+  // Pública (sin token): solo dice si hay caja abierta, para saber si pedir el PIN al perder la sesión
+  const { data: registerStatus } = useSWR<{ open: boolean }>(
+    role === 'NONE' && isOnline ? '/register-status' : null,
+    { refreshInterval: 60_000 }
   );
 
   const displayRegister = swrActiveRegister !== undefined ? swrActiveRegister : activeRegister;
@@ -197,7 +212,7 @@ export default function DashboardLayout({
       // En modo sencillo la pantalla muestra "caja cerrada" por sí misma; no se sale de /simple
       if (useSimpleModeStore.getState().active) return;
       const activeReg = await checkActiveRegister();
-      if (!activeReg) {
+      if (activeReg === null) {
         if (pathname !== '/register') {
           router.replace('/register');
         }
@@ -222,7 +237,9 @@ export default function DashboardLayout({
       }
       if (role !== 'NONE') {
         const activeReg = await checkActiveRegister();
-        
+        // No se pudo consultar: se queda donde está en lugar de mandar a "abrir caja"
+        if (activeReg === undefined) return;
+
         // Redirección inicial solo al cargar o reiniciar la app por primera vez
         if (!hasInitialRedirectRef.current) {
           hasInitialRedirectRef.current = true;
@@ -266,9 +283,17 @@ export default function DashboardLayout({
   }
 
 
-  // if (role === 'NONE') {
-  //   return <GlobalLockScreen />;
-  // }
+  // Sin sesión pero con la caja abierta (ej. venció el token): pedir el PIN, no mostrar "abrir caja".
+  // Con la caja cerrada se sigue el flujo normal (abrir caja ya pide el PIN).
+  if (role === 'NONE' && registerStatus?.open) {
+    return (
+      <GlobalLockScreen
+        message="La sesión se cerró por seguridad, pero la caja sigue abierta. Introduce tu PIN para continuar."
+        // En modo sencillo se queda en la pantalla sencilla
+        onUnlocked={isSimpleMode ? () => {} : undefined}
+      />
+    );
+  }
 
   // Pantalla sencilla: sin barra superior ni dock, la página ocupa todo
   if (isSimpleMode || pathname === '/simple') {

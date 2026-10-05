@@ -12,6 +12,16 @@ export class AuthController {
     return this.authService.verifyPin(pin);
   }
 
+  /**
+   * Renueva el token mientras la app está en uso: así una tableta que se queda prendida todo el día
+   * no pierde la sesión a media venta cuando se cumplen las 24 h del PIN.
+   */
+  @Post('refresh')
+  @UseGuards(JwtAuthGuard)
+  async refresh(@Req() req: any) {
+    return this.authService.refreshToken(req.user.userId);
+  }
+
   @Patch('change-pin')
   @UseGuards(JwtAuthGuard)
   async changePin(@Req() req: any, @Body() changePinDto: ChangePinDto) {

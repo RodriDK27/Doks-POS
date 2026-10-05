@@ -92,11 +92,13 @@ export default function SimpleModePage() {
     if (!active) router.replace('/pos');
   }, [active, router]);
 
-  const { data: activeRegister, isLoading: isLoadingRegister } = useSWR(
+  const { data: activeRegister, isLoading: isLoadingRegister, error: registerError } = useSWR(
     role !== 'NONE' && sale.isOnline ? '/register/active' : null
   );
-  // Sin internet no se puede saber si la caja sigue abierta: se deja vender y la venta queda en cola
-  const isRegisterClosed = role === 'NONE' || (sale.isOnline && !isLoadingRegister && !activeRegister);
+  // Sin internet (o si falló la consulta) no se puede saber si la caja sigue abierta:
+  // se deja vender en lugar de mostrar "caja cerrada" por un error de red
+  const isRegisterClosed =
+    role === 'NONE' || (sale.isOnline && !isLoadingRegister && !registerError && !activeRegister);
 
   const families = useMemo(() => buildFamilies(sale.products), [sale.products]);
 

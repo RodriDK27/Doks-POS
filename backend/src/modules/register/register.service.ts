@@ -43,6 +43,12 @@ export class RegisterService {
     });
   }
 
+  // ¿Hay una caja abierta? (para la ruta pública register-status)
+  async isOpen(): Promise<boolean> {
+    const count = await this.prisma.cashRegister.count({ where: { status: 'ABIERTO' } });
+    return count > 0;
+  }
+
   // Obtener la última caja cerrada
   async getLastClosed() {
     return this.prisma.cashRegister.findFirst({
