@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
+import axios from 'axios';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -51,7 +52,10 @@ export function useRegister() {
   });
 
   // SWR queries
-  const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading, error: activeRegisterError } = useSWR<CashRegister | null>('/register/active');
+  const { data: swrActiveRegister, mutate: mutateActiveRegister, isLoading: activeRegisterLoading, error: activeRegisterError } = useSWR<CashRegister | null>(
+    // Sin sesión el backend responde 401: no se consulta (abrir caja ya pide el PIN)
+    role !== 'NONE' ? '/register/active' : null
+  );
   const { data: swrLastClosed, mutate: mutateLastClosed } = useSWR<CashRegister | null>('/register/last-closed');
   const { data: swrHistory, mutate: mutateHistory, isLoading: historyLoading } = useSWR<CashRegister[]>(role === 'ADMIN' ? '/register' : null);
   const { data: swrCashiers, mutate: mutateCashiers } = useSWR<{ id: string; name: string; role: string }[]>('/auth/cashiers');
@@ -257,7 +261,11 @@ export function useRegister() {
     mutateCashiers,
     isPinModalOpen,
     // Falló la consulta y no hay dato previo: no se sabe si la caja está abierta
-    activeRegisterFailed: !!activeRegisterError && swrActiveRegister === undefined,
+    // (un 401 no es falla de conexión: es que no hay sesión)
+    activeRegisterFailed:
+      !!activeRegisterError &&
+      !(axios.isAxiosError(activeRegisterError) && activeRegisterError.response?.status === 401) &&
+      swrActiveRegister === undefined,
     retryActiveRegister: () => mutateActiveRegister(),
     setIsPinModalOpen,
     handleConfirmOpenBox,
