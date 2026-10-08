@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, formatQuantity } from '@/lib/utils';
 import { CartItem } from '@/store/useCartStore';
 import { Product } from '../types';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
@@ -507,7 +507,7 @@ export function ExpressScannerMobileView({
                   <Minus className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 </button>
                 <span className="h-full px-2.5 md:px-3 font-black text-xs md:text-base flex items-center justify-center text-slate-850 dark:text-slate-100 min-w-[24px]">
-                  {item.quantity}
+                  {formatQuantity(item.quantity)}
                 </span>
                 <button
                   type="button"
@@ -521,7 +521,7 @@ export function ExpressScannerMobileView({
               {/* Total y Botón Eliminar */}
               <div className="flex items-center gap-3 shrink-0">
                 <span className="font-black text-emerald-600 dark:text-emerald-400 text-base md:text-2xl tracking-tight">
-                  ${(item.sellPrice * item.quantity).toFixed(2)}
+                  ${item.total.toFixed(2)}
                 </span>
 
                 <button

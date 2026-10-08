@@ -4,9 +4,10 @@ import api from '@/lib/api';
 import dbHelper from '@/lib/indexedDb';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { getProductImageSrc } from '@/lib/productImages';
+import { roundMoney, weightQuantityForAmount } from '@/lib/utils';
 import { useOfflineStore } from '@/store/useOfflineStore';
 import { Product } from '../../pos/types';
-import { SimpleFamily, SimpleItem, itemTotal, weightQuantityForAmount } from '../helpers';
+import { SimpleFamily, SimpleItem, itemTotal } from '../helpers';
 
 /** Segundos que se ofrece "Deshacer" después de quitar algo del ticket */
 const UNDO_SECONDS = 10;
@@ -168,7 +169,7 @@ export function useSimpleSale() {
     offerUndo('Se borró la venta', items);
   }, [items, offerUndo]);
 
-  const total = useMemo(() => items.reduce((sum, i) => sum + itemTotal(i), 0), [items]);
+  const total = useMemo(() => roundMoney(items.reduce((sum, i) => sum + itemTotal(i), 0)), [items]);
   const pieceCount = useMemo(() => items.reduce((sum, i) => sum + (i.isWeight ? 1 : i.quantity), 0), [items]);
 
   // ─── Cobro ───

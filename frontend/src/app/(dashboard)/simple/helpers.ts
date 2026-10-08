@@ -1,4 +1,5 @@
 import { getProductImageSrc } from '@/lib/productImages';
+import { roundMoney } from '@/lib/utils';
 import { Product } from '../pos/types';
 
 /** Renglón del ticket en el modo sencillo */
@@ -156,17 +157,8 @@ export function formatMoney(amount: number): string {
     : `$${rounded.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-/**
- * Cantidad en kilos para cobrar un monto a granel ("$20 de jamón").
- * Se redondea hacia abajo con 6 decimales para que el total del servidor nunca pase del monto cobrado.
- */
-export function weightQuantityForAmount(amount: number, pricePerKg: number): number {
-  if (pricePerKg <= 0) return 0;
-  return Math.floor((amount / pricePerKg) * 1_000_000) / 1_000_000;
-}
-
 export function itemTotal(item: SimpleItem): number {
-  return item.price * item.quantity;
+  return roundMoney(item.price * item.quantity);
 }
 
 /** Monto mínimo que cubre el total, en centavos completos (para "Pagó justo") */

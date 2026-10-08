@@ -5,6 +5,9 @@ import { RegisterService } from '../register/register.service';
 import { CustomersService } from '../customers/customers.service';
 import { Prisma } from '@prisma/client';
 
+/** Redondea a centavos: los renglones a granel (precio x kilos) pueden dar montos como 20.2993842 */
+const roundMoney = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100;
+
 @Injectable()
 export class SalesService {
   constructor(
@@ -71,7 +74,7 @@ export class SalesService {
         productName = item.genericName;
       }
  
-      const itemSubtotal = itemPrice * item.quantity;
+      const itemSubtotal = roundMoney(itemPrice * item.quantity);
       subtotal += itemSubtotal;
  
       // Solo los genéricos pueden quedar "por aclarar": un producto de catálogo ya se sabe cuál es
@@ -88,7 +91,8 @@ export class SalesService {
     }
 
     const discount = dto.discount || 0;
-    const total = Math.max(0, subtotal - discount);
+    subtotal = roundMoney(subtotal);
+    const total = Math.max(0, roundMoney(subtotal - discount));
 
     if (discount > subtotal) {
       throw new BadRequestException('El descuento no puede ser mayor que el subtotal de la venta.');
@@ -102,7 +106,7 @@ export class SalesService {
       if (amountPaid < total) {
         throw new BadRequestException(`El monto pagado ($${amountPaid}) es menor que el total de la venta ($${total}).`);
       }
-      change = amountPaid - total;
+      change = roundMoney(amountPaid - total);
     } else {
       // Para Tarjeta, Transferencia o Fiado, el pago coincide con el total y el cambio es 0
       amountPaid = total;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { History, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatQuantity } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface SuspendedCartsDialogProps {
@@ -40,7 +41,7 @@ export function SuspendedCartsDialog({
           {suspendedCarts.length > 0 ? (
             suspendedCarts.map((cart) => {
               const totalAmount = cart.items.reduce((acc, i) => acc + i.total, 0) - cart.discount;
-              const itemsNames = cart.items.map((i) => `${i.quantity.toFixed(0)}x ${i.name}`).join(', ');
+              const itemsNames = cart.items.map((i) => `${formatQuantity(i.quantity)}x ${i.name}`).join(', ');
 
               return (
                 <div key={cart.id} className="flex justify-between items-center py-3.5 first:pt-0 last:pb-0 gap-3">

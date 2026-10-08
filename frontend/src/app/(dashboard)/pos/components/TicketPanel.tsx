@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
 import { Customer } from '../types';
 import { CartItem } from '@/store/useCartStore';
+import { formatQuantity } from '@/lib/utils';
 
 interface TicketPanelProps {
   cartItems: CartItem[];
@@ -98,7 +99,7 @@ export function TicketPanel({
                   type="number"
                   step="any"
                   className="h-full w-10 md:w-12 text-center font-black text-xs md:text-base bg-transparent border-none focus:outline-none focus:ring-0 p-0 text-slate-850 dark:text-slate-100 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={item.quantity}
+                  value={formatQuantity(item.quantity)}
                   onChange={(e) => updateQuantity(item.id, parseFloat(e.target.value) || 0)}
                 />
                 <button

@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 import dbHelper from '@/lib/indexedDb';
 import { parseAxiosError } from '@/lib/errorMapper';
+import { formatQuantity, roundMoney } from '@/lib/utils';
 import { Product, Customer } from '../types';
 import { useVoiceSearch } from './useVoiceSearch';
 import { useCatalogFilter, parseSearchMultiplier } from './useCatalogFilter';
@@ -140,7 +141,7 @@ export function usePOS() {
 
   const handleConfirmBulkAdd = (product: Product, quantity: number) => {
     addToCart(product, quantity);
-    toast.success(`Añadido: ${quantity} kg de ${product.name}`, { id: 'pos-add-toast' });
+    toast.success(`Añadido: ${formatQuantity(quantity)} kg de ${product.name}`, { id: 'pos-add-toast' });
     setPosTab('CART');
   };
 
@@ -358,7 +359,7 @@ export function usePOS() {
   }, [addToCart]);
 
   const total = getTotal();
-  const changeAmount = (paymentMethod === 'EFECTIVO' && amountPaid >= total) ? amountPaid - total : 0;
+  const changeAmount = (paymentMethod === 'EFECTIVO' && amountPaid >= total) ? roundMoney(amountPaid - total) : 0;
 
   useEffect(() => {
     const totalVal = getTotal();

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Product } from '../types';
-import { cn } from '@/lib/utils';
+import { cn, roundMoney, weightQuantityForAmount } from '@/lib/utils';
 
 interface BulkProductDialogProps {
   open: boolean;
@@ -27,14 +27,13 @@ export function BulkProductDialog({
   const pricePerKg = product.sellPrice;
   const numInput = parseFloat(inputValue) || 0;
 
-  // Calculados
-  const calculatedQty = mode === 'AMOUNT' 
-    ? (pricePerKg > 0 ? numInput / pricePerKg : 0)
-    : numInput;
+  // Por dinero, los kilos se guardan con 6 decimales para que el cobro sea exactamente el monto pedido
+  // (con 3 decimales, $20 de jamón quedaba en $19.96). Por peso, se respetan los gramos que marca la báscula.
+  const calculatedQty = mode === 'AMOUNT'
+    ? weightQuantityForAmount(numInput, pricePerKg)
+    : Math.round(numInput * 1000) / 1000;
 
-  const calculatedTotal = mode === 'AMOUNT'
-    ? numInput
-    : numInput * pricePerKg;
+  const calculatedTotal = roundMoney(calculatedQty * pricePerKg);
 
   const handleKeypadPress = (val: string) => {
     if (val === 'C') {
@@ -52,7 +51,7 @@ export function BulkProductDialog({
 
   const handleConfirm = () => {
     if (calculatedQty <= 0) return;
-    onConfirm(product, parseFloat(calculatedQty.toFixed(3)));
+    onConfirm(product, calculatedQty);
     onOpenChange(false);
   };
 

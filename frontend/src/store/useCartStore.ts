@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
+import { roundMoney } from '@/lib/utils';
 
 export interface CartItem {
   id: string;
@@ -66,7 +67,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           return {
             ...item,
             quantity: newQty,
-            total: item.sellPrice * newQty,
+            total: roundMoney(item.sellPrice * newQty),
           };
         }
         return item;
@@ -85,7 +86,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         sellPrice: product.sellPrice,
         stock: product.stock,
         quantity,
-        total: product.sellPrice * quantity,
+        total: roundMoney(product.sellPrice * quantity),
       };
       set({ cartItems: [...cartItems, newItem] });
     }
@@ -116,7 +117,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         return {
           ...item,
           quantity,
-          total: item.sellPrice * quantity,
+          total: roundMoney(item.sellPrice * quantity),
         };
       }
       return item;
@@ -184,13 +185,13 @@ export const useCartStore = create<CartState>((set, get) => ({
   // Calcular subtotal antes de descuento
   getSubtotal: () => {
     const { cartItems } = get();
-    return cartItems.reduce((acc, item) => acc + item.total, 0);
+    return roundMoney(cartItems.reduce((acc, item) => acc + item.total, 0));
   },
 
   // Calcular total neto aplicando el descuento
   getTotal: () => {
     const subtotal = get().getSubtotal();
     const { discount } = get();
-    return Math.max(0, subtotal - discount);
+    return Math.max(0, roundMoney(subtotal - discount));
   },
 }));
