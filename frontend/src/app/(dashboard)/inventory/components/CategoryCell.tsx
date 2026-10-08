@@ -53,17 +53,26 @@ export function CategoryCell({ value, categories, cellId, inputClassName, onChan
     setOpen(true);
   };
 
-  // Al desplazar la tabla o la página, la lista se cierra (su posición ya no correspondería a la celda)
+  // Al desplazar o al abrirse el teclado del celular, la lista sigue a la celda en lugar de cerrarse
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
-    window.addEventListener('scroll', close, true);
-    window.addEventListener('resize', close);
+    const follow = () => {
+      if (inputRef.current) setRect(inputRef.current.getBoundingClientRect());
+    };
+    window.addEventListener('scroll', follow, true);
+    window.addEventListener('resize', follow);
+    window.visualViewport?.addEventListener('resize', follow);
     return () => {
-      window.removeEventListener('scroll', close, true);
-      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', follow, true);
+      window.removeEventListener('resize', follow);
+      window.visualViewport?.removeEventListener('resize', follow);
     };
   }, [open]);
+
+  // Si no cabe debajo (p. ej. con el teclado del celular abierto), la lista se abre hacia arriba
+  const LIST_MAX_HEIGHT = 288;
+  const viewportHeight = typeof window === 'undefined' ? 0 : (window.visualViewport?.height ?? window.innerHeight);
+  const openUp = !!rect && rect.bottom + 4 + LIST_MAX_HEIGHT > viewportHeight && rect.top > viewportHeight - rect.bottom;
 
   const choose = (option: string) => {
     onChange(option.startsWith('__crear__') ? option.slice('__crear__'.length) : option);
@@ -101,6 +110,7 @@ export function CategoryCell({ value, categories, cellId, inputClassName, onChan
         ref={inputRef}
         value={value}
         data-cell={cellId}
+        enterKeyHint="next"
         autoComplete="off"
         // Vacía: al entrar muestra todas. Con valor: la lista aparece al escribir (Enter sigue bajando de fila)
         onFocus={() => {
@@ -122,7 +132,11 @@ export function CategoryCell({ value, categories, cellId, inputClassName, onChan
         createPortal(
           <div
             className="fixed z-[70] max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl py-1"
-            style={{ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 224) }}
+            style={{
+              ...(openUp ? { top: rect.top - 4, transform: 'translateY(-100%)' } : { top: rect.bottom + 4 }),
+              left: Math.max(8, Math.min(rect.left, window.innerWidth - Math.max(rect.width, 224) - 8)),
+              width: Math.max(rect.width, 224),
+            }}
           >
             {options.map((option, i) => {
               const isCreate = option.startsWith('__crear__');
