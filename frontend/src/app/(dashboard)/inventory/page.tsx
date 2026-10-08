@@ -2,7 +2,7 @@
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { ImageIcon, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2 } from 'lucide-react';
+import { ImageIcon, Layers, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductImageSrc } from '@/lib/productImages';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -15,6 +15,7 @@ import {
   useAdvancedEditor,
 } from './hooks/useAdvancedEditor';
 import { CategoryCell } from './components/CategoryCell';
+import { CategoryManagementModal } from './components/CategoryManagementModal';
 
 /** Alto fijo de cada fila: permite dibujar solo las filas visibles (miles de productos sin trabarse) */
 const ROW_HEIGHT = 44;
@@ -394,6 +395,7 @@ export default function InventoryPage() {
   const [type, setType] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const activeFilterCount = (category !== '__all' ? 1 : 0) + (type !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
 
   const visibleRows = useMemo(() => {
@@ -541,6 +543,16 @@ export default function InventoryPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsCategoryManagerOpen(true)}
+            title="Agregar o gestionar categorías"
+            aria-label="Agregar o gestionar categorías"
+            className={cn(outlineButton, 'flex w-10 px-0 justify-center lg:w-auto lg:px-3 text-indigo-600 dark:text-indigo-400')}
+          >
+            <Layers className="h-4 w-4" />
+            <span className="hidden lg:inline">Categorías</span>
+          </button>
           <button type="button" onClick={() => addRows(1)} disabled={isSaving} className={cn(outlineButton, 'hidden lg:flex')}>
             <Plus className="h-4 w-4" /> Nuevo artículo
           </button>
@@ -738,6 +750,8 @@ export default function InventoryPage() {
           {EDITABLE_COLUMNS.map((c) => COLUMN_LABELS[c]).join(', ')})
         </span>
       </p>
+
+      <CategoryManagementModal open={isCategoryManagerOpen} onOpenChange={setIsCategoryManagerOpen} />
     </div>
   );
 }
