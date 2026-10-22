@@ -16,6 +16,8 @@ export interface Product {
   unitType?: 'PIECE' | 'WEIGHT' | string;
   family?: string | null;
   imageUrl?: string | null;
+  /** Marcado con corazón para seguir sus ventas */
+  isFavorite?: boolean;
 }
 
 export interface Customer {

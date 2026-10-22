@@ -42,6 +42,7 @@ model Product {
   family         String?    // Familia visual para agrupar variantes (ej. "Boing" agrupa Mango 300ml, Guayaba 500ml)
   imageUrl       String?    // Ruta pública de la foto WebP del producto (ej. /api/images/<id>-<ts>.webp)
   expirationDate DateTime?  // Fecha opcional de caducidad
+  isFavorite     Boolean    @default(false) // Marcado con corazón para seguir sus ventas y existencia
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   saleItems      SaleItem[]
@@ -53,6 +54,7 @@ model Product {
   @@index([barcode])
   @@index([name])
   @@index([family])
+  @@index([isFavorite])
 }
 
 /// Representa un código de barras adicional/alternativo para un producto

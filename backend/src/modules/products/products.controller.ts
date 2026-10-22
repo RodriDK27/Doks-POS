@@ -6,6 +6,8 @@ import { MAX_IMAGE_BYTES, UploadedImageFile } from '../../common/images/image-st
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { BulkProductsDto } from './dto/bulk-products.dto';
+import { RestockProductsDto } from './dto/restock-products.dto';
+import { SetFavoriteDto } from './dto/set-favorite.dto';
 import { ProductsBulkService } from './products-bulk.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -32,6 +34,13 @@ export class ProductsController {
   @Roles('ADMIN', 'GERENTE')
   bulkSave(@Body() body: BulkProductsDto) {
     return this.productsBulkService.bulkSave(body.rows);
+  }
+
+  /** Agregado rápido: suma lo que llegó del proveedor a la existencia de varios productos a la vez */
+  @Post('restock')
+  @Roles('ADMIN', 'GERENTE')
+  restock(@Body() body: RestockProductsDto) {
+    return this.productsBulkService.restock(body.items);
   }
 
   @Post('import')
@@ -69,6 +78,12 @@ export class ProductsController {
   @Get('low-stock')
   getLowStock() {
     return this.productsService.getLowStock();
+  }
+
+  /** Favoritos (corazón) con su existencia y cuánto se han vendido */
+  @Get('favorites')
+  getFavorites(@Query('days') days?: string) {
+    return this.productsService.getFavorites(days ? Number(days) : undefined);
   }
 
   @Get('sales-analytics')
@@ -132,6 +147,13 @@ export class ProductsController {
   @Roles('ADMIN', 'GERENTE')
   removeImage(@Param('id') id: string) {
     return this.productImagesService.removeImage(id);
+  }
+
+  /** Marcar o quitar el corazón de favorito */
+  @Patch(':id/favorite')
+  @Roles('ADMIN', 'GERENTE', 'CAJERO')
+  setFavorite(@Param('id') id: string, @Body() body: SetFavoriteDto) {
+    return this.productsService.setFavorite(id, body.isFavorite);
   }
 
   /** Restablecer / actualizar stock rápido (para reposición express en POS o auditoría) */

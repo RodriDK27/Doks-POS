@@ -23,6 +23,8 @@ export interface Product {
   category: string | null;
   family?: string | null;
   imageUrl?: string | null;
+  /** Marcado con corazón para seguir sus ventas */
+  isFavorite?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
+import { toast } from 'sonner';
 import api from '@/lib/api';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { uploadProductImage } from '@/lib/productImages';
 import { Category, Product } from '../types';
+import { FAVORITES_KEY_PREFIX } from '../../pos/hooks/useFavoriteToggle';
 
 /** Columnas editables, en el orden en que se pegan desde Excel */
 export const EDITABLE_COLUMNS = ['name', 'unitType', 'barcode', 'purchasePrice', 'sellPrice', 'stock', 'category'] as const;
@@ -21,10 +23,12 @@ export interface EditorRow {
   stock: string;
   category: string;
   imageUrl?: string | null;
+  /** Corazón de favoritos: se guarda al momento, no con el botón Guardar */
+  isFavorite?: boolean;
   /** Foto elegida en el editor; se sube al guardar */
   imageFile?: File;
   /** Valores con los que se cargó la fila (para saber si cambió) */
-  original?: Omit<EditorRow, 'key' | 'original' | 'imageFile' | 'serverError'>;
+  original?: Omit<EditorRow, 'key' | 'original' | 'imageFile' | 'serverError' | 'isFavorite'>;
   /** Error que devolvió el servidor al guardar */
   serverError?: string;
 }
@@ -51,7 +55,7 @@ function toRow(p: Product): EditorRow {
     category: p.category ?? '',
     imageUrl: p.imageUrl ?? null,
   };
-  return { key: p.id, ...base, original: base };
+  return { key: p.id, ...base, isFavorite: !!p.isFavorite, original: base };
 }
 
 export function emptyRow(): EditorRow {
@@ -91,6 +95,11 @@ export function useAdvancedEditor() {
 
   const [rows, setRows] = useState<EditorRow[]>([]);
   const loadedRef = useRef(false);
+  // Para leer la fila actual desde callbacks estables (las filas memorizadas no se vuelven a dibujar)
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
 
   // Se carga una sola vez; después el editor es la fuente de verdad hasta guardar o descartar
   useEffect(() => {
@@ -164,6 +173,45 @@ export function useAdvancedEditor() {
   const discardChanges = useCallback(() => {
     setRows((products ?? []).map(toRow));
   }, [products]);
+
+  /**
+   * Refleja en la tabla el stock que devolvió el servidor (agregado rápido). Si el stock de la fila
+   * se estaba editando sin guardar, se respeta lo capturado y solo se mueve el valor de referencia.
+   */
+  const applyStock = useCallback((updates: Array<{ id: string; stock: number }>) => {
+    const stockById = new Map(updates.map((u) => [u.id, String(u.stock)]));
+    setRows((prev) =>
+      prev.map((r) => {
+        const stock = r.id ? stockById.get(r.id) : undefined;
+        if (stock === undefined || !r.original) return r;
+        const editing = r.stock.trim() !== r.original.stock.trim();
+        return { ...r, stock: editing ? r.stock : stock, original: { ...r.original, stock } };
+      })
+    );
+  }, []);
+
+  /** Marca o quita el corazón al instante; si el servidor falla, la fila regresa como estaba */
+  const toggleFavorite = useCallback(async (key: string) => {
+    const row = rowsRef.current.find((r) => r.key === key);
+    if (!row?.id) return;
+    const next = !row.isFavorite;
+    const setFavorite = (value: boolean) =>
+      setRows((prev) => prev.map((r) => (r.key === key ? { ...r, isFavorite: value } : r)));
+    setFavorite(next);
+    try {
+      await api.patch(`/products/${row.id}/favorite`, { isFavorite: next });
+      void mutate('/products');
+      void mutate((k) => typeof k === 'string' && k.startsWith(FAVORITES_KEY_PREFIX));
+    } catch (error) {
+      setFavorite(!next);
+      toast.error(parseAxiosError(error, 'No se pudo actualizar el favorito.'));
+    }
+  }, []);
+
+  /** Agrega a la tabla un producto que se registró fuera del editor */
+  const addProduct = useCallback((product: Product) => {
+    setRows((prev) => (prev.some((r) => r.id === product.id) ? prev : [toRow(product), ...prev]));
+  }, []);
 
   /**
    * Pega un bloque copiado de Excel (columnas separadas por tabulador) desde la celda indicada.
@@ -270,8 +318,8 @@ export function useAdvancedEditor() {
         if (!id) return error ? { ...r, serverError: error } : r;
         const imageUrl = uploadedUrls.has(r.key) ? uploadedUrls.get(r.key) : r.imageUrl;
         const saved: EditorRow = { ...r, id, imageUrl, imageFile: error ? r.imageFile : undefined, serverError: error };
-        const { key: _k, original: _o, imageFile: _f, serverError: _e, ...base } = saved;
-        void _k; void _o; void _f; void _e;
+        const { key: _k, original: _o, imageFile: _f, serverError: _e, isFavorite: _h, ...base } = saved;
+        void _k; void _o; void _f; void _e; void _h;
         return { ...saved, original: base };
       })
     );
@@ -294,6 +342,9 @@ export function useAdvancedEditor() {
     addRows,
     removeRow,
     discardChanges,
+    applyStock,
+    addProduct,
+    toggleFavorite,
     pasteBlock,
     save,
   };

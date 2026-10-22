@@ -1,37 +1,34 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Camera,
-  CameraOff,
   Search,
-  Mic,
+  Heart,
   ShoppingCart,
   Trash2,
   Plus,
   Minus,
   ArrowRight,
-  RefreshCw,
   Package,
   X,
   Pause,
   Tag,
+  PackagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn, formatQuantity } from '@/lib/utils';
 import { CartItem } from '@/store/useCartStore';
 import { Product } from '../types';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface ExpressScannerMobileViewProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   onSearchSubmit: () => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
-  onBarcodeScanned: (barcode: string) => void;
-  onToggleVoice: () => void;
-  isListening: boolean;
+  /** Abre la consulta de favoritos */
+  onOpenFavorites: () => void;
+  onToggleFavorite: (product: Product) => void;
   activeCategory: string;
   onCategoryChange: (cat: string) => void;
   categories: string[];
@@ -47,6 +44,8 @@ interface ExpressScannerMobileViewProps {
   onSuspend: () => void;
   filteredCatalog: Product[];
   onAddProduct: (product: Product) => void;
+  /** Abre el agregado rápido (solo para quien puede administrar inventario) */
+  onQuickRestock?: () => void;
 }
 
 export function ExpressScannerMobileView({
@@ -54,9 +53,8 @@ export function ExpressScannerMobileView({
   onSearchQueryChange,
   onSearchSubmit,
   searchInputRef,
-  onBarcodeScanned,
-  onToggleVoice,
-  isListening,
+  onOpenFavorites,
+  onToggleFavorite,
   cartItems,
   cartItemsCount,
   getTotal,
@@ -68,12 +66,9 @@ export function ExpressScannerMobileView({
   onSuspend,
   filteredCatalog,
   onAddProduct,
+  onQuickRestock,
 }: ExpressScannerMobileViewProps) {
   const currentTotal = getTotal();
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [showScanner, setShowScanner] = useState(false);
   const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
 
   const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
@@ -95,168 +90,9 @@ export function ExpressScannerMobileView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchInputRef]);
 
-  const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
-  const lastScannedRef = useRef<{ code: string; time: number } | null>(null);
-  const viewportId = 'express-inline-viewport';
-
-  // Sonido Beep táctil
-  const playBeep = useCallback(() => {
-    if (!soundEnabled) return;
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1200, ctx.currentTime);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.15);
-    } catch {
-      // Ignorar errores de Web Audio API
-    }
-  }, [soundEnabled]);
-
-  // Iniciar la cámara integrada sin modales
-  const startCamera = useCallback(async () => {
-    setCameraError(null);
-    try {
-      if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
-        await html5QrcodeRef.current.stop();
-      }
-
-      const html5Qrcode = new Html5Qrcode(viewportId, {
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ],
-        verbose: false,
-      });
-
-      html5QrcodeRef.current = html5Qrcode;
-
-      await html5Qrcode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 15,
-          qrbox: { width: 250, height: 150 },
-          aspectRatio: 1.777,
-        },
-        (decodedText) => {
-          const now = Date.now();
-          if (
-            !lastScannedRef.current ||
-            lastScannedRef.current.code !== decodedText ||
-            now - lastScannedRef.current.time > 1500
-          ) {
-            lastScannedRef.current = { code: decodedText, time: now };
-            playBeep();
-            if (typeof navigator !== 'undefined' && navigator.vibrate) {
-              navigator.vibrate(80);
-            }
-            onBarcodeScanned(decodedText);
-          }
-        },
-        () => {
-          // Frame sin código
-        }
-      );
-
-      setIsCameraActive(true);
-
-      const track = html5Qrcode.getRunningTrackCameraCapabilities();
-      if (track) {
-        try {
-          const videoElement = document.querySelector(`#${viewportId} video`) as HTMLVideoElement | null;
-          if (videoElement && 'BarcodeDetector' in window) {
-            const barcodeDetector = new (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (el: HTMLVideoElement) => Promise<{ rawValue: string }[]> } }).BarcodeDetector({
-              formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
-            });
-
-            const nativeScanInterval = setInterval(async () => {
-              if (!html5Qrcode.isScanning) {
-                clearInterval(nativeScanInterval);
-                return;
-              }
-              try {
-                const barcodes = await barcodeDetector.detect(videoElement);
-                if (barcodes.length > 0) {
-                  const code = barcodes[0].rawValue;
-                  const now = Date.now();
-                  if (
-                    !lastScannedRef.current ||
-                    lastScannedRef.current.code !== code ||
-                    now - lastScannedRef.current.time > 1500
-                  ) {
-                    lastScannedRef.current = { code, time: now };
-                    playBeep();
-                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                      navigator.vibrate(80);
-                    }
-                    onBarcodeScanned(code);
-                  }
-                }
-              } catch {
-                // ignorar errores frame a frame
-              }
-            }, 100);
-          }
-        } catch {
-          // fallback suave
-        }
-      }
-    } catch (err: unknown) {
-      console.error('Error al iniciar cámara en línea:', err);
-      setCameraError('Toca aquí para otorgar permiso a la cámara.');
-      setIsCameraActive(false);
-    }
-  }, [onBarcodeScanned, playBeep]);
-
-  // Detener la cámara
-  const stopCamera = useCallback(async () => {
-    if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
-      try {
-        await html5QrcodeRef.current.stop();
-        html5QrcodeRef.current.clear();
-      } catch (err) {
-        console.error('Error al pausar cámara:', err);
-      }
-    }
-    setIsCameraActive(false);
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    if (showScanner) {
-      const timer = setTimeout(() => {
-        if (isMounted) startCamera();
-      }, 100);
-      return () => {
-        isMounted = false;
-        clearTimeout(timer);
-        stopCamera();
-      };
-    } else {
-      if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
-        stopCamera();
-      }
-    }
-  }, [showScanner, startCamera, stopCamera]);
-
   return (
     <div className="flex flex-col flex-1 h-full min-h-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden p-3 gap-2.5">
-      {/* BARRA DE BÚSQUEDA TECLADO / VOZ / BOTÓN ESCÁNER PEQUEÑO */}
+      {/* BARRA DE BÚSQUEDA TECLADO / FAVORITOS / AGREGADO RÁPIDO */}
       <div className="relative shrink-0 flex gap-2 items-center z-30">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -306,33 +142,31 @@ export function ExpressScannerMobileView({
           )}
         </div>
 
-        {/* BOTÓN BÚSQUEDA POR VOZ */}
-        <Button
-          type="button"
-          onClick={onToggleVoice}
-          className={`h-12 px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all cursor-pointer shrink-0 border ${isListening
-              ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse shadow-xs'
-              : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/60 dark:hover:bg-slate-700/80 border-indigo-400/60 dark:border-indigo-500/50 text-slate-800 dark:text-slate-100 shadow-xs'
-            }`}
-          title="Buscar por Voz"
-        >
-          <Mic className={`h-4.5 w-4.5 ${isListening ? 'text-rose-500' : 'text-indigo-600 dark:text-indigo-400'}`} />
-          <span>Voz</span>
-        </Button>
-
-        {/* BOTÓN ESCÁNER PEQUEÑO DISCRETO */}
+        {/* FAVORITOS: CONSULTA DE EXISTENCIA Y VENTAS */}
         <Button
           type="button"
           variant="outline"
-          onClick={() => setShowScanner(!showScanner)}
-          className={`h-12 w-10 p-0 rounded-xl flex items-center justify-center border transition-all cursor-pointer shrink-0 ${showScanner
-              ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
-              : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}
-          title={showScanner ? 'Ocultar Escáner' : 'Mostrar Escáner (Cámara)'}
+          onClick={onOpenFavorites}
+          className="h-12 w-12 p-0 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all cursor-pointer shrink-0"
+          title="Favoritos: existencia y ventas"
+          aria-label="Favoritos"
         >
-          <Camera className="h-4 w-4" />
+          <Heart className="h-5 w-5 fill-rose-500 text-rose-500" />
         </Button>
+
+        {/* AGREGADO RÁPIDO: SURTIR LO QUE LLEGÓ DEL PROVEEDOR */}
+        {onQuickRestock && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onQuickRestock}
+            className="h-12 w-12 p-0 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
+            title="Llegó mercancía: surtir varios productos a la vez"
+            aria-label="Llegó mercancía"
+          >
+            <PackagePlus className="h-5 w-5" />
+          </Button>
+        )}
 
         {/* LISTA DESPLEGABLE FLOTANTE DE RESULTADOS DE BÚSQUEDA */}
         {searchQuery.trim() && (
@@ -398,6 +232,20 @@ export function ExpressScannerMobileView({
                         )}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        // Solo marca: no agrega el producto al ticket
+                        e.stopPropagation();
+                        onToggleFavorite(prod);
+                      }}
+                      title={prod.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                      aria-label={prod.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                      aria-pressed={!!prod.isFavorite}
+                      className="h-8 w-8 mr-1 shrink-0 rounded-full flex items-center justify-center cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/40 active:scale-90 transition-all"
+                    >
+                      <Heart className={cn('h-4 w-4', prod.isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-300 dark:text-slate-600')} />
+                    </button>
                     <Button
                       type="button"
                       size="sm"
@@ -425,59 +273,6 @@ export function ExpressScannerMobileView({
           </div>
         )}
       </div>
-
-      {/* CÁMARA EN VIVO OPCIONAL */}
-      {showScanner && (
-        <div className="relative shrink-0 w-full bg-slate-950 dark:bg-black rounded-2xl overflow-hidden shadow-md border border-slate-900 aspect-video max-h-36 flex items-center justify-center animate-in slide-in-from-top-2 duration-200">
-          <div
-            id={viewportId}
-            className="w-full h-full object-cover overflow-hidden flex items-center justify-center [&_video]:object-cover [&_video]:w-full [&_video]:h-full [&_video]:my-auto [&_div]:my-auto [&_#express-inline-viewport__scan_region]:my-auto [&_#express-inline-viewport__scan_region]:mx-auto [&_#express-inline-viewport__scan_region_border]:!border-none [&_#express-inline-viewport__shaded_region]:!hidden"
-          />
-
-          {isCameraActive && (
-            <>
-              <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-                <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-emerald-400 bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full border border-emerald-500/40 animate-pulse">
-                  <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full"></span> Escaneando
-                </span>
-                <Button
-                  type="button"
-                  size="icon"
-                  className="h-6 w-6 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer"
-                  onClick={stopCamera}
-                  title="Pausar cámara"
-                >
-                  <CameraOff className="h-3 w-3" />
-                </Button>
-              </div>
-
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="relative w-[85%] h-[60px] border-2 border-red-500/70 rounded-xl overflow-hidden">
-                  <div className="absolute -top-0.5 -left-0.5 w-3 h-3 border-t-2 border-l-2 border-red-500 rounded-tl-sm" />
-                  <div className="absolute -top-0.5 -right-0.5 w-3 h-3 border-t-2 border-r-2 border-red-500 rounded-tr-sm" />
-                  <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 border-b-2 border-l-2 border-red-500 rounded-bl-sm" />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 border-b-2 border-r-2 border-red-500 rounded-br-sm" />
-                  <div className="w-full h-1 bg-red-600 absolute left-0 shadow-[0_0_12px_#ef4444] animate-[scan_1.5s_infinite_linear]" />
-                </div>
-              </div>
-            </>
-          )}
-
-          {(!isCameraActive || cameraError) && (
-            <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xs flex flex-col items-center justify-center p-2 text-center z-20">
-              <Camera className="h-5 w-5 text-indigo-400 mb-1 animate-pulse" />
-              <p className="text-[11px] font-black text-white">{cameraError || 'Cámara en Pausa'}</p>
-              <Button
-                type="button"
-                onClick={startCamera}
-                className="h-6 mt-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] px-2.5 rounded-lg cursor-pointer active:scale-95 transition-all"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" /> Activar Cámara
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* CONTENEDOR PRINCIPAL: TICKET EN VIVO CON ESPACIO AMPLIO */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-none p-1 md:p-2 space-y-1.5 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">

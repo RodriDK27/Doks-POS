@@ -9,7 +9,6 @@ import dbHelper from '@/lib/indexedDb';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { formatQuantity, roundMoney } from '@/lib/utils';
 import { Product, Customer } from '../types';
-import { useVoiceSearch } from './useVoiceSearch';
 import { useCatalogFilter, parseSearchMultiplier } from './useCatalogFilter';
 import { usePOSKeybindings } from './usePOSKeybindings';
 
@@ -73,7 +72,6 @@ export function usePOS() {
   const amountPaidInputRef = useRef<HTMLInputElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { isListening, toggleVoiceSearch } = useVoiceSearch(setSearchQuery);
 
   // SWR queries con caché global
   const { data: swrProducts, mutate: mutateProducts } = useSWR<Product[]>(role !== 'NONE' && isOnline ? '/products' : null);
@@ -638,8 +636,6 @@ export function usePOS() {
     selectedCatalogIndex,
     setSelectedCatalogIndex,
     handleSearchKeyDown,
-    isListening,
-    toggleVoiceSearch,
     handleSearchSubmit,
     handleSearchQueryChange,
     handleBarcodeScanned

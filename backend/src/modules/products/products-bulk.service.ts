@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BulkProductRowDto } from './dto/bulk-products.dto';
+import { RestockItemDto } from './dto/restock-products.dto';
 
 export interface BulkSaveResult {
   created: Array<{ index: number; id: string }>;
@@ -133,5 +134,44 @@ export class ProductsBulkService {
 
     result.errors.sort((a, b) => a.index - b.index);
     return result;
+  }
+
+  /**
+   * Agregado rápido: suma lo que llegó a la existencia de varios productos en una sola transacción.
+   * Se usa incremento (no el stock calculado en el navegador) para no pisar ventas hechas mientras se capturaba.
+   */
+  async restock(items: RestockItemDto[]): Promise<{ updated: Array<{ id: string; stock: number }> }> {
+    // Si el mismo producto viene dos veces se suma en una sola entrada
+    const quantityById = new Map<string, number>();
+    for (const { productId, quantity } of items) {
+      quantityById.set(productId, (quantityById.get(productId) ?? 0) + quantity);
+    }
+
+    const ids = [...quantityById.keys()];
+    const found = await this.prisma.product.findMany({ where: { id: { in: ids } }, select: { id: true } });
+    const foundIds = new Set(found.map((p) => p.id));
+    const missing = ids.filter((id) => !foundIds.has(id)).length;
+    if (missing) {
+      throw new NotFoundException(
+        missing === 1
+          ? 'Uno de los productos ya no existe (quizá lo borraron). Quítalo de la lista y vuelve a intentar.'
+          : `${missing} productos ya no existen (quizá los borraron). Quítalos de la lista y vuelve a intentar.`,
+      );
+    }
+
+    const results = await this.prisma.$transaction([
+      ...ids.map((id) =>
+        this.prisma.product.update({
+          where: { id },
+          data: { stock: { increment: quantityById.get(id)! } },
+          select: { id: true, stock: true },
+        }),
+      ),
+      this.prisma.stockMovement.createMany({
+        data: ids.map((id) => ({ productId: id, type: 'ENTRADA', quantity: quantityById.get(id)!, reason: 'Agregado rápido' })),
+      }),
+    ]);
+
+    return { updated: results.slice(0, ids.length) as Array<{ id: string; stock: number }> };
   }
 }

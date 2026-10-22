@@ -2,7 +2,7 @@
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { ImageIcon, Layers, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2 } from 'lucide-react';
+import { Heart, ImageIcon, Layers, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductImageSrc } from '@/lib/productImages';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -16,6 +16,7 @@ import {
 } from './hooks/useAdvancedEditor';
 import { CategoryCell } from './components/CategoryCell';
 import { CategoryManagementModal } from './components/CategoryManagementModal';
+import { QuickRestockDialog } from './components/QuickRestockDialog';
 
 /** Alto fijo de cada fila: permite dibujar solo las filas visibles (miles de productos sin trabarse) */
 const ROW_HEIGHT = 44;
@@ -39,7 +40,7 @@ function useIsCompact() {
 }
 
 const GRID_TEMPLATE =
-  '3rem 3.25rem minmax(15rem,2.2fr) 7.5rem minmax(9rem,1fr) 7rem 7rem 7rem 6.5rem minmax(9rem,1fr) 2.75rem';
+  '2.5rem 3rem 3.25rem minmax(15rem,2.2fr) 7.5rem minmax(9rem,1fr) 7rem 7rem 7rem 6.5rem minmax(9rem,1fr) 2.75rem';
 
 const COLUMN_LABELS: Record<EditableColumn, string> = {
   name: 'Nombre',
@@ -103,6 +104,27 @@ function ImageCell({ row, onPick }: { row: EditorRow; onPick: (file: File) => vo
   );
 }
 
+/** Corazón de favoritos; las filas nuevas lo tienen apagado hasta guardarse */
+function FavoriteButton({ row, onToggle, className }: { row: EditorRow; onToggle: (key: string) => void; className?: string }) {
+  const label = !row.id ? 'Guarda el producto para marcarlo como favorito' : row.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos';
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(row.key)}
+      disabled={!row.id}
+      title={label}
+      aria-label={label}
+      aria-pressed={!!row.isFavorite}
+      className={cn(
+        'rounded-lg flex items-center justify-center cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/40 active:scale-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+        className
+      )}
+    >
+      <Heart className={cn('h-4 w-4', row.isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-300 dark:text-slate-600')} />
+    </button>
+  );
+}
+
 interface RowViewProps {
   row: EditorRow;
   visibleIndex: number;
@@ -111,12 +133,13 @@ interface RowViewProps {
   onChange: (key: string, column: EditableColumn, value: string) => void;
   onImage: (key: string, file: File) => void;
   onRemove: (key: string) => void;
+  onToggleFavorite: (key: string) => void;
   onKeyNav: (e: React.KeyboardEvent<HTMLElement>, visibleIndex: number, column: EditableColumn) => void;
   onPaste: (e: React.ClipboardEvent<HTMLInputElement>, key: string, column: EditableColumn) => void;
   categories: string[];
 }
 
-const RowView = memo(function RowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onKeyNav, onPaste, categories }: RowViewProps) {
+const RowView = memo(function RowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onToggleFavorite, onKeyNav, onPaste, categories }: RowViewProps) {
   const hasErrors = !!errors || !!row.serverError;
   const buy = Number(row.purchasePrice) || 0;
   const sell = Number(row.sellPrice) || 0;
@@ -155,6 +178,9 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
       style={{ gridTemplateColumns: GRID_TEMPLATE }}
       title={row.serverError}
     >
+      <div className="h-full flex items-center justify-center border-r border-slate-100 dark:border-slate-800">
+        <FavoriteButton row={row} onToggle={onToggleFavorite} className="h-8 w-8" />
+      </div>
       <div className="h-full flex items-center justify-center gap-1 border-r border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400">
         <span
           className={cn(
@@ -224,7 +250,7 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
  * Hoja tipo Excel para celular o tablet vertical: el nombre se queda fijo a la izquierda y el resto de
  * columnas se desliza de lado. Van primero las que más se editan desde el celular (precio y stock).
  */
-const COMPACT_GRID_TEMPLATE = '9.5rem 5.25rem 5.25rem 5rem 4.5rem 5.75rem 8.5rem 8.5rem 2.75rem 2.5rem';
+const COMPACT_GRID_TEMPLATE = '11rem 5.25rem 5.25rem 5rem 4.5rem 5.75rem 8.5rem 8.5rem 2.75rem 2.5rem';
 const COMPACT_HEADERS = ['Nombre', 'P. venta', 'P. compra', 'Ganancia', 'Stock', 'Tipo', 'Código', 'Categoría', 'Img', ''];
 
 const compactInput =
@@ -253,7 +279,7 @@ function CompactHeader() {
   );
 }
 
-const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onKeyNav, onPaste, categories }: RowViewProps) {
+const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onToggleFavorite, onKeyNav, onPaste, categories }: RowViewProps) {
   const hasErrors = !!errors || !!row.serverError;
   const buy = Number(row.purchasePrice) || 0;
   const sell = Number(row.sellPrice) || 0;
@@ -311,7 +337,10 @@ const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status,
             hasErrors ? 'bg-rose-500' : status === 'new' ? 'bg-emerald-500' : status === 'dirty' ? 'bg-amber-500' : 'bg-transparent'
           )}
         />
-        {textCell('name')}
+        <div className="h-full flex items-center">
+          <div className="min-w-0 flex-1 h-full">{textCell('name')}</div>
+          <FavoriteButton row={row} onToggle={onToggleFavorite} className="h-8 w-8 shrink-0 mr-0.5" />
+        </div>
       </div>
       <div className={cellClass('sellPrice')} title={errors?.sellPrice}>
         {textCell('sellPrice', { numeric: true })}
@@ -396,6 +425,7 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [isQuickRestockOpen, setIsQuickRestockOpen] = useState(false);
   const activeFilterCount = (category !== '__all' ? 1 : 0) + (type !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
 
   const visibleRows = useMemo(() => {
@@ -545,6 +575,17 @@ export default function InventoryPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
+            onClick={() => setIsQuickRestockOpen(true)}
+            disabled={isSaving}
+            title="Agregado rápido: suma lo que llegó del proveedor"
+            aria-label="Agregado rápido"
+            className={cn(outlineButton, 'flex w-10 px-0 justify-center lg:w-auto lg:px-3 text-amber-600 dark:text-amber-400')}
+          >
+            <Zap className="h-4 w-4" />
+            <span className="hidden lg:inline">Agregado rápido</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setIsCategoryManagerOpen(true)}
             title="Agregar o gestionar categorías"
             aria-label="Agregar o gestionar categorías"
@@ -683,7 +724,7 @@ export default function InventoryPage() {
           </div>
         ) : (
           <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} className="h-full overflow-auto overscroll-contain">
-            <div className={compact ? 'w-max min-w-full' : 'min-w-[78rem]'}>
+            <div className={compact ? 'w-max min-w-full' : 'min-w-[80.5rem]'}>
               {compact ? (
                 <CompactHeader />
               ) : (
@@ -691,6 +732,9 @@ export default function InventoryPage() {
                   className="grid sticky top-0 z-10 h-10 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500"
                   style={{ gridTemplateColumns: GRID_TEMPLATE }}
                 >
+                  <span className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800" title="Favoritos">
+                    <Heart className="h-3.5 w-3.5" />
+                  </span>
                   <span className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800">#</span>
                   <span className="flex items-center justify-center border-r border-slate-200 dark:border-slate-800">Img</span>
                   {(['name', 'unitType', 'barcode', 'purchasePrice', 'sellPrice'] as EditableColumn[]).map((col) => (
@@ -727,6 +771,7 @@ export default function InventoryPage() {
                           onChange={editor.updateCell}
                           onImage={editor.setRowImage}
                           onRemove={editor.removeRow}
+                          onToggleFavorite={editor.toggleFavorite}
                           onKeyNav={onKeyNav}
                           onPaste={onPaste}
                           categories={editor.categories}
@@ -752,6 +797,12 @@ export default function InventoryPage() {
       </p>
 
       <CategoryManagementModal open={isCategoryManagerOpen} onOpenChange={setIsCategoryManagerOpen} />
+      <QuickRestockDialog
+        open={isQuickRestockOpen}
+        onOpenChange={setIsQuickRestockOpen}
+        onRestocked={editor.applyStock}
+        onProductCreated={editor.addProduct}
+      />
     </div>
   );
 }

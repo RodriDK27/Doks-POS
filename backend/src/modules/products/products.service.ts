@@ -459,6 +459,47 @@ export class ProductsService {
     });
   }
 
+  // Marcar o desmarcar un producto como favorito
+  async setFavorite(id: string, isFavorite: boolean) {
+    await this.findOne(id); // Valida que exista
+    return this.prisma.product.update({
+      where: { id },
+      data: { isFavorite },
+      select: { id: true, isFavorite: true },
+    });
+  }
+
+  /**
+   * Favoritos con su existencia y lo vendido (piezas o kg y en cuántos tickets), del más al menos vendido.
+   * `days` limita las ventas a los últimos N días; sin él cuenta todo el historial.
+   */
+  async getFavorites(days?: number) {
+    const products = await this.prisma.product.findMany({
+      where: { isFavorite: true },
+      select: { id: true, name: true, stock: true, minStock: true, unitType: true, category: true, imageUrl: true },
+    });
+    if (products.length === 0) return [];
+
+    const since = days && days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
+    const sold = await this.prisma.saleItem.groupBy({
+      by: ['productId'],
+      where: {
+        productId: { in: products.map((p) => p.id) },
+        ...(since ? { sale: { createdAt: { gte: since } } } : {}),
+      },
+      _sum: { quantity: true },
+      _count: { _all: true },
+    });
+    const soldById = new Map(sold.map((s) => [s.productId as string, s]));
+
+    return products
+      .map((p) => {
+        const s = soldById.get(p.id);
+        return { ...p, quantitySold: s?._sum.quantity ?? 0, ticketCount: s?._count._all ?? 0 };
+      })
+      .sort((a, b) => b.quantitySold - a.quantitySold || a.name.localeCompare(b.name, 'es'));
+  }
+
   // Obtener estadísticas de ventas por producto (estrellas y menos vendidos)
   async getSalesAnalytics() {
     // 1. Obtener suma de cantidades vendidas agrupadas por producto

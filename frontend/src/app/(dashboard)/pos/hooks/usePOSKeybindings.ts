@@ -107,6 +107,11 @@ export function usePOSKeybindings({
           return;
         }
       }
+      // Con "Llegó mercancía" abierto la lectura es para su lista, no para el ticket
+      if (document.querySelector('[data-quick-restock]')) {
+        buffer = '';
+        return;
+      }
 
       const currentTime = Date.now();
       if (currentTime - lastKeyTime > 60) {

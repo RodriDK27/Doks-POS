@@ -70,3 +70,59 @@ describe('ProductsBulkService', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
+
+describe('ProductsBulkService.restock', () => {
+  function makeRestockPrisma(existingIds: string[]) {
+    const prisma = {
+      product: {
+        findMany: jest.fn(() => Promise.resolve(existingIds.map((id) => ({ id })))),
+        update: jest.fn((args) => args),
+      },
+      stockMovement: { createMany: jest.fn((args) => args) },
+      $transaction: jest.fn((ops: Array<{ where?: { id: string } }>) =>
+        Promise.resolve(ops.map((op) => (op.where ? { id: op.where.id, stock: 99 } : { count: 1 }))),
+      ),
+    };
+    return prisma;
+  }
+
+  it('suma con incremento, junta productos repetidos y registra una entrada por producto', async () => {
+    const prisma = makeRestockPrisma(['coca', 'fanta']);
+    const service = new ProductsBulkService(prisma as never);
+
+    const result = await service.restock([
+      { productId: 'coca', quantity: 12 },
+      { productId: 'fanta', quantity: 6 },
+      { productId: 'coca', quantity: 12 },
+    ]);
+
+    expect(prisma.product.update).toHaveBeenCalledTimes(2);
+    expect(prisma.product.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'coca' }, data: { stock: { increment: 24 } } }),
+    );
+    expect(prisma.stockMovement.createMany).toHaveBeenCalledWith({
+      data: [
+        { productId: 'coca', type: 'ENTRADA', quantity: 24, reason: 'Agregado rápido' },
+        { productId: 'fanta', type: 'ENTRADA', quantity: 6, reason: 'Agregado rápido' },
+      ],
+    });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(result.updated).toEqual([
+      { id: 'coca', stock: 99 },
+      { id: 'fanta', stock: 99 },
+    ]);
+  });
+
+  it('no toca nada si algún producto ya no existe', async () => {
+    const prisma = makeRestockPrisma(['coca']);
+    const service = new ProductsBulkService(prisma as never);
+
+    await expect(
+      service.restock([
+        { productId: 'coca', quantity: 1 },
+        { productId: 'borrado', quantity: 1 },
+      ]),
+    ).rejects.toThrow('ya no existe');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});

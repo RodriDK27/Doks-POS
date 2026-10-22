@@ -12,8 +12,8 @@ import {
   Keyboard,
   Package,
   Search,
-  Mic,
-  Camera,
+  Heart,
+  PackagePlus,
   Zap,
   Layers,
   Receipt,
@@ -23,8 +23,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { CustomSelect } from '@/components/CustomSelect';
-import { BarcodeScannerModal } from '@/components/BarcodeScannerModal';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 import { usePOS } from './hooks/usePOS';
 import { ProductCard } from './components/ProductCard';
@@ -40,11 +40,18 @@ import { ExpressScannerMobileView } from './components/ExpressScannerMobileView'
 import { QuickLinkBarcodeModal } from './components/QuickLinkBarcodeModal';
 import { ZeroStockRestockModal } from './components/ZeroStockRestockModal';
 import { DailySuppliersModal } from '../register/components/DailySuppliersModal';
+import { QuickRestockDialog } from '../inventory/components/QuickRestockDialog';
+import { FavoritesDialog } from './components/FavoritesDialog';
+import { useFavoriteToggle } from './hooks/useFavoriteToggle';
 import { QuickSupplierPaymentModal } from '@/components/QuickSupplierPaymentModal';
 
 export default function POSPage() {
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
-  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  const [isQuickRestockOpen, setIsQuickRestockOpen] = useState(false);
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
+  const toggleFavorite = useFavoriteToggle();
+  // Sumar existencias es de administración: el cajero no ve el botón
+  const canRestock = useAuthStore((s) => s.role === 'ADMIN' || s.role === 'GERENTE');
   const [isDailySuppliersOpen, setIsDailySuppliersOpen] = useState(false);
   const [isQuickSupplierPaymentOpen, setIsQuickSupplierPaymentOpen] = useState(false);
   const [mobileMode, setMobileMode] = useState<'STANDARD' | 'EXPRESS'>(() => {
@@ -53,9 +60,9 @@ export default function POSPage() {
       if (savedMode === 'EXPRESS' || savedMode === 'STANDARD') {
         return savedMode;
       }
-      return window.innerWidth < 768 ? 'EXPRESS' : 'STANDARD';
     }
-    return 'STANDARD';
+    // Buscador + ticket en lista es el modo por defecto, también en web
+    return 'EXPRESS';
   });
 
   const changeMobileMode = (mode: 'STANDARD' | 'EXPRESS') => {
@@ -139,11 +146,8 @@ export default function POSPage() {
     filteredCatalog,
     selectedCatalogIndex,
     handleSearchKeyDown,
-    isListening,
-    toggleVoiceSearch,
     handleSearchSubmit,
     handleSearchQueryChange,
-    handleBarcodeScanned,
   } = usePOS();
 
   const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
@@ -257,13 +261,14 @@ export default function POSPage() {
       focusSearchInput();
     }
   }, [cartItems.length, focusSearchInput]);
-  return (
+
+  return (
     <div className="flex flex-col h-[calc(100vh-9.8rem)] md:h-[calc(100vh-10.2rem)] overflow-hidden gap-2 select-none pb-1 sm:pb-2">
       {/* BARRA COMPACTA DE ACCIONES Y HERRAMIENTAS DEL POS (OPTIMIZADA PARA TABLET) */}
       <div className="flex items-center justify-between gap-2 shrink-0 bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 px-3 py-1.5 rounded-xl shadow-2xs">
         <div className="flex items-center gap-2">
-          {/* BOTONES DE CAMBIO DE MODO (VISIBLE EN MOBILE/TABLET `lg:hidden`) */}
-          <div className="flex lg:hidden items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border dark:border-slate-800">
+          {/* BOTONES DE CAMBIO DE MODO (PESTAÑAS / EXPRESS) */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border dark:border-slate-800">
             <Button
               variant={mobileMode === 'STANDARD' ? 'default' : 'ghost'}
               className={cn(
@@ -408,17 +413,17 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* VISTA ESCÁNER EXPRESS EN MÓVIL Y TABLETS */}
+      {/* VISTA EXPRESS: BUSCADOR + TICKET EN LISTA (WEB Y MÓVIL) */}
       {mobileMode === 'EXPRESS' && (
-        <div className="flex lg:hidden flex-col flex-1 h-full min-h-0 overflow-hidden">
+        <div className="flex flex-col flex-1 h-full min-h-0 overflow-hidden">
           <ExpressScannerMobileView
             searchQuery={searchQuery}
             onSearchQueryChange={handleSearchQueryChange}
             onSearchSubmit={handleSearchSubmit}
             searchInputRef={mobileSearchInputRef}
-            onBarcodeScanned={handleBarcodeScanned}
-            onToggleVoice={toggleVoiceSearch}
-            isListening={isListening}
+            onQuickRestock={canRestock ? () => setIsQuickRestockOpen(true) : undefined}
+            onOpenFavorites={() => setIsFavoritesOpen(true)}
+            onToggleFavorite={toggleFavorite}
             activeCategory={activeCategory}
             onCategoryChange={setActiveCategory}
             categories={categories}
@@ -439,7 +444,7 @@ export default function POSPage() {
       )}
 
       {/* CUERPO DEL POS (DISEÑO A 2 COLUMNAS ORIENTADO A TABLET LANDSCAPE / ESCRITORIO / PESTAÑAS) */}
-      <div className={`flex-1 flex-col lg:flex-row gap-4 overflow-hidden min-h-0 ${mobileMode === 'STANDARD' ? 'flex' : 'hidden lg:flex'}`}>
+      <div className={`flex-1 flex-col lg:flex-row gap-4 overflow-hidden min-h-0 ${mobileMode === 'STANDARD' ? 'flex' : 'hidden'}`}>
 
         {/* COLUMNA IZQUIERDA: CATÁLOGO TÁCTIL */}
         <div className={`lg:flex-[1.2] lg:flex-[1.25] xl:flex-[1.35] flex flex-col min-w-0 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden h-full ${posTab === 'CATALOG' ? 'flex' : 'hidden lg:flex'
@@ -464,22 +469,27 @@ export default function POSPage() {
                   </span>
                 )}
               </div>
+              {canRestock && (
+                <Button
+                  type="button"
+                  onClick={() => setIsQuickRestockOpen(true)}
+                  className="h-11 w-11 sm:w-40 px-3.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-95 transition-all shrink-0 shadow-xs"
+                  title="Llegó mercancía: surtir varios productos a la vez"
+                  aria-label="Llegó mercancía"
+                >
+                  <PackagePlus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Llegó mercancía</span>
+                </Button>
+              )}
               <Button
                 type="button"
-                onClick={() => setIsCameraScannerOpen(true)}
-                className="h-11 w-11 sm:w-auto px-3.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-95 transition-all shrink-0 shadow-xs"
-                title="Escanear con Cámara"
+                onClick={() => setIsFavoritesOpen(true)}
+                title="Favoritos: existencia y ventas"
+                aria-label="Favoritos"
+                className="h-11 w-11 sm:w-40 px-3.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100/70 dark:hover:bg-rose-950/60 border border-rose-100 dark:border-rose-900/40 cursor-pointer active:scale-95 transition-all shrink-0 shadow-none"
               >
-                <Camera className="h-4 w-4" />
-                <span className="hidden sm:inline">Cámara</span>
-              </Button>
-              <Button
-                type="button"
-                onClick={toggleVoiceSearch}
-                className="h-11 w-11 sm:w-auto px-3.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs bg-indigo-50 dark:bg-indigo-955/40 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100/70 border border-indigo-100/50 dark:border-indigo-900/30 cursor-pointer active:scale-95 transition-all shrink-0 shadow-none"
-              >
-                <Mic className="h-4 w-4" />
-                <span className="hidden sm:inline">Buscar por voz</span>
+                <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
+                <span className="hidden sm:inline">Favoritos</span>
               </Button>
             </div>
 
@@ -541,6 +551,7 @@ export default function POSPage() {
                       onAdd={handleTouchAdd}
                       searchQuery={searchQuery}
                       isSelectedByKeyboard={idx === selectedCatalogIndex}
+                      onToggleFavorite={toggleFavorite}
                     />
                   );
                 })}
@@ -669,29 +680,6 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* OVERLAY DE BÚSQUEDA POR VOZ PARA ACCESIBILIDAD */}
-      {isListening && (
-        <div className="fixed inset-0 z-[999] bg-slate-900/50 backdrop-blur-xs flex flex-col items-center justify-center text-white animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-3xl p-8 max-w-xs w-full mx-4 flex flex-col items-center justify-center gap-6 shadow-2xl border border-slate-200/60 dark:border-slate-800/80 animate-in zoom-in-95 duration-200">
-            <div className="h-20 w-20 bg-rose-50 dark:bg-rose-955/20 rounded-full flex items-center justify-center text-rose-500 animate-bounce relative">
-              <span className="absolute inset-0 rounded-full bg-rose-500/30 animate-ping duration-1000" />
-              <Mic className="h-10 w-10 relative z-10" />
-            </div>
-            <div className="text-center space-y-2">
-              <h3 className="font-extrabold text-lg tracking-tight text-slate-800 dark:text-slate-100">Te estoy escuchando...</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Di el nombre del producto que buscas.</p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={toggleVoiceSearch}
-              className="mt-2 border-slate-200 dark:border-slate-800 hover:bg-slate-105 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl w-full h-10 cursor-pointer"
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* MODAL DE VINCULACIÓN RÁPIDA DE CÓDIGO NO RECONOCIDO */}
       <QuickLinkBarcodeModal
         open={isQuickLinkOpen}
@@ -710,16 +698,11 @@ export default function POSPage() {
         onAddWithoutRestock={handleAddWithoutRestock}
       />
 
-      {/* MODAL DE ESCÁNER DE CÓDIGO DE BARRAS CON CÁMARA */}
-      <BarcodeScannerModal
-        isOpen={isCameraScannerOpen}
-        onClose={() => setIsCameraScannerOpen(false)}
-        onScan={(barcode) => {
-          handleBarcodeScanned(barcode);
-          setIsCameraScannerOpen(false);
-        }}
-        title="Escanear Producto para Cobro"
-      />
+      {/* AGREGADO RÁPIDO: SURTIR LO QUE LLEGÓ DEL PROVEEDOR */}
+      <QuickRestockDialog open={isQuickRestockOpen} onOpenChange={setIsQuickRestockOpen} />
+
+      {/* FAVORITOS: CONSULTA DE EXISTENCIA Y VENTAS */}
+      <FavoritesDialog open={isFavoritesOpen} onOpenChange={setIsFavoritesOpen} />
 
       {/* MODAL TODO-EN-UNO DE PROVEEDORES Y GASTOS DIARIOS */}
       <DailySuppliersModal
