@@ -111,6 +111,7 @@ model Sale {
   paymentMethod String     // Método de pago: EFECTIVO, TARJETA, TRANSFERENCIA, FIADO
   amountPaid    Float      // Cantidad con la que pagó el cliente (para calcular cambio)
   change        Float      // Cambio entregado
+  refundedAmount Float     @default(0) // Dinero ya devuelto al cliente por devoluciones/cambios
   customerId    String?    // Opcional: Cliente si es fiado o venta registrada
   customer      Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   cashRegisterId String    // Caja en la que se realizó la venta
@@ -118,6 +119,8 @@ model Sale {
   createdAt     DateTime   @default(now())
   items         SaleItem[]
   creditTransactions CreditTransaction[]
+  returns       SaleReturn[] @relation("ReturnOriginalSale")
+  exchangeReturn SaleReturn? @relation("ReturnReplacementSale") // Si esta venta es el producto nuevo de un cambio
 
   @@index([customerId])
   @@index([cashRegisterId])
@@ -135,6 +138,7 @@ model SaleItem {
   price          Float    // Precio histórico al que se vendió
   quantity       Float    // Cantidad vendida (Float para venta a granel)
   total          Float    // Subtotal (precio * cantidad)
+  returnedQuantity Float  @default(0) // Cantidad que el cliente ya regresó (devolución o cambio)
   needsReview    Boolean  @default(false) // Modo abuela: se cobró sin saber el producto exacto ("No sé cuál" / "Otro producto")
   pendingFamily  String?  // Familia que eligió al cobrar (ej. "Boing"); nulo si fue "Otro producto"
   resolvedAt     DateTime? // Cuándo el administrador lo aclaró (asignó producto o lo descartó)
@@ -142,6 +146,25 @@ model SaleItem {
   @@index([saleId])
   @@index([productId])
   @@index([needsReview, resolvedAt])
+}
+
+/// Devolución (o cambio) de artículos de una venta: el cliente regresa mercancía y se le reembolsa
+model SaleReturn {
+  id                String   @id @default(uuid())
+  saleId            Int      // Venta original de la que se regresan artículos
+  sale              Sale     @relation("ReturnOriginalSale", fields: [saleId], references: [id], onDelete: Cascade)
+  amount            Float    // Monto reembolsado al cliente por los artículos regresados
+  refundMethod      String   // Por dónde se devolvió el dinero (igual al método de la venta original)
+  restocked         Boolean  @default(true) // Si la mercancía regresó al inventario (false = dañada/merma)
+  reason            String?  // Motivo (ej. "Caducado", "Se equivocó de producto")
+  replacementSaleId Int?     @unique // Venta nueva con el producto que se llevó a cambio (si fue cambio)
+  replacementSale   Sale?    @relation("ReturnReplacementSale", fields: [replacementSaleId], references: [id], onDelete: SetNull)
+  cashRegisterId    String   // Caja en la que se hizo la devolución
+  items             Json     // [{ saleItemId, productName, quantity, amount }]
+  createdAt         DateTime @default(now())
+
+  @@index([saleId])
+  @@index([createdAt])
 }
 
 /// Representa una sesión o turno de la caja registradora (Arqueo / Corte de caja)

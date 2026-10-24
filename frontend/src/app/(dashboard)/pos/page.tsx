@@ -153,6 +153,13 @@ export default function POSPage() {
   const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Cada cobro arranca en efectivo: un método elegido en el cobro anterior no debe quedarse puesto
+  const openCheckout = useCallback(() => {
+    setPaymentMethod('EFECTIVO');
+    setAmountPaid(getTotal());
+    setIsCheckoutDrawerOpen(true);
+  }, [setPaymentMethod, setAmountPaid, getTotal]);
+
   const focusSearchInput = useCallback(() => {
     if (mobileMode === 'EXPRESS' && mobileSearchInputRef.current) {
       mobileSearchInputRef.current.focus();
@@ -203,7 +210,7 @@ export default function POSPage() {
     const handleF8Event = async () => {
       if (!isCheckoutDrawerOpen) {
         if (cartItems.length > 0) {
-          setIsCheckoutDrawerOpen(true);
+          openCheckout();
         }
       } else {
         if (canCheckout && !isSubmitting) {
@@ -216,7 +223,7 @@ export default function POSPage() {
 
     window.addEventListener('pos-f8-press', handleF8Event);
     return () => window.removeEventListener('pos-f8-press', handleF8Event);
-  }, [isCheckoutDrawerOpen, cartItems.length, canCheckout, isSubmitting, handleCheckout, focusSearchInput]);
+  }, [isCheckoutDrawerOpen, cartItems.length, canCheckout, isSubmitting, handleCheckout, focusSearchInput, openCheckout]);
 
   // Atajos de teclado generales (Escape para cerrar cobro, +, -, Delete para editar el ticket)
   useEffect(() => {
@@ -435,7 +442,7 @@ export default function POSPage() {
             updateQuantity={updateQuantity}
             removeFromCart={removeFromCart}
             onClearCart={handleClearCart}
-            onProceedToPayment={() => setIsCheckoutDrawerOpen(true)}
+            onProceedToPayment={openCheckout}
             onSuspend={() => setIsSuspendModalOpen(true)}
             filteredCatalog={filteredCatalog}
             onAddProduct={handleTouchAdd}
@@ -589,7 +596,7 @@ export default function POSPage() {
             customers={customers}
             discount={discount}
             setDiscount={setDiscount}
-            onProceedToPayment={() => setIsCheckoutDrawerOpen(true)}
+            onProceedToPayment={openCheckout}
             onSuspend={() => setIsSuspendModalOpen(true)}
             onClearCart={handleClearCart}
             updateQuantity={updateQuantity}

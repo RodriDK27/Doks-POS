@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, ParseIntPipe, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSaleDto, ResolveSaleItemDto } from './dto/create-sale.dto';
+import { ChangePaymentMethodDto, CreateSaleReturnDto } from './dto/sale-return.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -58,6 +59,18 @@ export class SalesController {
   @Roles('ADMIN', 'GERENTE')
   dismissPendingItem(@Param('itemId', ParseUUIDPipe) itemId: string) {
     return this.salesService.dismissPendingItem(itemId);
+  }
+
+  // Devolución o cambio: el cliente regresa artículos del ticket
+  @Post(':id/returns')
+  createReturn(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateSaleReturnDto) {
+    return this.salesService.createReturn(id, dto);
+  }
+
+  // Corregir el método de pago si se cobró con el método equivocado
+  @Patch(':id/payment-method')
+  changePaymentMethod(@Param('id', ParseIntPipe) id: number, @Body() dto: ChangePaymentMethodDto) {
+    return this.salesService.changePaymentMethod(id, dto);
   }
 
   @Get(':id')

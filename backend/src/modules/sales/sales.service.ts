@@ -1,12 +1,15 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { ChangePaymentMethodDto, CreateSaleReturnDto } from './dto/sale-return.dto';
 import { RegisterService } from '../register/register.service';
 import { CustomersService } from '../customers/customers.service';
 import { Prisma } from '@prisma/client';
 
 /** Redondea a centavos: los renglones a granel (precio x kilos) pueden dar montos como 20.2993842 */
 const roundMoney = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100;
+/** Cantidades a granel (kg) con 3 decimales */
+const roundQty = (qty: number) => Math.round((qty + Number.EPSILON) * 1000) / 1000;
 
 @Injectable()
 export class SalesService {
@@ -243,8 +246,9 @@ export class SalesService {
       include: {
         items: true,
         customer: {
-          select: { name: true },
+          select: { id: true, name: true },
         },
+        returns: { orderBy: { createdAt: 'asc' } },
       },
     });
   }
@@ -257,6 +261,7 @@ export class SalesService {
         items: true,
         customer: true,
         cashRegister: true,
+        returns: { orderBy: { createdAt: 'asc' } },
       },
     });
 
@@ -265,6 +270,292 @@ export class SalesService {
     }
 
     return sale;
+  }
+
+  // ─── Devoluciones, cambios y corrección del método de pago ───
+
+  /**
+   * El cliente regresa artículos de un ticket y se le reembolsa por el mismo medio con el que pagó:
+   * en efectivo sale de la caja abierta (queda como egreso), en fiado se descuenta de su deuda y con
+   * tarjeta/transferencia solo queda registrado. Si se lleva otros productos a cambio, estos se cobran
+   * como una venta nueva con el mismo método de pago, así que en caja solo se mueve la diferencia.
+   */
+  async createReturn(saleId: number, dto: CreateSaleReturnDto) {
+    const activeRegister = await this.registerService.getActive();
+    if (!activeRegister) {
+      throw new BadRequestException('Abra la caja para poder registrar devoluciones o cambios.');
+    }
+
+    const itemIds = dto.items.map((i) => i.saleItemId);
+    if (new Set(itemIds).size !== itemIds.length) {
+      throw new BadRequestException('Un mismo artículo aparece dos veces en la devolución.');
+    }
+
+    const restock = dto.restock ?? true;
+    const replacementInput = dto.replacementItems ?? [];
+    const replacementProducts = replacementInput.length
+      ? await this.prisma.product.findMany({ where: { id: { in: replacementInput.map((i) => i.productId) } } })
+      : [];
+    const replacementMap = new Map(replacementProducts.map((p) => [p.id, p]));
+    const replacementItems = replacementInput.map((i) => {
+      const product = replacementMap.get(i.productId);
+      if (!product) {
+        throw new NotFoundException(`El producto con ID ${i.productId} no existe en el catálogo.`);
+      }
+      return { product, quantity: i.quantity, total: roundMoney(product.sellPrice * i.quantity) };
+    });
+    const replacementTotal = roundMoney(replacementItems.reduce((acc, i) => acc + i.total, 0));
+
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const sale = await tx.sale.findUnique({ where: { id: saleId }, include: { items: true } });
+      if (!sale) {
+        throw new NotFoundException(`El ticket de venta #${saleId} no existe.`);
+      }
+      if (sale.paymentMethod === 'FIADO' && !sale.customerId) {
+        throw new BadRequestException('Esta venta fiada ya no tiene cliente asociado; no se puede reembolsar.');
+      }
+
+      // Si la venta tuvo descuento, cada artículo se reembolsa en proporción a lo que realmente se pagó
+      const itemsSum = sale.items.reduce((acc, i) => acc + i.total, 0);
+      const paidRatio = itemsSum > 0 ? sale.total / itemsSum : 0;
+
+      let refund = 0;
+      const returnedItems: Array<{ saleItemId: string; productName: string; quantity: number; amount: number }> = [];
+
+      for (const r of dto.items) {
+        const item = sale.items.find((i) => i.id === r.saleItemId);
+        if (!item) {
+          throw new BadRequestException('Uno de los artículos no pertenece a este ticket.');
+        }
+        const quantity = roundQty(r.quantity);
+        const available = roundQty(item.quantity - item.returnedQuantity);
+        if (quantity > available) {
+          throw new BadRequestException(
+            available > 0
+              ? `Solo quedan ${available} de "${item.productName}" por devolver en este ticket.`
+              : `"${item.productName}" ya se devolvió completo.`,
+          );
+        }
+
+        // El filtro evita devolver dos veces lo mismo si dos pantallas lo hacen al mismo tiempo
+        const { count } = await tx.saleItem.updateMany({
+          where: { id: item.id, returnedQuantity: { lte: roundQty(item.quantity - quantity) + 0.0005 } },
+          data: { returnedQuantity: { increment: quantity } },
+        });
+        if (count === 0) {
+          throw new BadRequestException(`"${item.productName}" ya fue devuelto desde otra pantalla. Recargue el ticket.`);
+        }
+
+        // Un artículo "por aclarar" que se devuelve completo ya no tiene nada que aclarar
+        if (item.needsReview && !item.resolvedAt && quantity >= available) {
+          await tx.saleItem.update({ where: { id: item.id }, data: { resolvedAt: new Date() } });
+        }
+
+        if (restock && item.productId) {
+          await tx.product.update({ where: { id: item.productId }, data: { stock: { increment: quantity } } });
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              type: 'ENTRADA',
+              quantity,
+              reason: `Devolución de la venta #${sale.id}`,
+            },
+          });
+        }
+
+        const amount = roundMoney((item.total / item.quantity) * quantity * paidRatio);
+        refund += amount;
+        returnedItems.push({ saleItemId: item.id, productName: item.productName, quantity, amount });
+      }
+
+      // Nunca se reembolsa más de lo que se cobró (redondeos acumulados de devoluciones parciales)
+      refund = Math.min(roundMoney(refund), roundMoney(sale.total - sale.refundedAmount));
+
+      await tx.sale.update({ where: { id: sale.id }, data: { refundedAmount: { increment: refund } } });
+
+      // Productos que se lleva a cambio: venta nueva con el mismo método de pago y cliente
+      let replacementSaleId: number | null = null;
+      if (replacementItems.length > 0) {
+        const replacementSale = await tx.sale.create({
+          data: {
+            total: replacementTotal,
+            discount: 0,
+            paymentMethod: sale.paymentMethod,
+            amountPaid: replacementTotal,
+            change: 0,
+            customerId: sale.customerId,
+            cashRegisterId: activeRegister.id,
+          },
+        });
+        replacementSaleId = replacementSale.id;
+
+        for (const item of replacementItems) {
+          await tx.saleItem.create({
+            data: {
+              saleId: replacementSale.id,
+              productId: item.product.id,
+              productName: item.product.name,
+              price: item.product.sellPrice,
+              quantity: item.quantity,
+              total: item.total,
+            },
+          });
+          await tx.product.update({
+            where: { id: item.product.id },
+            data: { stock: { decrement: item.quantity } },
+          });
+        }
+      }
+
+      const label = replacementSaleId
+        ? `Cambio del ticket #${sale.id} (nuevo ticket #${replacementSaleId})`
+        : `Devolución del ticket #${sale.id}`;
+
+      if (sale.paymentMethod === 'EFECTIVO') {
+        if (refund > 0) {
+          await tx.cashTransaction.create({
+            data: { cashRegisterId: activeRegister.id, amount: -refund, type: 'EGRESO', description: label },
+          });
+        }
+        await tx.cashRegister.update({
+          where: { id: activeRegister.id },
+          data: { expectedBalance: { increment: roundMoney(replacementTotal - refund) } },
+        });
+      } else if (sale.paymentMethod === 'FIADO' && sale.customerId) {
+        if (refund > 0) {
+          await tx.creditTransaction.create({
+            data: { customerId: sale.customerId, amount: refund, type: 'ABONO', saleId: sale.id, notes: label },
+          });
+        }
+        if (replacementSaleId) {
+          await tx.creditTransaction.create({
+            data: {
+              customerId: sale.customerId,
+              amount: -replacementTotal,
+              type: 'DEUDA',
+              saleId: replacementSaleId,
+              notes: `Cargo por cambio del ticket #${sale.id}`,
+            },
+          });
+        }
+        await tx.customer.update({
+          where: { id: sale.customerId },
+          data: { currentDebt: { increment: roundMoney(replacementTotal - refund) } },
+        });
+      }
+
+      const saleReturn = await tx.saleReturn.create({
+        data: {
+          saleId: sale.id,
+          amount: refund,
+          refundMethod: sale.paymentMethod,
+          restocked: restock,
+          reason: dto.reason?.trim() || null,
+          replacementSaleId,
+          cashRegisterId: activeRegister.id,
+          items: returnedItems,
+        },
+      });
+
+      return {
+        saleReturn,
+        refund,
+        replacementTotal,
+        replacementSaleId,
+        // Positivo: el cliente paga la diferencia. Negativo: se le devuelve dinero
+        difference: roundMoney(replacementTotal - refund),
+      };
+    });
+  }
+
+  /**
+   * Corrige el método de pago de una venta cobrada con el método equivocado. Se deshace el efecto
+   * del método anterior (efectivo en caja, deuda del cliente) y se aplica el del nuevo.
+   * Solo para ventas del turno abierto, para no descuadrar cortes de caja ya cerrados.
+   */
+  async changePaymentMethod(saleId: number, dto: ChangePaymentMethodDto) {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const sale = await tx.sale.findUnique({
+        where: { id: saleId },
+        include: { cashRegister: true, _count: { select: { returns: true } } },
+      });
+      if (!sale) {
+        throw new NotFoundException(`El ticket de venta #${saleId} no existe.`);
+      }
+      if (sale.paymentMethod === dto.paymentMethod) {
+        throw new BadRequestException('La venta ya está registrada con ese método de pago.');
+      }
+      if (sale.cashRegister.status !== 'ABIERTO') {
+        throw new BadRequestException(
+          'Solo se puede corregir el método de pago de ventas del turno actual: la caja de esta venta ya se cerró.',
+        );
+      }
+      if (sale._count.returns > 0 || sale.refundedAmount > 0) {
+        throw new BadRequestException('Esta venta ya tiene devoluciones; no se puede cambiar su método de pago.');
+      }
+
+      const customerId = dto.customerId || sale.customerId;
+      if (dto.paymentMethod === 'FIADO' && !customerId) {
+        throw new BadRequestException('Debe seleccionar un cliente registrado para poder fiar la venta.');
+      }
+
+      const total = sale.total;
+
+      // 1. Deshacer el método anterior
+      if (sale.paymentMethod === 'EFECTIVO') {
+        await tx.cashRegister.update({
+          where: { id: sale.cashRegisterId },
+          data: { expectedBalance: { decrement: total } },
+        });
+      } else if (sale.paymentMethod === 'FIADO' && sale.customerId) {
+        await tx.creditTransaction.deleteMany({ where: { saleId: sale.id, type: 'DEUDA' } });
+        await tx.customer.update({
+          where: { id: sale.customerId },
+          data: { currentDebt: { decrement: total } },
+        });
+      }
+
+      // 2. Aplicar el método nuevo
+      if (dto.paymentMethod === 'EFECTIVO') {
+        await tx.cashRegister.update({
+          where: { id: sale.cashRegisterId },
+          data: { expectedBalance: { increment: total } },
+        });
+      } else if (dto.paymentMethod === 'FIADO' && customerId) {
+        const customer = await tx.customer.findUnique({ where: { id: customerId } });
+        if (!customer) {
+          throw new NotFoundException(`El cliente con ID ${customerId} no existe.`);
+        }
+        const nextDebt = customer.currentDebt + total;
+        if (customer.creditLimit > 0 && nextDebt > customer.creditLimit) {
+          throw new BadRequestException(
+            `El fiado por $${total} excede el límite de crédito del cliente ($${customer.creditLimit}). Deuda actual: $${customer.currentDebt}.`,
+          );
+        }
+        await tx.creditTransaction.create({
+          data: {
+            customerId,
+            amount: -total,
+            type: 'DEUDA',
+            saleId: sale.id,
+            notes: `Cargo por Ticket de Venta #${sale.id} (método de pago corregido)`,
+          },
+        });
+        await tx.customer.update({ where: { id: customerId }, data: { currentDebt: nextDebt } });
+      }
+
+      return tx.sale.update({
+        where: { id: sale.id },
+        data: {
+          paymentMethod: dto.paymentMethod,
+          // Al corregir se registra el pago exacto: ya no hay cambio que calcular
+          amountPaid: total,
+          change: 0,
+          customerId,
+        },
+        include: { items: true, customer: true, returns: { orderBy: { createdAt: 'asc' } } },
+      });
+    });
   }
 
   // Obtener estadísticas rápidas (Dashboard / Analytics)
@@ -284,7 +575,15 @@ export class SalesService {
       },
     });
 
-    const earningsToday = todaySales.reduce((acc, sale) => acc + sale.total, 0);
+    // Las devoluciones de hoy restan a lo vendido hoy (aunque el ticket original sea de otro día)
+    const todayReturns = await this.prisma.saleReturn.findMany({
+      where: { createdAt: { gte: startOfDay, lte: endOfDay } },
+      select: { amount: true, refundMethod: true },
+    });
+
+    const earningsToday = roundMoney(
+      todaySales.reduce((acc, sale) => acc + sale.total, 0) - todayReturns.reduce((acc, r) => acc + r.amount, 0),
+    );
     const salesCountToday = todaySales.length;
 
     // Métodos de pago de hoy
@@ -292,6 +591,9 @@ export class SalesService {
       acc[sale.paymentMethod] = (acc[sale.paymentMethod] || 0) + sale.total;
       return acc;
     }, {} as Record<string, number>);
+    for (const r of todayReturns) {
+      methodsDistribution[r.refundMethod] = roundMoney((methodsDistribution[r.refundMethod] || 0) - r.amount);
+    }
 
     // Total histórico de productos y alertas de bajo stock
     const productsCount = await this.prisma.product.count();
@@ -380,9 +682,11 @@ export class SalesService {
     const bestSellersMap: Record<string, { name: string; quantity: number; revenue: number; profit: number }> = {};
 
     for (const sale of sales) {
-      totalRevenue += sale.total;
+      // Lo devuelto no cuenta como venta
+      const netSaleTotal = sale.total - sale.refundedAmount;
+      totalRevenue += netSaleTotal;
       totalDiscount += sale.discount;
-      paymentDistribution[sale.paymentMethod] = (paymentDistribution[sale.paymentMethod] || 0) + sale.total;
+      paymentDistribution[sale.paymentMethod] = (paymentDistribution[sale.paymentMethod] || 0) + netSaleTotal;
 
         for (const item of sale.items) {
           let purchasePrice = 0;
@@ -399,8 +703,11 @@ export class SalesService {
             }
           }
 
-        const itemCost = purchasePrice * item.quantity;
-        const itemProfit = item.total - itemCost;
+        const netQuantity = item.quantity - item.returnedQuantity;
+        if (netQuantity <= 0) continue;
+        const netTotal = item.total * (netQuantity / item.quantity);
+        const itemCost = purchasePrice * netQuantity;
+        const itemProfit = netTotal - itemCost;
 
         totalCost += itemCost;
 
@@ -413,8 +720,8 @@ export class SalesService {
             profit: 0,
           };
         }
-        bestSellersMap[key].quantity += item.quantity;
-        bestSellersMap[key].revenue += item.total;
+        bestSellersMap[key].quantity += netQuantity;
+        bestSellersMap[key].revenue += netTotal;
         bestSellersMap[key].profit += itemProfit;
       }
     }

@@ -17,6 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTickets } from './hooks/useTickets';
 import { TicketDetailsDialog } from './components/TicketDetailsDialog';
+import { SaleReturnDialog } from './components/SaleReturnDialog';
+import { ChangePaymentMethodDialog } from './components/ChangePaymentMethodDialog';
 
 export default function TicketsPage() {
   const { role } = useAuthStore();
@@ -30,6 +32,14 @@ export default function TicketsPage() {
     setSelectedSale,
     isTicketOpen,
     setIsTicketOpen,
+    isReturnOpen,
+    setIsReturnOpen,
+    isPaymentMethodOpen,
+    setIsPaymentMethodOpen,
+    openReturn,
+    openPaymentMethod,
+    handleReturnCompleted,
+    handlePaymentMethodChanged,
     handlePrint,
     filteredSales,
     paginatedSales,
@@ -164,7 +174,12 @@ export default function TicketsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-black text-slate-800 text-xs">
-                      ${sale.total.toFixed(2)}
+                      ${(sale.total - (sale.refundedAmount ?? 0)).toFixed(2)}
+                      {(sale.returns?.length ?? 0) > 0 && (
+                        <span className="block text-[9px] font-bold text-rose-500">
+                          {sale.items.every((i) => (i.returnedQuantity ?? 0) >= i.quantity) ? 'Devuelta' : 'Con devolución'}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <Button
@@ -247,6 +262,24 @@ export default function TicketsPage() {
         onOpenChange={setIsTicketOpen}
         selectedSale={selectedSale}
         onPrint={handlePrint}
+        onReturn={openReturn}
+        onChangePaymentMethod={openPaymentMethod}
+      />
+
+      <SaleReturnDialog
+        key={`return-${selectedSale?.id}-${isReturnOpen}`}
+        open={isReturnOpen}
+        onOpenChange={setIsReturnOpen}
+        sale={selectedSale}
+        onCompleted={handleReturnCompleted}
+      />
+
+      <ChangePaymentMethodDialog
+        key={`payment-${selectedSale?.id}-${isPaymentMethodOpen}`}
+        open={isPaymentMethodOpen}
+        onOpenChange={setIsPaymentMethodOpen}
+        sale={selectedSale}
+        onCompleted={handlePaymentMethodChanged}
       />
     </div>
   );

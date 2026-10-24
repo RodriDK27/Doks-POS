@@ -1,5 +1,5 @@
 import React from 'react';
-import { Printer } from 'lucide-react';
+import { Printer, Undo2, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Sale } from '../types';
@@ -9,6 +9,8 @@ interface TicketDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedSale: Sale | null;
   onPrint: () => void;
+  onReturn: () => void;
+  onChangePaymentMethod: () => void;
 }
 
 export function TicketDetailsDialog({
@@ -16,7 +18,13 @@ export function TicketDetailsDialog({
   onOpenChange,
   selectedSale,
   onPrint,
+  onReturn,
+  onChangePaymentMethod,
 }: TicketDetailsDialogProps) {
+  const hasReturns = !!selectedSale && (selectedSale.returns?.length ?? 0) > 0;
+  const fullyReturned =
+    !!selectedSale && selectedSale.items.every((i) => (i.returnedQuantity ?? 0) >= i.quantity);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px] rounded-2xl max-h-[85vh] overflow-y-auto animate-in fade-in duration-200">
@@ -59,6 +67,9 @@ export function TicketDetailsDialog({
                       <div className="col-span-7 pr-1">
                         <span className="block truncate">{item.productName}</span>
                         <span className="text-[9px] text-slate-400">{item.quantity} x ${item.price.toFixed(2)}</span>
+                        {(item.returnedQuantity ?? 0) > 0 && (
+                          <span className="block text-[9px] font-bold text-rose-500">DEVUELTO: {item.returnedQuantity}</span>
+                        )}
                       </div>
                       <span className="col-span-3 text-right font-semibold">${item.total.toFixed(2)}</span>
                     </div>
@@ -100,11 +111,60 @@ export function TicketDetailsDialog({
                 )}
               </div>
 
+              {/* Devoluciones y cambios */}
+              {hasReturns && (
+                <div className="border-t border-slate-200 border-dashed pt-2 space-y-1.5">
+                  <p className="font-bold">DEVOLUCIONES / CAMBIOS:</p>
+                  {selectedSale.returns.map((r) => (
+                    <div key={r.id} className="text-[10px] text-slate-500">
+                      <div className="flex justify-between">
+                        <span>
+                          {new Date(r.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          {r.replacementSaleId ? ` · CAMBIO → #${r.replacementSaleId}` : ' · DEVOLUCIÓN'}
+                        </span>
+                        <span className="text-rose-500 font-semibold">-${r.amount.toFixed(2)}</span>
+                      </div>
+                      <span className="block">
+                        {r.items.map((i) => `${i.quantity} ${i.productName}`).join(', ')}
+                        {!r.restocked && ' (no regresó a inventario)'}
+                      </span>
+                      {r.reason && <span className="block italic">&quot;{r.reason}&quot;</span>}
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-bold text-xs pt-1 border-t border-slate-100">
+                    <span>TOTAL NETO:</span>
+                    <span>${(selectedSale.total - selectedSale.refundedAmount).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="text-center pt-3 border-t border-dashed text-[9px] text-slate-400">
                 <p>¡Gracias por su preferencia!</p>
                 <p className="mt-0.5">Visite Dok&apos;s POS pronto</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {selectedSale && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="text-xs font-bold rounded-xl h-10 flex items-center gap-1.5 cursor-pointer text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"
+              disabled={fullyReturned}
+              onClick={onReturn}
+            >
+              <Undo2 className="h-4 w-4" /> Devolución / Cambio
+            </Button>
+            <Button
+              variant="outline"
+              className="text-xs font-bold rounded-xl h-10 flex items-center gap-1.5 cursor-pointer"
+              disabled={hasReturns}
+              title={hasReturns ? 'La venta ya tiene devoluciones' : undefined}
+              onClick={onChangePaymentMethod}
+            >
+              <ArrowLeftRight className="h-4 w-4" /> Cambiar método de pago
+            </Button>
           </div>
         )}
 
