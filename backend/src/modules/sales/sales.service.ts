@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { ChangePaymentMethodDto, CreateSaleReturnDto } from './dto/sale-return.dto';
@@ -20,7 +20,7 @@ export class SalesService {
   ) {}
 
   // Registrar una nueva venta
-  async create(dto: CreateSaleDto) {
+  async create(dto: CreateSaleDto, role?: string) {
     // 1. Verificar que haya una caja abierta activa
     const activeRegister = await this.registerService.getActive();
     if (!activeRegister) {
@@ -68,6 +68,14 @@ export class SalesService {
         }
         itemPrice = product.sellPrice;
         productName = product.name;
+
+        // Precio cambiado en el ticket (etiqueta vieja, rebaja a una pieza): solo quien administra
+        if (item.price !== undefined && Math.abs(item.price - product.sellPrice) >= 0.005) {
+          if (role !== 'ADMIN' && role !== 'GERENTE') {
+            throw new ForbiddenException(`Solo un administrador puede cambiar el precio de "${product.name}".`);
+          }
+          itemPrice = roundMoney(item.price);
+        }
       } else {
         // Artículo genérico / de venta libre sin ID en catálogo
         if (!item.genericName || item.genericPrice === undefined) {

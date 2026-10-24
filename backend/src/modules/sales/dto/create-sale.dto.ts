@@ -14,6 +14,12 @@ export class CreateSaleItemDto {
   @IsOptional()
   genericName?: string;
 
+  /** Precio cambiado a mano en el ticket para un producto del catálogo (solo administrador/gerente) */
+  @IsNumber({}, { message: 'El precio debe ser un número' })
+  @Min(0, { message: 'El precio no puede ser menor a 0' })
+  @IsOptional()
+  price?: number;
+
   @IsNumber({}, { message: 'El precio genérico debe ser un número' })
   @Min(0, { message: 'El precio genérico no puede ser menor a 0' })
   @IsOptional()

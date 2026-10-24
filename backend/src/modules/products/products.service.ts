@@ -500,6 +500,19 @@ export class ProductsService {
       .sort((a, b) => b.quantitySold - a.quantitySold || a.name.localeCompare(b.name, 'es'));
   }
 
+  /** Productos en más tickets de los últimos días (no por cantidad: 10 kg de tortilla no pesan más que 10 ventas) */
+  async getTopSellers(days: number, limit: number) {
+    const since = new Date(Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000);
+    const grouped = await this.prisma.saleItem.groupBy({
+      by: ['productId'],
+      where: { productId: { not: null }, sale: { createdAt: { gte: since } } },
+      _count: { _all: true },
+      orderBy: { _count: { productId: 'desc' } },
+      take: Math.min(Math.max(1, limit), 50),
+    });
+    return grouped.map((g) => g.productId as string);
+  }
+
   // Obtener estadísticas de ventas por producto (estrellas y menos vendidos)
   async getSalesAnalytics() {
     // 1. Obtener suma de cantidades vendidas agrupadas por producto

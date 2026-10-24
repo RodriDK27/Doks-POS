@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, ParseIntPipe, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, ParseIntPipe, ParseUUIDPipe, Query, Req, UseGuards } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSaleDto, ResolveSaleItemDto } from './dto/create-sale.dto';
 import { ChangePaymentMethodDto, CreateSaleReturnDto } from './dto/sale-return.dto';
@@ -12,8 +12,8 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @Post()
-  create(@Body() createSaleDto: CreateSaleDto) {
-    return this.salesService.create(createSaleDto);
+  create(@Body() createSaleDto: CreateSaleDto, @Req() req: { user?: { role?: string } }) {
+    return this.salesService.create(createSaleDto, req.user?.role);
   }
 
   @Get()

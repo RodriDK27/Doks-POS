@@ -86,6 +86,12 @@ export class ProductsController {
     return this.productsService.getFavorites(days ? Number(days) : undefined);
   }
 
+  /** IDs de los productos que más se venden (artículos frecuentes del punto de venta) */
+  @Get('top-sellers')
+  getTopSellers(@Query('days') days?: string, @Query('limit') limit?: string) {
+    return this.productsService.getTopSellers(days ? Number(days) : 30, limit ? Number(limit) : 12);
+  }
+
   @Get('sales-analytics')
   getSalesAnalytics() {
     return this.productsService.getSalesAnalytics();
