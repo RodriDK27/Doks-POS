@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { deleteImageFile } from '../../common/images/image-storage';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
@@ -473,19 +474,37 @@ export class ProductsService {
    * Favoritos con su existencia y lo vendido (piezas o kg y en cuántos tickets), del más al menos vendido.
    * `days` limita las ventas a los últimos N días; sin él cuenta todo el historial.
    */
+  /**
+   * Favoritos: los marcados con corazón más, si está activado, los que llegaron al mínimo de ventas
+   * (tickets) en el periodo. Estos últimos salen con `isAuto` para distinguirlos.
+   */
   async getFavorites(days?: number) {
+    const since = days && days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
+    const salePeriod = since ? { sale: { createdAt: { gte: since } } } : {};
+
+    const autoMinSales = await this.getAutoFavoriteMinSales();
+    const autoIds =
+      autoMinSales > 0
+        ? (
+            await this.prisma.saleItem.groupBy({
+              by: ['productId'],
+              where: { productId: { not: null }, ...salePeriod },
+              having: { productId: { _count: { gte: autoMinSales } } },
+            })
+          ).map((g) => g.productId as string)
+        : [];
+
     const products = await this.prisma.product.findMany({
-      where: { isFavorite: true },
-      select: { id: true, name: true, stock: true, minStock: true, unitType: true, category: true, imageUrl: true },
+      where: autoIds.length ? { OR: [{ isFavorite: true }, { id: { in: autoIds } }] } : { isFavorite: true },
+      select: { id: true, name: true, stock: true, minStock: true, unitType: true, category: true, imageUrl: true, isFavorite: true },
     });
     if (products.length === 0) return [];
 
-    const since = days && days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
     const sold = await this.prisma.saleItem.groupBy({
       by: ['productId'],
       where: {
         productId: { in: products.map((p) => p.id) },
-        ...(since ? { sale: { createdAt: { gte: since } } } : {}),
+        ...salePeriod,
       },
       _sum: { quantity: true },
       _count: { _all: true },
@@ -493,11 +512,36 @@ export class ProductsService {
     const soldById = new Map(sold.map((s) => [s.productId as string, s]));
 
     return products
-      .map((p) => {
+      .map(({ isFavorite, ...p }) => {
         const s = soldById.get(p.id);
-        return { ...p, quantitySold: s?._sum.quantity ?? 0, ticketCount: s?._count._all ?? 0 };
+        return { ...p, isAuto: !isFavorite, quantitySold: s?._sum.quantity ?? 0, ticketCount: s?._count._all ?? 0 };
       })
       .sort((a, b) => b.quantitySold - a.quantitySold || a.name.localeCompare(b.name, 'es'));
+  }
+
+  private static readonly AUTO_FAVORITES_KEY = 'favorites.autoMinSales';
+
+  /** Mínimo de ventas (tickets) para que un producto salga solo en favoritos; 0 = desactivado */
+  async getAutoFavoriteMinSales(): Promise<number> {
+    try {
+      const setting = await this.prisma.appSetting.findUnique({ where: { key: ProductsService.AUTO_FAVORITES_KEY } });
+      const value = Number(setting?.value ?? 0);
+      return Number.isInteger(value) && value > 0 ? value : 0;
+    } catch (error) {
+      // P2021 = la tabla aún no existe (falta `prisma db push`): favoritos sigue funcionando sin automáticos
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2021') return 0;
+      throw error;
+    }
+  }
+
+  async setAutoFavoriteMinSales(minSales: number) {
+    const value = String(Math.max(0, Math.floor(minSales)));
+    await this.prisma.appSetting.upsert({
+      where: { key: ProductsService.AUTO_FAVORITES_KEY },
+      create: { key: ProductsService.AUTO_FAVORITES_KEY, value },
+      update: { value },
+    });
+    return { autoMinSales: Number(value) };
   }
 
   /** Productos en más tickets de los últimos días (no por cantidad: 10 kg de tortilla no pesan más que 10 ventas) */

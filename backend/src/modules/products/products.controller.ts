@@ -8,6 +8,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { BulkProductsDto } from './dto/bulk-products.dto';
 import { RestockProductsDto } from './dto/restock-products.dto';
 import { SetFavoriteDto } from './dto/set-favorite.dto';
+import { FavoritesSettingsDto } from './dto/favorites-settings.dto';
 import { ProductsBulkService } from './products-bulk.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -87,6 +88,18 @@ export class ProductsController {
   }
 
   /** IDs de los productos que más se venden (artículos frecuentes del punto de venta) */
+  /** Ajuste compartido: a partir de cuántas ventas un producto entra solo a favoritos */
+  @Get('favorites/settings')
+  async getFavoritesSettings() {
+    return { autoMinSales: await this.productsService.getAutoFavoriteMinSales() };
+  }
+
+  @Patch('favorites/settings')
+  @Roles('ADMIN', 'GERENTE')
+  setFavoritesSettings(@Body() body: FavoritesSettingsDto) {
+    return this.productsService.setAutoFavoriteMinSales(body.autoMinSales);
+  }
+
   @Get('top-sellers')
   getTopSellers(@Query('days') days?: string, @Query('limit') limit?: string) {
     return this.productsService.getTopSellers(days ? Number(days) : 30, limit ? Number(limit) : 12);

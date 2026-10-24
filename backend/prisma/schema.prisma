@@ -381,3 +381,10 @@ model DailySupplierTemplateItem {
   @@index([templateId])
   @@index([productId])
 }
+
+/// Ajustes generales del negocio que comparten todos los usuarios (clave → valor en texto)
+model AppSetting {
+  key       String   @id // ej. "favorites.autoMinSales"
+  value     String
+  updatedAt DateTime @updatedAt
+}
