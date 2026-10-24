@@ -416,7 +416,7 @@ export default function POSPage() {
 
       {/* MODAL CENTRAL DE COBRO (DESKTOP Y MÓVIL) */}
       {isCheckoutDrawerOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+        <div data-pos-modal="" className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-lg sm:max-w-xl max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <PaymentPanel
               getTotal={getTotal}

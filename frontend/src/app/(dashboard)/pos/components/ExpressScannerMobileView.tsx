@@ -177,6 +177,7 @@ export function ExpressScannerMobileView({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             ref={searchInputRef}
+            data-pos-search=""
             type="text"
             placeholder="Buscar producto o escanear código..."
             className="pl-10 pr-12 h-12 border-slate-200 dark:border-slate-800 dark:bg-slate-900 rounded-xl text-sm font-extrabold focus-visible:ring-indigo-500 w-full shadow-xs"

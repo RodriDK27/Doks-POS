@@ -92,44 +92,77 @@ export function usePOSKeybindings({
     setPosTab,
   ]);
 
-  // Detector global para escáneres de códigos de barras físicos (USB / Bluetooth)
+  /**
+   * Detector global del lector de códigos de barras (USB / Bluetooth). El lector "teclea" el código muy rápido
+   * (menos de 50 ms entre teclas, algo imposible a mano) y termina con Enter. Se reconoce esa ráfaga esté
+   * donde esté el foco:
+   * - Sin foco o en un botón: se agrega el producto y el Enter se cancela (antes volvía a "picar" el botón).
+   * - En otro campo (cantidad, descuento, precio): el campo regresa a lo que tenía y se agrega el producto.
+   * - En el buscador con texto ("coca" + escaneo): la búsqueda se conserva y se agrega lo escaneado.
+   *   Si el buscador estaba vacío, el propio buscador ya agregó el producto al completarse el código.
+   * Se escucha en captura para cancelar el Enter antes de que llegue al botón o campo enfocado.
+   */
   useEffect(() => {
-    let buffer = '';
-    let lastKeyTime = Date.now();
+    const MAX_GAP_MS = 50;
+    const MIN_CODE_LENGTH = 3;
 
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        // Dentro de cualquier campo (incluido el buscador) no se escucha: el buscador ya maneja el escaneo
-        // (agrega el producto al completar el código). Escucharlo aquí también lo agregaba dos veces.
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-        if (isInput) {
-          return;
-        }
-      }
-      // Con "Llegó mercancía" abierto la lectura es para su lista, no para el ticket
-      if (document.querySelector('[data-quick-restock]')) {
+    let buffer = '';
+    let lastKeyTime = 0;
+    let burstTarget: EventTarget | null = null;
+    let valueBeforeBurst: string | null = null;
+
+    const isTextField = (el: EventTarget | null): el is HTMLInputElement | HTMLTextAreaElement =>
+      el instanceof HTMLTextAreaElement ||
+      (el instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit', 'file'].includes(el.type));
+
+    /** Cambia el valor de un campo controlado por React como si se hubiera escrito */
+    const restoreFieldValue = (field: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+      const proto = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(field, value);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const handleScannerKeyDown = (e: KeyboardEvent) => {
+      // Con un diálogo abierto (cobro, "Llegó mercancía", vincular código...) la lectura es para ese diálogo
+      if (document.querySelector('[role="dialog"], [data-pos-modal], [data-quick-restock]')) {
         buffer = '';
         return;
       }
 
-      const currentTime = Date.now();
-      if (currentTime - lastKeyTime > 60) {
+      const now = performance.now();
+      if (now - lastKeyTime > MAX_GAP_MS) {
+        // Posible inicio de ráfaga: se guarda lo que tenía el campo antes de la primera tecla
         buffer = '';
+        burstTarget = e.target;
+        valueBeforeBurst = isTextField(e.target) ? e.target.value : null;
       }
-      lastKeyTime = currentTime;
+      lastKeyTime = now;
 
-      if (e.key === 'Enter') {
-        if (buffer.length >= 3) {
-          handleBarcodeScanned(buffer);
-          buffer = '';
-        }
-      } else if (e.key.length === 1) {
-        buffer += e.key;
+      if (e.key !== 'Enter') {
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) buffer += e.key;
+        else if (e.key !== 'Shift') buffer = '';
+        return;
       }
+
+      const code = buffer.trim();
+      buffer = '';
+      if (code.length < MIN_CODE_LENGTH || e.target !== burstTarget) return;
+
+      // Es el lector: este Enter no debe activar el botón ni el campo enfocado
+      e.preventDefault();
+      e.stopPropagation();
+
+      const target = e.target;
+      if (isTextField(target)) {
+        const isSearch = target instanceof HTMLInputElement && target.dataset.posSearch !== undefined;
+        // El buscador vacío ya agregó el producto al completarse el código (y se limpió)
+        if (isSearch && !target.value.includes(code)) return;
+        restoreFieldValue(target, valueBeforeBurst ?? '');
+      }
+      handleBarcodeScanned(code);
     };
 
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [handleBarcodeScanned, searchInputRef]);
+    window.addEventListener('keydown', handleScannerKeyDown, true);
+    return () => window.removeEventListener('keydown', handleScannerKeyDown, true);
+  }, [handleBarcodeScanned]);
 }
