@@ -1,24 +1,32 @@
 import { useEffect, useRef } from 'react';
 
 /** Un lector escribe cada carácter en pocos milisegundos; una persona tarda bastante más. */
-const MAX_GAP_MS = 60;
-const MIN_LENGTH = 4;
+const MAX_GAP_MS = 50;
+const MIN_LENGTH = 3;
 const BARCODE_PATTERN = /^[\w./-]+$/;
 
-/** Los campos con este atributo también reciben lecturas (p. ej. el buscador del catálogo). */
-export const BARCODE_INPUT_ATTR = 'data-barcode-input';
+function isTextField(target: EventTarget | null): target is HTMLInputElement | HTMLTextAreaElement {
+  return (
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit', 'file'].includes(target.type))
+  );
+}
 
-function isEditable(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
+/** Cambia el valor de un campo controlado por React como si se hubiera escrito */
+function restoreFieldValue(field: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const proto = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(field, value);
+  field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 /**
  * Lector de código de barras "de teclado" (USB / Bluetooth): detecta ráfagas rápidas de caracteres
  * terminadas en Enter y llama a `onScan(código)` sin importar dónde esté el foco.
  *
- * - Se ignora mientras se escribe en cualquier otro campo (cantidad, precio...) o hay un diálogo abierto.
- * - Al detectar una lectura se cancela el Enter, para que no active un botón que tenga el foco.
+ * - Si el foco estaba en un campo (una celda, el buscador...), el campo regresa a lo que tenía antes de la
+ *   lectura: el código no se queda escrito donde no va.
+ * - Al detectar una lectura se cancela el Enter, para que no active un botón ni mueva de celda.
+ * - Con un diálogo abierto no se escucha: la lectura es para ese diálogo.
  */
 export function useBarcodeScanner(onScan: (code: string) => void) {
   const onScanRef = useRef(onScan);
@@ -30,33 +38,39 @@ export function useBarcodeScanner(onScan: (code: string) => void) {
   useEffect(() => {
     let buffer = '';
     let lastKeyAt = 0;
+    let burstTarget: EventTarget | null = null;
+    let valueBeforeBurst: string | null = null;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-
-      const target = event.target;
-      const allowedInput = target instanceof HTMLElement && target.hasAttribute(BARCODE_INPUT_ATTR);
-      if ((isEditable(target) && !allowedInput) || document.querySelector('[role="dialog"]')) {
+      if (document.querySelector('[role="dialog"]')) {
         buffer = '';
         return;
       }
 
-      if (event.key === 'Enter') {
-        const code = buffer;
+      const now = performance.now();
+      if (now - lastKeyAt > MAX_GAP_MS) {
+        // Posible inicio de lectura: se guarda lo que tenía el campo antes de la primera tecla
         buffer = '';
-        if (code.length >= MIN_LENGTH && BARCODE_PATTERN.test(code)) {
-          event.preventDefault();
-          onScanRef.current(code);
-        }
-        return;
+        burstTarget = event.target;
+        valueBeforeBurst = isTextField(event.target) ? event.target.value : null;
       }
-
-      // Shift, Tab, flechas, etc. no forman parte del código
-      if (event.key.length !== 1) return;
-
-      const now = Date.now();
-      buffer = now - lastKeyAt > MAX_GAP_MS ? event.key : buffer + event.key;
       lastKeyAt = now;
+
+      if (event.key !== 'Enter') {
+        if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) buffer += event.key;
+        // Shift no forma parte del código pero tampoco lo interrumpe (letras mayúsculas)
+        else if (event.key !== 'Shift') buffer = '';
+        return;
+      }
+
+      const code = buffer.trim();
+      buffer = '';
+      if (code.length < MIN_LENGTH || !BARCODE_PATTERN.test(code) || event.target !== burstTarget) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      if (isTextField(event.target)) restoreFieldValue(event.target, valueBeforeBurst ?? '');
+      onScanRef.current(code);
     };
 
     // Captura: se procesa antes que los manejadores de botones y campos

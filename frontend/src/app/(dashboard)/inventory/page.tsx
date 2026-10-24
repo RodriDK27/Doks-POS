@@ -2,6 +2,7 @@
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import useSWR from 'swr';
 import { Copy, Heart, ImageIcon, Layers, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductImageSrc } from '@/lib/productImages';
@@ -14,9 +15,11 @@ import {
   rowStatus,
   useAdvancedEditor,
 } from './hooks/useAdvancedEditor';
+import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { CategoryCell } from './components/CategoryCell';
 import { CategoryManagementModal } from './components/CategoryManagementModal';
 import { QuickRestockDialog } from './components/QuickRestockDialog';
+import type { Product } from './types';
 
 /** Alto fijo de cada fila: permite dibujar solo las filas visibles (miles de productos sin trabarse) */
 const ROW_HEIGHT = 44;
@@ -574,6 +577,56 @@ export default function InventoryPage() {
     setStatusFilter('all');
     requestAnimationFrame(() => focusCell(0, 'name'));
   };
+
+  // ─── Lector de código de barras: al escanear (sin tocar el buscador) aparece el producto ───
+  // Mismo caché que el editor: sirve para encontrar productos por sus códigos secundarios
+  const { data: catalog } = useSWR<Product[]>('/products');
+  const { addRows: addEditorRows, updateCell } = editor;
+
+  const handleScan = useCallback(
+    (code: string) => {
+      const clean = code.trim().toLowerCase();
+      // Si el foco quedó en una celda, al filtrar esa celda pasaría a ser de otro producto
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+
+      let row = rows.find((r) => r.barcode.trim().toLowerCase() === clean);
+      if (!row) {
+        const product = catalog?.find((p) => p.barcodes?.some((b) => b.barcode.trim().toLowerCase() === clean));
+        if (product) row = rows.find((r) => r.id === product.id);
+      }
+
+      if (row) {
+        // Quitar filtros que pudieran esconderlo
+        setCategory('__all');
+        setType('all');
+        setStatusFilter('all');
+        // Con un código secundario la fila no lo contiene: se busca por su nombre
+        setSearch(row.barcode.trim().toLowerCase() === clean ? code.trim() : row.name);
+        return;
+      }
+
+      if (!canManage) {
+        toast.error(`El código ${code} no está en el inventario.`);
+        return;
+      }
+      toast.warning(`El código ${code} no está en el inventario.`, {
+        id: 'inventory-scan-missing',
+        duration: 8000,
+        action: {
+          label: 'Darlo de alta',
+          onClick: () => {
+            setSearch('');
+            const key = addEditorRows(1);
+            updateCell(key, 'barcode', code.trim());
+            setStatusFilter('all');
+            requestAnimationFrame(() => focusCell(0, 'name'));
+          },
+        },
+      });
+    },
+    [rows, catalog, canManage, addEditorRows, updateCell, focusCell]
+  );
+  useBarcodeScanner(handleScan);
 
   // ─── Guardar ───
   const handleSave = async () => {
