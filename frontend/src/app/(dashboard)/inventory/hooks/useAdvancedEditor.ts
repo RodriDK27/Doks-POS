@@ -120,10 +120,19 @@ export function useAdvancedEditor() {
   const errorsByKey = useMemo(() => {
     const errors = new Map<string, Partial<Record<EditableColumn, string>>>();
     const barcodeOwner = new Map<string, string>();
+    // Cuántas filas usan cada nombre: una fila nueva (ej. duplicada) con el nombre de otra casi siempre es un olvido
+    const nameCount = new Map<string, number>();
+    for (const row of rows) {
+      const name = row.name.trim().toLowerCase();
+      if (name) nameCount.set(name, (nameCount.get(name) ?? 0) + 1);
+    }
     for (const row of rows) {
       if (isBlankNewRow(row)) continue;
       const e: Partial<Record<EditableColumn, string>> = {};
       if (!row.name.trim()) e.name = 'El nombre es obligatorio';
+      else if (!row.id && (nameCount.get(row.name.trim().toLowerCase()) ?? 0) > 1) {
+        e.name = 'Ya hay un producto con este nombre: cambia lo que varía (tamaño, sabor...)';
+      }
       // Precio de compra y stock vacíos cuentan como 0; el precio de venta sí es obligatorio
       for (const col of ['purchasePrice', 'sellPrice', 'stock'] as const) {
         const raw = row[col].trim();
@@ -164,6 +173,28 @@ export function useAdvancedEditor() {
     const fresh = Array.from({ length: count }, emptyRow);
     setRows((prev) => [...fresh, ...prev]);
     return fresh[0].key;
+  }, []);
+
+  /**
+   * Copia una fila como producto nuevo justo debajo, para variantes que cambian poco (otro tamaño o sabor).
+   * El código de barras va vacío (es único por producto), el stock en 0 y la foto no se copia.
+   */
+  const duplicateRow = useCallback((key: string) => {
+    const source = rowsRef.current.find((r) => r.key === key);
+    if (!source) return null;
+    const copy: EditorRow = {
+      ...emptyRow(),
+      name: source.name,
+      unitType: source.unitType,
+      purchasePrice: source.purchasePrice,
+      sellPrice: source.sellPrice,
+      category: source.category,
+    };
+    setRows((prev) => {
+      const index = prev.findIndex((r) => r.key === key);
+      return index === -1 ? [copy, ...prev] : [...prev.slice(0, index + 1), copy, ...prev.slice(index + 1)];
+    });
+    return copy.key;
   }, []);
 
   const removeRow = useCallback((key: string) => {
@@ -340,6 +371,7 @@ export function useAdvancedEditor() {
     updateCell,
     setRowImage,
     addRows,
+    duplicateRow,
     removeRow,
     discardChanges,
     applyStock,

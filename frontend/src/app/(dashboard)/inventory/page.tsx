@@ -2,7 +2,7 @@
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { Heart, ImageIcon, Layers, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2, Zap } from 'lucide-react';
+import { Copy, Heart, ImageIcon, Layers, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductImageSrc } from '@/lib/productImages';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -40,7 +40,7 @@ function useIsCompact() {
 }
 
 const GRID_TEMPLATE =
-  '2.5rem 3rem 3.25rem minmax(15rem,2.2fr) 7.5rem minmax(9rem,1fr) 7rem 7rem 7rem 6.5rem minmax(9rem,1fr) 2.75rem';
+  '2.5rem 3rem 3.25rem minmax(15rem,2.2fr) 7.5rem minmax(9rem,1fr) 7rem 7rem 7rem 6.5rem minmax(9rem,1fr) 4.5rem';
 
 const COLUMN_LABELS: Record<EditableColumn, string> = {
   name: 'Nombre',
@@ -133,13 +133,14 @@ interface RowViewProps {
   onChange: (key: string, column: EditableColumn, value: string) => void;
   onImage: (key: string, file: File) => void;
   onRemove: (key: string) => void;
+  onDuplicate: (key: string) => void;
   onToggleFavorite: (key: string) => void;
   onKeyNav: (e: React.KeyboardEvent<HTMLElement>, visibleIndex: number, column: EditableColumn) => void;
   onPaste: (e: React.ClipboardEvent<HTMLInputElement>, key: string, column: EditableColumn) => void;
   categories: string[];
 }
 
-const RowView = memo(function RowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onToggleFavorite, onKeyNav, onPaste, categories }: RowViewProps) {
+const RowView = memo(function RowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onDuplicate, onToggleFavorite, onKeyNav, onPaste, categories }: RowViewProps) {
   const hasErrors = !!errors || !!row.serverError;
   const buy = Number(row.purchasePrice) || 0;
   const sell = Number(row.sellPrice) || 0;
@@ -230,7 +231,16 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
           onPaste={(e) => onPaste(e, row.key, 'category')}
         />
       </div>
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => onDuplicate(row.key)}
+          title="Duplicar fila (Ctrl+D): copia nombre, precios, tipo y categoría"
+          aria-label="Duplicar fila"
+          className="h-7 w-7 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center justify-center cursor-pointer"
+        >
+          <Copy className="h-3.5 w-3.5" />
+        </button>
         {!row.id && (
           <button
             type="button"
@@ -250,7 +260,7 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
  * Hoja tipo Excel para celular o tablet vertical: el nombre se queda fijo a la izquierda y el resto de
  * columnas se desliza de lado. Van primero las que más se editan desde el celular (precio y stock).
  */
-const COMPACT_GRID_TEMPLATE = '11rem 5.25rem 5.25rem 5rem 4.5rem 5.75rem 8.5rem 8.5rem 2.75rem 2.5rem';
+const COMPACT_GRID_TEMPLATE = '11rem 5.25rem 5.25rem 5rem 4.5rem 5.75rem 8.5rem 8.5rem 2.75rem 4.75rem';
 const COMPACT_HEADERS = ['Nombre', 'P. venta', 'P. compra', 'Ganancia', 'Stock', 'Tipo', 'Código', 'Categoría', 'Img', ''];
 
 const compactInput =
@@ -279,7 +289,7 @@ function CompactHeader() {
   );
 }
 
-const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onToggleFavorite, onKeyNav, onPaste, categories }: RowViewProps) {
+const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status, errors, onChange, onImage, onRemove, onDuplicate, onToggleFavorite, onKeyNav, onPaste, categories }: RowViewProps) {
   const hasErrors = !!errors || !!row.serverError;
   const buy = Number(row.purchasePrice) || 0;
   const sell = Number(row.sellPrice) || 0;
@@ -388,7 +398,16 @@ const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status,
       <div className="h-full flex items-center justify-center border-r border-slate-100 dark:border-slate-800">
         <ImageCell row={row} onPick={(file) => onImage(row.key, file)} />
       </div>
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => onDuplicate(row.key)}
+          title="Duplicar fila"
+          aria-label="Duplicar fila"
+          className="h-8 w-8 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center justify-center cursor-pointer"
+        >
+          <Copy className="h-4 w-4" />
+        </button>
         {!row.id && (
           <button
             type="button"
@@ -487,10 +506,45 @@ export default function InventoryPage() {
     });
   }, [itemHeight]);
 
-  // Enter y flechas ↑↓ se mueven entre filas en la misma columna, como en Excel
+  // Al duplicar, el cursor queda al final del nombre de la copia para cambiar solo lo que varía
+  const pendingFocusKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = pendingFocusKeyRef.current;
+    if (!key) return;
+    // Se intenta una sola vez: si la búsqueda actual oculta la copia, no se enfoca más tarde por sorpresa
+    pendingFocusKeyRef.current = null;
+    const index = visibleKeys.indexOf(key);
+    if (index === -1) return;
+    focusCell(index, 'name');
+    requestAnimationFrame(() => {
+      const input = scrollRef.current?.querySelector<HTMLInputElement>(`[data-cell="${index}:name"]`);
+      input?.setSelectionRange(input.value.length, input.value.length);
+    });
+  }, [visibleKeys, focusCell]);
+
+  const { duplicateRow } = editor;
+  const handleDuplicate = useCallback(
+    (key: string) => {
+      const newKey = duplicateRow(key);
+      if (!newKey) return;
+      pendingFocusKeyRef.current = newKey;
+      // Con el filtro de "con errores" la copia (fila nueva sin errores) no se vería
+      setStatusFilter((prev) => (prev === 'errors' ? 'all' : prev));
+      toast.success('Fila duplicada: cambia el nombre y pon su código de barras.', { id: 'inventory-duplicate' });
+    },
+    [duplicateRow]
+  );
+
+  // Enter y flechas ↑↓ se mueven entre filas en la misma columna, como en Excel; Ctrl+D duplica la fila
   const onKeyNav = useCallback(
     (e: React.KeyboardEvent<HTMLElement>, visibleIndex: number, column: EditableColumn) => {
       const isSelect = e.currentTarget.tagName === 'SELECT';
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        const key = visibleKeys[visibleIndex];
+        if (key) handleDuplicate(key);
+        return;
+      }
       if (e.key === 'Enter' || (e.key === 'ArrowDown' && !isSelect)) {
         e.preventDefault();
         focusCell(e.shiftKey && e.key === 'Enter' ? visibleIndex - 1 : Math.min(visibleIndex + 1, visibleKeys.length - 1), column);
@@ -499,7 +553,7 @@ export default function InventoryPage() {
         focusCell(visibleIndex - 1, column);
       }
     },
-    [focusCell, visibleKeys.length]
+    [focusCell, visibleKeys, handleDuplicate]
   );
 
   // Pegar desde Excel: si trae varias celdas, se reparte en la tabla; si es un solo valor, se pega normal
@@ -771,6 +825,7 @@ export default function InventoryPage() {
                           onChange={editor.updateCell}
                           onImage={editor.setRowImage}
                           onRemove={editor.removeRow}
+                          onDuplicate={handleDuplicate}
                           onToggleFavorite={editor.toggleFavorite}
                           onKeyNav={onKeyNav}
                           onPaste={onPaste}
