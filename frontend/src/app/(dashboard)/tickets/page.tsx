@@ -53,28 +53,6 @@ export default function TicketsPage() {
   return (
     <div className="space-y-6 w-full pb-8 animate-in fade-in duration-200">
       
-      {/* ESTILOS CSS INYECTADOS EXCLUSIVOS PARA IMPRESIÓN */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-            background: transparent !important;
-          }
-          #thermal-ticket-print, #thermal-ticket-print * {
-            visibility: visible;
-          }
-          #thermal-ticket-print {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 80mm;
-            margin: 0;
-            padding: 4mm;
-            border: none !important;
-            box-shadow: none !important;
-          }
-        }
-      `}</style>
 
       {/* HEADER */}
       <div className="flex flex-col gap-3">

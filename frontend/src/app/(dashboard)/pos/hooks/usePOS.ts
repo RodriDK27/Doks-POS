@@ -12,6 +12,14 @@ import { Product, Customer } from '../types';
 import { useCatalogFilter, parseSearchMultiplier } from './useCatalogFilter';
 import { usePOSKeybindings } from './usePOSKeybindings';
 
+export interface LastSale {
+  /** Folio; null si se guardó sin conexión y aún no se sincroniza */
+  id: number | null;
+  total: number;
+  change: number;
+  paymentMethod: string;
+}
+
 export function usePOS() {
   const { role } = useAuthStore();
   const { isOnline, isSyncing, syncQueueCount, syncErrorCount, queuedSales, fetchQueuedSales, updateSyncQueueCount, syncOfflineSales } = useOfflineStore();
@@ -27,9 +35,16 @@ export function usePOS() {
     deleteSuspendedCart,
     getTotal,
     getSubtotal,
+    getDiscountAmount,
     discount,
-    setDiscount
+    setDiscount,
+    discountPercent,
+    setDiscountPercent,
+    updatePrice,
+    lastTouchedId
   } = useCartStore();
+  // Cambiar el precio de un renglón es de administración (el servidor también lo valida)
+  const canEditPrice = role === 'ADMIN' || role === 'GERENTE';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCatalogIndex, setSelectedCatalogIndex] = useState<number>(0);
@@ -66,6 +81,9 @@ export function usePOS() {
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Última venta cobrada: el cambio se queda a la vista y se puede volver a ver/imprimir el ticket
+  const [lastSale, setLastSale] = useState<LastSale | null>(null);
+
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +95,7 @@ export function usePOS() {
   const { data: swrProducts, mutate: mutateProducts } = useSWR<Product[]>(role !== 'NONE' && isOnline ? '/products' : null);
   const { data: swrCategories } = useSWR<string[]>(role !== 'NONE' && isOnline ? '/products/categories' : null);
   const { data: swrCustomers } = useSWR<Customer[]>(role !== 'NONE' && isOnline ? '/customers' : null);
+  const { data: topSellerIds } = useSWR<string[]>(role !== 'NONE' && isOnline ? '/products/top-sellers?days=30&limit=12' : null);
 
   // Compute derived state
   const catalogProducts = useMemo(() => {
@@ -90,6 +109,22 @@ export function usePOS() {
   const customers = useMemo(() => {
     return isOnline ? (swrCustomers ?? []) : [];
   }, [isOnline, swrCustomers]);
+
+  // Artículos frecuentes con el ticket vacío: primero los favoritos, luego los más vendidos del mes
+  const frequentProducts = useMemo(() => {
+    const byId = new Map(catalogProducts.map((p) => [p.id, p]));
+    const picked: Product[] = [];
+    const seen = new Set<string>();
+    const push = (p: Product | undefined) => {
+      if (p && !seen.has(p.id) && picked.length < 8) {
+        seen.add(p.id);
+        picked.push(p);
+      }
+    };
+    catalogProducts.filter((p) => p.isFavorite).forEach(push);
+    (topSellerIds ?? []).forEach((id) => push(byId.get(id)));
+    return picked;
+  }, [catalogProducts, topSellerIds]);
 
   // Guardar catálogo en IndexedDB al cambiar
   useEffect(() => {
@@ -391,13 +426,15 @@ export function usePOS() {
     }
 
     const payload = {
-      discount: 0,
+      discount: getDiscountAmount(),
       paymentMethod,
       amountPaid: paymentMethod === 'EFECTIVO' ? amountPaid : totalVal,
       customerId: selectedCustomerId || undefined,
       items: cartItems.map(item => ({
         productId: item.id.startsWith('generic-') ? undefined : item.id,
         quantity: item.quantity,
+        // Solo se manda el precio si se cambió a mano; si no, el servidor usa el del catálogo
+        price: !item.id.startsWith('generic-') && item.originalPrice !== undefined ? item.sellPrice : undefined,
         genericName: item.id.startsWith('generic-') ? item.name : undefined,
         genericPrice: item.id.startsWith('generic-') ? item.sellPrice : undefined,
       })),
@@ -424,6 +461,12 @@ export function usePOS() {
         await dbHelper.saveProducts(updatedProducts);
 
         toast.success('Venta guardada localmente. Se sincronizará al recuperar la conexión.', { duration: 8005 });
+        setLastSale({
+          id: null,
+          total: totalVal,
+          change: paymentMethod === 'EFECTIVO' ? roundMoney(Math.max(0, amountPaid - totalVal)) : 0,
+          paymentMethod,
+        });
         clearCart();
         setSelectedCustomerId('');
         setPosTab('CATALOG');
@@ -444,6 +487,12 @@ export function usePOS() {
       } else {
         toast.success(`¡Venta registrada! Folio: #${createdSale.id}`);
       }
+      setLastSale({
+        id: createdSale.id,
+        total: createdSale.total,
+        change: createdSale.change,
+        paymentMethod: createdSale.paymentMethod,
+      });
 
       clearCart();
       setSelectedCustomerId('');
@@ -469,7 +518,8 @@ export function usePOS() {
     updateSyncQueueCount,
     catalogProducts,
     clearCart,
-    mutateProducts
+    mutateProducts,
+    getDiscountAmount
   ]);
 
   const handleSuspendCart = () => {
@@ -625,6 +675,15 @@ export function usePOS() {
     handleKeypadPress,
     discount,
     setDiscount,
+    discountPercent,
+    setDiscountPercent,
+    getDiscountAmount,
+    updatePrice,
+    canEditPrice,
+    lastTouchedId,
+    frequentProducts,
+    lastSale,
+    setLastSale,
     cartItemsCount,
     canCheckout,
     handleResumeCart,

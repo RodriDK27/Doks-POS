@@ -10,6 +10,8 @@ export interface CartItem {
   stock: number;
   quantity: number;
   total: number;
+  /** Precio de catálogo cuando se cambió el precio a mano en el ticket */
+  originalPrice?: number;
 }
 
 export interface SuspendedCart {
@@ -17,13 +19,19 @@ export interface SuspendedCart {
   name: string;
   items: CartItem[];
   discount: number;
+  discountPercent?: number;
   createdAt: Date;
 }
 
 interface CartState {
   // Estado actual del carrito
   cartItems: CartItem[];
+  /** Descuento en pesos (se ignora si hay descuento en porcentaje) */
   discount: number;
+  /** Descuento en porcentaje sobre el subtotal; 0 = sin porcentaje */
+  discountPercent: number;
+  /** Último producto agregado o con cantidad cambiada, para resaltarlo en el ticket */
+  lastTouchedId: string | null;
   
   // Ventas suspendidas / en espera
   suspendedCarts: SuspendedCart[];
@@ -32,7 +40,9 @@ interface CartState {
   addToCart: (product: { id: string; barcode: string | null; name: string; sellPrice: number; stock: number }, quantity?: number) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updatePrice: (productId: string, price: number) => void;
   setDiscount: (discount: number) => void;
+  setDiscountPercent: (percent: number) => void;
   clearCart: () => void;
 
   // Acciones de ventas en espera
@@ -42,12 +52,15 @@ interface CartState {
 
   // Selectores calculados
   getSubtotal: () => number;
+  getDiscountAmount: () => number;
   getTotal: () => number;
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
   cartItems: [],
   discount: 0,
+  discountPercent: 0,
+  lastTouchedId: null,
   suspendedCarts: [],
 
   // Agregar producto al carrito (maneja código de barras e incrementos)
@@ -72,7 +85,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         }
         return item;
       });
-      set({ cartItems: updatedItems });
+      set({ cartItems: updatedItems, lastTouchedId: product.id });
     } else {
       if (quantity > product.stock) {
         toast.warning(`Stock insuficiente para "${product.name}". Solo hay ${product.stock} unidades en inventario.`);
@@ -88,7 +101,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         quantity,
         total: roundMoney(product.sellPrice * quantity),
       };
-      set({ cartItems: [...cartItems, newItem] });
+      set({ cartItems: [...cartItems, newItem], lastTouchedId: product.id });
     }
   },
 
@@ -122,22 +135,45 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
       return item;
     });
-    set({ cartItems: updatedItems });
+    set({ cartItems: updatedItems, lastTouchedId: productId });
   },
 
-  // Asignar descuento total
+  // Cambiar el precio de un renglón (etiqueta con precio viejo, rebaja a una sola pieza)
+  updatePrice: (productId, price) => {
+    if (isNaN(price) || price < 0) return;
+    const updatedItems = get().cartItems.map((item) => {
+      if (item.id !== productId) return item;
+      const originalPrice = item.originalPrice ?? item.sellPrice;
+      const sellPrice = roundMoney(price);
+      return {
+        ...item,
+        sellPrice,
+        // Si vuelve al precio de catálogo ya no cuenta como cambiado
+        originalPrice: Math.abs(sellPrice - originalPrice) < 0.005 ? undefined : originalPrice,
+        total: roundMoney(sellPrice * item.quantity),
+      };
+    });
+    set({ cartItems: updatedItems, lastTouchedId: productId });
+  },
+
+  // Asignar descuento total en pesos
   setDiscount: (discount) => {
-    set({ discount: Math.max(0, discount) });
+    set({ discount: Math.max(0, discount), discountPercent: 0 });
+  },
+
+  // Asignar descuento en porcentaje (se recalcula si cambia el ticket)
+  setDiscountPercent: (percent) => {
+    set({ discountPercent: Math.min(100, Math.max(0, percent)), discount: 0 });
   },
 
   // Limpiar carrito activo
   clearCart: () => {
-    set({ cartItems: [], discount: 0 });
+    set({ cartItems: [], discount: 0, discountPercent: 0, lastTouchedId: null });
   },
 
   // Suspender la venta actual (poner en espera)
   suspendCart: (name) => {
-    const { cartItems, discount, suspendedCarts } = get();
+    const { cartItems, discount, discountPercent, suspendedCarts } = get();
     if (cartItems.length === 0) return;
 
     const newSuspension: SuspendedCart = {
@@ -145,6 +181,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       name: name || `Cliente ${suspendedCarts.length + 1}`,
       items: [...cartItems],
       discount,
+      discountPercent,
       createdAt: new Date(),
     };
 
@@ -152,6 +189,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       suspendedCarts: [...suspendedCarts, newSuspension],
       cartItems: [], // Limpiar carrito actual para atender nueva venta
       discount: 0,
+      discountPercent: 0,
+      lastTouchedId: null,
     });
   },
 
@@ -170,6 +209,8 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({
       cartItems: cartToResume.items,
       discount: cartToResume.discount,
+      discountPercent: cartToResume.discountPercent ?? 0,
+      lastTouchedId: null,
       suspendedCarts: get().suspendedCarts.filter((c) => c.id !== suspendedId), // Remover de la lista de espera
     });
   },
@@ -188,10 +229,17 @@ export const useCartStore = create<CartState>((set, get) => ({
     return roundMoney(cartItems.reduce((acc, item) => acc + item.total, 0));
   },
 
+  // Descuento efectivo en pesos (el porcentaje se calcula sobre el subtotal actual)
+  getDiscountAmount: () => {
+    const subtotal = get().getSubtotal();
+    const { discount, discountPercent } = get();
+    const amount = discountPercent > 0 ? roundMoney((subtotal * discountPercent) / 100) : discount;
+    return Math.min(amount, subtotal);
+  },
+
   // Calcular total neto aplicando el descuento
   getTotal: () => {
     const subtotal = get().getSubtotal();
-    const { discount } = get();
-    return Math.max(0, roundMoney(subtotal - discount));
+    return Math.max(0, roundMoney(subtotal - get().getDiscountAmount()));
   },
 }));

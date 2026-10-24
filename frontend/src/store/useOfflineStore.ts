@@ -8,6 +8,8 @@ export interface QueuedSaleItem {
   quantity: number;
   genericName?: string;
   genericPrice?: number;
+  /** Precio cambiado a mano en el ticket */
+  price?: number;
 }
 
 export interface QueuedSale {

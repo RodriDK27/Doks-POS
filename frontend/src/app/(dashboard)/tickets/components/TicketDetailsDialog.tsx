@@ -9,8 +9,9 @@ interface TicketDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedSale: Sale | null;
   onPrint: () => void;
-  onReturn: () => void;
-  onChangePaymentMethod: () => void;
+  /** Sin estas acciones (ej. desde el punto de venta) el diálogo solo muestra e imprime */
+  onReturn?: () => void;
+  onChangePaymentMethod?: () => void;
 }
 
 export function TicketDetailsDialog({
@@ -28,6 +29,29 @@ export function TicketDetailsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px] rounded-2xl max-h-[85vh] overflow-y-auto animate-in fade-in duration-200">
+        {/* ESTILOS EXCLUSIVOS PARA IMPRESIÓN: solo sale el recibo térmico */}
+        <style jsx global>{`
+          @media print {
+            body * {
+              visibility: hidden;
+              background: transparent !important;
+            }
+            #thermal-ticket-print, #thermal-ticket-print * {
+              visibility: visible;
+            }
+            #thermal-ticket-print {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 80mm;
+              margin: 0;
+              padding: 4mm;
+              border: none !important;
+              box-shadow: none !important;
+            }
+          }
+        `}</style>
+
         <DialogHeader>
           <DialogTitle className="font-bold text-slate-800">Recibo de Ticket</DialogTitle>
         </DialogHeader>
@@ -146,7 +170,7 @@ export function TicketDetailsDialog({
           </div>
         )}
 
-        {selectedSale && (
+        {selectedSale && onReturn && onChangePaymentMethod && (
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
