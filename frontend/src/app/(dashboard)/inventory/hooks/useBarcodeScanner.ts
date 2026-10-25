@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 const MAX_GAP_MS = 50;
 const MIN_LENGTH = 3;
 const BARCODE_PATTERN = /^[\w./-]+$/;
+const BARCODE_CELL_SELECTOR = '[data-cell$=":barcode"]';
 
 function isTextField(target: EventTarget | null): target is HTMLInputElement | HTMLTextAreaElement {
   return (
@@ -27,6 +28,7 @@ function restoreFieldValue(field: HTMLInputElement | HTMLTextAreaElement, value:
  *   lectura: el código no se queda escrito donde no va.
  * - Al detectar una lectura se cancela el Enter, para que no active un botón ni mueva de celda.
  * - Con un diálogo abierto no se escucha: la lectura es para ese diálogo.
+ * - Con el foco en una celda de código de barras tampoco: el código se queda escrito en la celda.
  */
 export function useBarcodeScanner(onScan: (code: string) => void) {
   const onScanRef = useRef(onScan);
@@ -66,6 +68,8 @@ export function useBarcodeScanner(onScan: (code: string) => void) {
       const code = buffer.trim();
       buffer = '';
       if (code.length < MIN_LENGTH || !BARCODE_PATTERN.test(code) || event.target !== burstTarget) return;
+      // En la celda de código de barras la lectura es para esa celda (p. ej. al dar de alta un producto)
+      if (event.target instanceof HTMLElement && event.target.matches(BARCODE_CELL_SELECTOR)) return;
 
       event.preventDefault();
       event.stopPropagation();
