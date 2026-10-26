@@ -10,7 +10,7 @@ const row = (overrides: Partial<BulkProductRowDto>): BulkProductRowDto => ({
   ...overrides,
 });
 
-function makePrisma(existing: Array<{ id: string; stock: number }> = [], mainOwners: Array<{ id: string; name: string; barcode: string }> = []) {
+function makePrisma(existing: Array<{ id: string; stock: number; barcodes?: Array<{ barcode: string }> }> = [], mainOwners: Array<{ id: string; name: string; barcode: string }> = []) {
   const calls: Record<string, unknown[]> = { createMany: [], update: [], movements: [] };
   const prisma = {
     product: {
@@ -18,7 +18,11 @@ function makePrisma(existing: Array<{ id: string; stock: number }> = [], mainOwn
       createMany: jest.fn((args) => (calls.createMany.push(args), args)),
       update: jest.fn((args) => (calls.update.push(args), args)),
     },
-    productBarcode: { findMany: jest.fn(() => Promise.resolve([])) },
+    productBarcode: {
+      findMany: jest.fn(() => Promise.resolve([])),
+      deleteMany: jest.fn((args) => args),
+      createMany: jest.fn((args) => args),
+    },
     stockMovement: { createMany: jest.fn((args) => (calls.movements.push(args), args)) },
     $transaction: jest.fn(() => Promise.resolve([])),
   };
@@ -58,6 +62,36 @@ describe('ProductsBulkService', () => {
     expect(result.created.map((c) => c.index)).toEqual([0]);
     expect(result.errors.map((e) => e.index)).toEqual([1, 2]);
     expect(result.errors[1].message).toContain('Coca');
+  });
+
+  it('sincroniza los códigos secundarios: quita los que ya no van y agrega los nuevos, sin repetir el principal', async () => {
+    const { prisma } = makePrisma([{ id: 'p1', stock: 0, barcodes: [{ barcode: 'viejo' }, { barcode: 'queda' }] }]);
+    const service = new ProductsBulkService(prisma as never);
+
+    const result = await service.bulkSave([
+      row({ id: 'p1', barcode: '750', barcodes: ['queda', ' nuevo ', '750', 'nuevo'] }),
+      row({ name: 'Otro', barcodes: ['x1'] }),
+    ]);
+
+    expect(result.errors).toEqual([]);
+    expect(prisma.productBarcode.deleteMany).toHaveBeenCalledWith({ where: { productId: 'p1', barcode: { in: ['viejo'] } } });
+    expect(prisma.productBarcode.createMany).toHaveBeenCalledWith({
+      data: [
+        { productId: 'p1', barcode: 'nuevo' },
+        { productId: result.created[0].id, barcode: 'x1' },
+      ],
+    });
+  });
+
+  it('no toca los códigos secundarios si la fila no los manda, y rechaza uno que ya es de otra fila', async () => {
+    const { prisma } = makePrisma([{ id: 'p1', stock: 0, barcodes: [{ barcode: 'viejo' }] }]);
+    const service = new ProductsBulkService(prisma as never);
+
+    const result = await service.bulkSave([row({ id: 'p1', barcode: '111' }), row({ name: 'Otro', barcodes: ['111'] })]);
+
+    expect(result.errors.map((e) => e.index)).toEqual([1]);
+    expect(prisma.productBarcode.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.productBarcode.createMany).not.toHaveBeenCalled();
   });
 
   it('marca como error una fila cuyo producto ya no existe', async () => {

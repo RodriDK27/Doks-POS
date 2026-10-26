@@ -49,6 +49,13 @@ export class BulkProductRowDto {
   @IsString({ message: 'La categoría debe ser texto' })
   @IsOptional()
   category?: string;
+
+  /** Códigos secundarios. Si viene, reemplaza los del producto; si no viene, no se tocan */
+  @IsArray({ message: 'Los otros códigos deben ser una lista' })
+  @ArrayMaxSize(50, { message: 'Máximo 50 códigos adicionales por producto' })
+  @IsString({ each: true, message: 'Cada código debe ser texto' })
+  @IsOptional()
+  barcodes?: string[];
 }
 
 export class BulkProductsDto {

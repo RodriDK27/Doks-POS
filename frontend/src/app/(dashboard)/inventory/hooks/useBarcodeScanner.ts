@@ -5,6 +5,7 @@ const MAX_GAP_MS = 50;
 const MIN_LENGTH = 3;
 const BARCODE_PATTERN = /^[\w./-]+$/;
 const BARCODE_CELL_SELECTOR = '[data-cell$=":barcode"]';
+const EXTRA_BARCODES_CELL_SELECTOR = '[data-cell$=":extraBarcodes"]';
 
 function isTextField(target: EventTarget | null): target is HTMLInputElement | HTMLTextAreaElement {
   return (
@@ -29,6 +30,7 @@ function restoreFieldValue(field: HTMLInputElement | HTMLTextAreaElement, value:
  * - Al detectar una lectura se cancela el Enter, para que no active un botón ni mueva de celda.
  * - Con un diálogo abierto no se escucha: la lectura es para ese diálogo.
  * - Con el foco en una celda de código de barras tampoco: el código se queda escrito en la celda.
+ * - En la celda de otros códigos, la lectura se agrega a la lista (separada por coma).
  */
 export function useBarcodeScanner(onScan: (code: string) => void) {
   const onScanRef = useRef(onScan);
@@ -70,6 +72,13 @@ export function useBarcodeScanner(onScan: (code: string) => void) {
       if (code.length < MIN_LENGTH || !BARCODE_PATTERN.test(code) || event.target !== burstTarget) return;
       // En la celda de código de barras la lectura es para esa celda (p. ej. al dar de alta un producto)
       if (event.target instanceof HTMLElement && event.target.matches(BARCODE_CELL_SELECTOR)) return;
+      if (event.target instanceof HTMLInputElement && event.target.matches(EXTRA_BARCODES_CELL_SELECTOR)) {
+        event.preventDefault();
+        event.stopPropagation();
+        const before = (valueBeforeBurst ?? '').replace(/[,;\s]+$/, '');
+        restoreFieldValue(event.target, before ? `${before}, ${code}` : code);
+        return;
+      }
 
       event.preventDefault();
       event.stopPropagation();

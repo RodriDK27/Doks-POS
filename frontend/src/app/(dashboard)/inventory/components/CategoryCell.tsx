@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { Plus, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MAX_SUGGESTIONS = 8;
 const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 interface CategoryCellProps {
@@ -22,17 +21,18 @@ interface CategoryCellProps {
 /**
  * Categoría con buscador: mientras se escribe aparecen las categorías que coinciden
  * (primero las que empiezan igual). Si no existe, ofrece crearla con lo escrito.
- * La lista se dibuja en un portal para que no la corte el scroll de la tabla.
+ * La lista muestra todas las que coinciden con scroll, y se dibuja en un portal para que no la corte el scroll de la tabla.
  */
 export function CategoryCell({ value, categories, cellId, inputClassName, onChange, onKeyNav, onPaste }: CategoryCellProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
   const query = normalize(value);
   const suggestions = useMemo(() => {
-    if (!query) return categories.slice(0, MAX_SUGGESTIONS);
+    if (!query) return categories;
     const starts: string[] = [];
     const contains: string[] = [];
     for (const c of categories) {
@@ -40,7 +40,7 @@ export function CategoryCell({ value, categories, cellId, inputClassName, onChan
       if (n.startsWith(query)) starts.push(c);
       else if (n.includes(query)) contains.push(c);
     }
-    return [...starts, ...contains].slice(0, MAX_SUGGESTIONS);
+    return [...starts, ...contains];
   }, [categories, query]);
 
   const exactMatch = categories.some((c) => normalize(c) === query);
@@ -68,6 +68,11 @@ export function CategoryCell({ value, categories, cellId, inputClassName, onChan
       window.visualViewport?.removeEventListener('resize', follow);
     };
   }, [open]);
+
+  // Con flechas, la opción marcada se mantiene a la vista dentro de la lista
+  useEffect(() => {
+    if (open) listRef.current?.children[highlight]?.scrollIntoView({ block: 'nearest' });
+  }, [open, highlight]);
 
   // Si no cabe debajo (p. ej. con el teclado del celular abierto), la lista se abre hacia arriba
   const LIST_MAX_HEIGHT = 288;
@@ -131,6 +136,7 @@ export function CategoryCell({ value, categories, cellId, inputClassName, onChan
         options.length > 0 &&
         createPortal(
           <div
+            ref={listRef}
             className="fixed z-[70] max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl py-1"
             style={{
               ...(openUp ? { top: rect.top - 4, transform: 'translateY(-100%)' } : { top: rect.bottom + 4 }),

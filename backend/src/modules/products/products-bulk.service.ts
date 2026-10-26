@@ -27,22 +27,33 @@ export class ProductsBulkService {
     const result: BulkSaveResult = { created: [], updated: [], errors: [] };
     const fail = (index: number, message: string) => result.errors.push({ index, message });
 
-    const clean = rows.map((row) => ({
-      ...row,
-      name: row.name.trim(),
-      barcode: row.barcode?.trim() || null,
-      category: row.category?.trim() || null,
-    }));
+    const clean = rows.map((row) => {
+      const barcode = row.barcode?.trim() || null;
+      return {
+        ...row,
+        name: row.name.trim(),
+        barcode,
+        category: row.category?.trim() || null,
+        // Sin vacíos, sin repetidos y sin el código principal (ese ya identifica al producto)
+        barcodes: row.barcodes
+          ? [...new Set(row.barcodes.map((b) => b.trim()).filter((b) => b && b !== barcode))]
+          : undefined,
+      };
+    });
 
     // 1. Productos a actualizar (una sola consulta)
     const ids = clean.map((r) => r.id).filter((id): id is string => !!id);
     const existing = ids.length
-      ? await this.prisma.product.findMany({ where: { id: { in: ids } }, select: { id: true, stock: true } })
+      ? await this.prisma.product.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, stock: true, barcodes: { select: { barcode: true } } },
+        })
       : [];
     const existingById = new Map(existing.map((p) => [p.id, p]));
 
-    // 2. Códigos de barras: repetidos en la misma tanda y ya usados por otros productos (dos consultas)
-    const barcodes = clean.map((r) => r.barcode).filter((b): b is string => !!b);
+    // 2. Códigos de barras (principal y secundarios): repetidos en la misma tanda y ya usados por otros productos
+    const codesOf = (row: (typeof clean)[number]) => [...(row.barcode ? [row.barcode] : []), ...(row.barcodes ?? [])];
+    const barcodes = clean.flatMap(codesOf);
     const [mainOwners, secondaryOwners] = barcodes.length
       ? await Promise.all([
           this.prisma.product.findMany({ where: { barcode: { in: barcodes } }, select: { id: true, name: true, barcode: true } }),
@@ -63,17 +74,17 @@ export class ProductsBulkService {
       if (row.id && !existingById.has(row.id)) {
         return fail(index, 'Este producto ya no existe (quizá lo borraron).');
       }
-      if (row.barcode) {
-        const previous = firstRowByBarcode.get(row.barcode);
+      for (const code of codesOf(row)) {
+        const previous = firstRowByBarcode.get(code);
         if (previous !== undefined) {
-          return fail(index, `El código "${row.barcode}" está repetido en la fila ${previous + 1}.`);
+          return fail(index, `El código "${code}" está repetido en la fila ${previous + 1}.`);
         }
-        firstRowByBarcode.set(row.barcode, index);
-        const owner = ownerByBarcode.get(row.barcode);
+        const owner = ownerByBarcode.get(code);
         if (owner && owner.id !== row.id) {
-          return fail(index, `El código "${row.barcode}" ya pertenece a "${owner.name}".`);
+          return fail(index, `El código "${code}" ya pertenece a "${owner.name}".`);
         }
       }
+      for (const code of codesOf(row)) firstRowByBarcode.set(code, index);
       valid.push({ index, row });
     });
 
@@ -86,6 +97,8 @@ export class ProductsBulkService {
       const chunkUpdated: BulkSaveResult['updated'] = [];
 
       const toCreate: Prisma.ProductCreateManyInput[] = [];
+      const barcodesToRemove: Prisma.PrismaPromise<unknown>[] = [];
+      const barcodesToAdd: Prisma.ProductBarcodeCreateManyInput[] = [];
       for (const { index, row } of chunk) {
         const data = {
           name: row.name,
@@ -103,6 +116,18 @@ export class ProductsBulkService {
           if (Math.abs(diff) > 1e-9) {
             movements.push({ productId: row.id, type: 'AJUSTE', quantity: diff, reason: 'Ajuste en editor avanzado' });
           }
+          if (row.barcodes) {
+            const current = existingById.get(row.id)!.barcodes.map((b) => b.barcode);
+            const removed = current.filter((b) => !row.barcodes!.includes(b));
+            if (removed.length) {
+              barcodesToRemove.push(
+                this.prisma.productBarcode.deleteMany({ where: { productId: row.id, barcode: { in: removed } } }),
+              );
+            }
+            for (const barcode of row.barcodes) {
+              if (!current.includes(barcode)) barcodesToAdd.push({ productId: row.id, barcode });
+            }
+          }
           chunkUpdated.push({ index, id: row.id });
         } else {
           // El id se genera aquí para poder crear todo con un solo createMany y devolverlo a su fila
@@ -111,11 +136,15 @@ export class ProductsBulkService {
           if (row.stock > 0) {
             movements.push({ productId: id, type: 'ENTRADA', quantity: row.stock, reason: 'Stock inicial (editor avanzado)' });
           }
+          for (const barcode of row.barcodes ?? []) barcodesToAdd.push({ productId: id, barcode });
           chunkCreated.push({ index, id });
         }
       }
 
       if (toCreate.length) ops.unshift(this.prisma.product.createMany({ data: toCreate }));
+      // Primero se quitan los códigos secundarios que ya no van y después se agregan los nuevos
+      ops.push(...barcodesToRemove);
+      if (barcodesToAdd.length) ops.push(this.prisma.productBarcode.createMany({ data: barcodesToAdd }));
       if (movements.length) ops.push(this.prisma.stockMovement.createMany({ data: movements }));
 
       try {

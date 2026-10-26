@@ -2,7 +2,6 @@
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import useSWR from 'swr';
 import { Copy, Heart, ImageIcon, Layers, Loader2, Plus, RotateCcw, Save, Search, SlidersHorizontal, Table2, Trash2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductImageSrc } from '@/lib/productImages';
@@ -12,6 +11,7 @@ import {
   EditableColumn,
   EditorRow,
   RowStatus,
+  parseCodes,
   rowStatus,
   useAdvancedEditor,
 } from './hooks/useAdvancedEditor';
@@ -19,7 +19,6 @@ import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { CategoryCell } from './components/CategoryCell';
 import { CategoryManagementModal } from './components/CategoryManagementModal';
 import { QuickRestockDialog } from './components/QuickRestockDialog';
-import type { Product } from './types';
 
 /** Alto fijo de cada fila: permite dibujar solo las filas visibles (miles de productos sin trabarse) */
 const ROW_HEIGHT = 44;
@@ -43,7 +42,7 @@ function useIsCompact() {
 }
 
 const GRID_TEMPLATE =
-  '2.5rem 3rem 3.25rem minmax(15rem,2.2fr) 7.5rem minmax(9rem,1fr) 7rem 7rem 7rem 6.5rem minmax(9rem,1fr) 4.5rem';
+  '2.5rem 3rem 3.25rem minmax(15rem,2.2fr) 7.5rem minmax(9rem,1fr) 7rem 7rem 7rem 6.5rem minmax(9rem,1fr) minmax(10rem,1fr) 4.5rem';
 
 const COLUMN_LABELS: Record<EditableColumn, string> = {
   name: 'Nombre',
@@ -53,7 +52,42 @@ const COLUMN_LABELS: Record<EditableColumn, string> = {
   sellPrice: 'P. venta',
   stock: 'Stock',
   category: 'Categoría',
+  extraBarcodes: 'Otros códigos',
 };
+
+/** Fondo de la fila según su estado; la columna fija de la hoja compacta lo usa opaco */
+function rowBackground(status: RowStatus, hasErrors: boolean, opaque = false) {
+  if (status === 'deleted') return opaque ? 'bg-rose-100 dark:bg-rose-950' : 'bg-rose-100/70 dark:bg-rose-950/40';
+  if (hasErrors) return opaque ? 'bg-rose-50 dark:bg-rose-950' : 'bg-rose-50/60 dark:bg-rose-950/20';
+  if (status === 'new') return opaque ? 'bg-emerald-50 dark:bg-emerald-950' : 'bg-emerald-50/60 dark:bg-emerald-950/20';
+  if (status === 'dirty') return opaque ? 'bg-amber-50 dark:bg-amber-950' : 'bg-amber-50/60 dark:bg-amber-950/20';
+  return 'bg-white dark:bg-slate-900';
+}
+
+/** Producto marcado para borrar: tachado y sin poder editarse hasta que se desmarque */
+const DELETED_ROW = '[&_input]:line-through [&_input]:opacity-60 [&_select]:opacity-60 [&_input]:pointer-events-none [&_select]:pointer-events-none';
+
+/** Botón de quitar: fila nueva se quita al momento; producto guardado se marca para borrarse al guardar */
+function RemoveButton({ row, onRemove, className, iconClassName }: { row: EditorRow; onRemove: (key: string) => void; className: string; iconClassName: string }) {
+  const label = !row.id ? 'Quitar fila nueva' : row.toDelete ? 'No borrar este producto' : 'Borrar producto (se borra al guardar)';
+  return (
+    <button
+      type="button"
+      onClick={() => onRemove(row.key)}
+      title={label}
+      aria-label={label}
+      className={cn(
+        'rounded-lg flex items-center justify-center cursor-pointer',
+        row.toDelete
+          ? 'text-rose-600 bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900'
+          : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40',
+        className
+      )}
+    >
+      {row.toDelete ? <RotateCcw className={iconClassName} /> : <Trash2 className={iconClassName} />}
+    </button>
+  );
+}
 
 type StatusFilter = 'all' | 'changed' | 'errors';
 type TypeFilter = 'all' | 'PIECE' | 'WEIGHT';
@@ -153,11 +187,12 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
   const cellClass = (column: EditableColumn) =>
     cn('h-full border-r border-slate-100 dark:border-slate-800', errors?.[column] && 'bg-rose-100/70 dark:bg-rose-950/40');
 
-  const textCell = (column: Exclude<EditableColumn, 'unitType' | 'category'>, opts: { numeric?: boolean } = {}) => (
+  const textCell = (column: Exclude<EditableColumn, 'unitType' | 'category'>, opts: { numeric?: boolean; placeholder?: string } = {}) => (
     <div className={cellClass(column)} title={errors?.[column]}>
       <input
         value={row[column]}
         inputMode={opts.numeric ? 'decimal' : undefined}
+        placeholder={opts.placeholder}
         data-cell={`${visibleIndex}:${column}`}
         onChange={(e) => onChange(row.key, column, e.target.value)}
         onKeyDown={(e) => onKeyNav(e, visibleIndex, column)}
@@ -171,16 +206,11 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
     <div
       className={cn(
         'grid h-full items-stretch border-b border-slate-100 dark:border-slate-800 text-xs',
-        hasErrors
-          ? 'bg-rose-50/60 dark:bg-rose-950/20'
-          : status === 'new'
-            ? 'bg-emerald-50/60 dark:bg-emerald-950/20'
-            : status === 'dirty'
-              ? 'bg-amber-50/60 dark:bg-amber-950/20'
-              : 'bg-white dark:bg-slate-900'
+        rowBackground(status, hasErrors),
+        status === 'deleted' && DELETED_ROW
       )}
       style={{ gridTemplateColumns: GRID_TEMPLATE }}
-      title={row.serverError}
+      title={row.serverError ?? (status === 'deleted' ? 'Se borrará al guardar' : undefined)}
     >
       <div className="h-full flex items-center justify-center border-r border-slate-100 dark:border-slate-800">
         <FavoriteButton row={row} onToggle={onToggleFavorite} className="h-8 w-8" />
@@ -189,7 +219,7 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
         <span
           className={cn(
             'h-2 w-2 rounded-full',
-            hasErrors ? 'bg-rose-500' : status === 'new' ? 'bg-emerald-500' : status === 'dirty' ? 'bg-amber-500' : 'bg-transparent'
+            hasErrors || status === 'deleted' ? 'bg-rose-500' : status === 'new' ? 'bg-emerald-500' : status === 'dirty' ? 'bg-amber-500' : 'bg-transparent'
           )}
         />
         {visibleIndex + 1}
@@ -234,6 +264,7 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
           onPaste={(e) => onPaste(e, row.key, 'category')}
         />
       </div>
+      {textCell('extraBarcodes', { placeholder: 'Escanea o escribe…' })}
       <div className="h-full flex items-center justify-center gap-0.5">
         <button
           type="button"
@@ -244,16 +275,7 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
         >
           <Copy className="h-3.5 w-3.5" />
         </button>
-        {!row.id && (
-          <button
-            type="button"
-            onClick={() => onRemove(row.key)}
-            title="Quitar fila nueva"
-            className="h-7 w-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center justify-center cursor-pointer"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
+        <RemoveButton row={row} onRemove={onRemove} className="h-7 w-7" iconClassName="h-3.5 w-3.5" />
       </div>
     </div>
   );
@@ -263,8 +285,8 @@ const RowView = memo(function RowView({ row, visibleIndex, status, errors, onCha
  * Hoja tipo Excel para celular o tablet vertical: el nombre se queda fijo a la izquierda y el resto de
  * columnas se desliza de lado. Van primero las que más se editan desde el celular (precio y stock).
  */
-const COMPACT_GRID_TEMPLATE = '11rem 5.25rem 5.25rem 5rem 4.5rem 5.75rem 8.5rem 8.5rem 2.75rem 4.75rem';
-const COMPACT_HEADERS = ['Nombre', 'P. venta', 'P. compra', 'Ganancia', 'Stock', 'Tipo', 'Código', 'Categoría', 'Img', ''];
+const COMPACT_GRID_TEMPLATE = '11rem 5.25rem 5.25rem 5rem 4.5rem 5.75rem 8.5rem 8.5rem 10rem 2.75rem 4.75rem';
+const COMPACT_HEADERS = ['Nombre', 'P. venta', 'P. compra', 'Ganancia', 'Stock', 'Tipo', 'Código', 'Categoría', 'Otros códigos', 'Img', ''];
 
 const compactInput =
   'h-full w-full bg-transparent px-2 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:bg-white dark:focus:bg-slate-950 focus:ring-2 focus:ring-inset focus:ring-indigo-500 rounded-none';
@@ -302,10 +324,11 @@ const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status,
   const cellClass = (column: EditableColumn) =>
     cn('h-full border-r border-slate-100 dark:border-slate-800', errors?.[column] && 'bg-rose-100/70 dark:bg-rose-950/40');
 
-  const textCell = (column: Exclude<EditableColumn, 'unitType' | 'category'>, opts: { numeric?: boolean } = {}) => (
+  const textCell = (column: Exclude<EditableColumn, 'unitType' | 'category'>, opts: { numeric?: boolean; placeholder?: string } = {}) => (
     <input
       value={row[column]}
       inputMode={opts.numeric ? 'decimal' : undefined}
+      placeholder={opts.placeholder}
       enterKeyHint="next"
       data-cell={`${visibleIndex}:${column}`}
       onChange={(e) => onChange(row.key, column, e.target.value)}
@@ -319,35 +342,24 @@ const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status,
     <div
       className={cn(
         'grid h-full items-stretch border-b border-slate-100 dark:border-slate-800',
-        hasErrors
-          ? 'bg-rose-50/60 dark:bg-rose-950/20'
-          : status === 'new'
-            ? 'bg-emerald-50/60 dark:bg-emerald-950/20'
-            : status === 'dirty'
-              ? 'bg-amber-50/60 dark:bg-amber-950/20'
-              : 'bg-white dark:bg-slate-900'
+        rowBackground(status, hasErrors),
+        status === 'deleted' && DELETED_ROW
       )}
       style={{ gridTemplateColumns: COMPACT_GRID_TEMPLATE }}
-      title={row.serverError}
+      title={row.serverError ?? (status === 'deleted' ? 'Se borrará al guardar' : undefined)}
     >
       {/* Columna fija: fondo opaco para que no se transparenten las columnas que pasan por debajo */}
       <div
         className={cn(
           'sticky left-0 z-10 h-full border-r-2 border-slate-200 dark:border-slate-700',
-          errors?.name || hasErrors
-            ? 'bg-rose-50 dark:bg-rose-950'
-            : status === 'new'
-              ? 'bg-emerald-50 dark:bg-emerald-950'
-              : status === 'dirty'
-                ? 'bg-amber-50 dark:bg-amber-950'
-                : 'bg-white dark:bg-slate-900'
+          rowBackground(status, hasErrors, true)
         )}
         title={errors?.name}
       >
         <span
           className={cn(
             'absolute inset-y-0 left-0 w-1',
-            hasErrors ? 'bg-rose-500' : status === 'new' ? 'bg-emerald-500' : status === 'dirty' ? 'bg-amber-500' : 'bg-transparent'
+            hasErrors || status === 'deleted' ? 'bg-rose-500' : status === 'new' ? 'bg-emerald-500' : status === 'dirty' ? 'bg-amber-500' : 'bg-transparent'
           )}
         />
         <div className="h-full flex items-center">
@@ -398,6 +410,9 @@ const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status,
           onPaste={(e) => onPaste(e, row.key, 'category')}
         />
       </div>
+      <div className={cellClass('extraBarcodes')} title={errors?.extraBarcodes}>
+        {textCell('extraBarcodes', { placeholder: 'Escanea o escribe…' })}
+      </div>
       <div className="h-full flex items-center justify-center border-r border-slate-100 dark:border-slate-800">
         <ImageCell row={row} onPick={(file) => onImage(row.key, file)} />
       </div>
@@ -411,16 +426,7 @@ const CompactRowView = memo(function CompactRowView({ row, visibleIndex, status,
         >
           <Copy className="h-4 w-4" />
         </button>
-        {!row.id && (
-          <button
-            type="button"
-            onClick={() => onRemove(row.key)}
-            title="Quitar fila nueva"
-            className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center justify-center cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
+        <RemoveButton row={row} onRemove={onRemove} className="h-8 w-8" iconClassName="h-4 w-4" />
       </div>
     </div>
   );
@@ -452,6 +458,13 @@ export default function InventoryPage() {
 
   const visibleRows = useMemo(() => {
     const q = normalize(search.trim());
+    const matches = (values: NonNullable<EditorRow['original']>) => {
+      if (type !== 'all' && values.unitType !== type) return false;
+      if (category === '__none' && values.category.trim()) return false;
+      if (category !== '__all' && category !== '__none' && values.category.trim() !== category) return false;
+      if (q && !normalize(`${values.name} ${values.barcode} ${values.category} ${values.extraBarcodes}`).includes(q)) return false;
+      return true;
+    };
     return rows.filter((row) => {
       const status = rowStatus(row);
       const hasErrors = errorsByKey.has(row.key) || !!row.serverError;
@@ -459,11 +472,8 @@ export default function InventoryPage() {
       if (statusFilter === 'errors' && !hasErrors) return false;
       // Las filas nuevas siempre se ven, aunque no coincidan con los filtros, para no "perderlas" mientras se llenan
       if (status === 'new') return true;
-      if (type !== 'all' && row.unitType !== type) return false;
-      if (category === '__none' && row.category.trim()) return false;
-      if (category !== '__all' && category !== '__none' && row.category.trim() !== category) return false;
-      if (q && !normalize(`${row.name} ${row.barcode} ${row.category}`).includes(q)) return false;
-      return true;
+      // Una fila editada se queda donde estaba (p. ej. al cambiarle la categoría) hasta que se guarde
+      return matches(row) || (status !== 'clean' && !!row.original && matches(row.original));
     });
   }, [rows, search, category, type, statusFilter, errorsByKey]);
 
@@ -579,8 +589,6 @@ export default function InventoryPage() {
   };
 
   // ─── Lector de código de barras: al escanear (sin tocar el buscador) aparece el producto ───
-  // Mismo caché que el editor: sirve para encontrar productos por sus códigos secundarios
-  const { data: catalog } = useSWR<Product[]>('/products');
   const { addRows: addEditorRows, updateCell } = editor;
 
   const handleScan = useCallback(
@@ -589,19 +597,18 @@ export default function InventoryPage() {
       // Si el foco quedó en una celda, al filtrar esa celda pasaría a ser de otro producto
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 
-      let row = rows.find((r) => r.barcode.trim().toLowerCase() === clean);
-      if (!row) {
-        const product = catalog?.find((p) => p.barcodes?.some((b) => b.barcode.trim().toLowerCase() === clean));
-        if (product) row = rows.find((r) => r.id === product.id);
-      }
+      const row = rows.find(
+        (r) =>
+          r.barcode.trim().toLowerCase() === clean || parseCodes(r.extraBarcodes).some((c) => c.toLowerCase() === clean)
+      );
 
       if (row) {
         // Quitar filtros que pudieran esconderlo
         setCategory('__all');
         setType('all');
         setStatusFilter('all');
-        // Con un código secundario la fila no lo contiene: se busca por su nombre
-        setSearch(row.barcode.trim().toLowerCase() === clean ? code.trim() : row.name);
+        // La búsqueda también revisa los otros códigos
+        setSearch(code.trim());
         return;
       }
 
@@ -624,16 +631,23 @@ export default function InventoryPage() {
         },
       });
     },
-    [rows, catalog, canManage, addEditorRows, updateCell, focusCell]
+    [rows, canManage, addEditorRows, updateCell, focusCell]
   );
   useBarcodeScanner(handleScan);
 
   // ─── Guardar ───
   const handleSave = async () => {
+    const toDelete = pendingRows.filter((r) => r.toDelete);
+    if (toDelete.length) {
+      const names = toDelete.slice(0, 5).map((r) => `• ${r.name}`).join('\n');
+      const more = toDelete.length > 5 ? `\n…y ${toDelete.length - 5} más` : '';
+      if (!window.confirm(`Se borrarán definitivamente ${toDelete.length} producto(s):\n${names}${more}\n\n¿Continuar?`)) return;
+    }
     const withErrors = pendingRows.filter((r) => errorsByKey.has(r.key)).length;
     const result = await editor.save();
     if (result.error) toast.error(result.error);
     if (result.ok) toast.success(`Se guardaron ${result.ok} producto(s)`);
+    if (result.deleted) toast.success(`Se borraron ${result.deleted} producto(s)`);
     if (result.failed) toast.error(`${result.failed} producto(s) no se guardaron. Revisa las filas en rojo.`);
     if (withErrors) toast.warning(`${withErrors} fila(s) con errores no se enviaron. Corrígelas y vuelve a guardar.`);
     if (result.failed || withErrors) setStatusFilter('errors');
@@ -728,7 +742,7 @@ export default function InventoryPage() {
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {isSaving ? (
               <span>
-                <span className="hidden sm:inline">{progress.stage === 'fotos' ? 'Subiendo fotos' : 'Guardando'} </span>
+                <span className="hidden sm:inline">{progress.stage === 'fotos' ? 'Subiendo fotos' : progress.stage === 'borrando' ? 'Borrando' : 'Guardando'} </span>
                 {progress.done}
                 <span className="hidden sm:inline"> de </span>
                 <span className="sm:hidden">/</span>
@@ -831,7 +845,7 @@ export default function InventoryPage() {
           </div>
         ) : (
           <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} className="h-full overflow-auto overscroll-contain">
-            <div className={compact ? 'w-max min-w-full' : 'min-w-[80.5rem]'}>
+            <div className={compact ? 'w-max min-w-full' : 'min-w-[90.5rem]'}>
               {compact ? (
                 <CompactHeader />
               ) : (
@@ -850,7 +864,7 @@ export default function InventoryPage() {
                     </span>
                   ))}
                   <span className="flex items-center justify-end px-2 border-r border-slate-200 dark:border-slate-800">Ganancia</span>
-                  {(['stock', 'category'] as EditableColumn[]).map((col) => (
+                  {(['stock', 'category', 'extraBarcodes'] as EditableColumn[]).map((col) => (
                     <span key={col} className="flex items-center px-2 border-r border-slate-200 dark:border-slate-800">
                       {COLUMN_LABELS[col]}
                     </span>
