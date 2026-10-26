@@ -91,6 +91,7 @@ function RemoveButton({ row, onRemove, className, iconClassName }: { row: Editor
 
 type StatusFilter = 'all' | 'changed' | 'errors';
 type TypeFilter = 'all' | 'PIECE' | 'WEIGHT';
+type StockFilter = 'all' | 'in' | 'out';
 
 const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const money = (n: number) => `$${n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -450,16 +451,19 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('__all');
   const [type, setType] = useState<TypeFilter>('all');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [isQuickRestockOpen, setIsQuickRestockOpen] = useState(false);
-  const activeFilterCount = (category !== '__all' ? 1 : 0) + (type !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+  const activeFilterCount = (category !== '__all' ? 1 : 0) + (type !== 'all' ? 1 : 0) + (stockFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
 
   const visibleRows = useMemo(() => {
     const q = normalize(search.trim());
     const matches = (values: NonNullable<EditorRow['original']>) => {
       if (type !== 'all' && values.unitType !== type) return false;
+      // Sin stock: 0 o negativo (un stock vacío cuenta como 0)
+      if (stockFilter !== 'all' && ((Number(values.stock) || 0) > 0) !== (stockFilter === 'in')) return false;
       if (category === '__none' && values.category.trim()) return false;
       if (category !== '__all' && category !== '__none' && values.category.trim() !== category) return false;
       if (q && !normalize(`${values.name} ${values.barcode} ${values.category} ${values.extraBarcodes}`).includes(q)) return false;
@@ -475,7 +479,7 @@ export default function InventoryPage() {
       // Una fila editada se queda donde estaba (p. ej. al cambiarle la categoría) hasta que se guarde
       return matches(row) || (status !== 'clean' && !!row.original && matches(row.original));
     });
-  }, [rows, search, category, type, statusFilter, errorsByKey]);
+  }, [rows, search, category, type, stockFilter, statusFilter, errorsByKey]);
 
   const visibleKeys = useMemo(() => visibleRows.map((r) => r.key), [visibleRows]);
   const errorCount = useMemo(
@@ -606,6 +610,7 @@ export default function InventoryPage() {
         // Quitar filtros que pudieran esconderlo
         setCategory('__all');
         setType('all');
+        setStockFilter('all');
         setStatusFilter('all');
         // La búsqueda también revisa los otros códigos
         setSearch(code.trim());
@@ -808,6 +813,11 @@ export default function InventoryPage() {
             <option value="all">Todos los tipos</option>
             <option value="PIECE">Pieza</option>
             <option value="WEIGHT">Granel</option>
+          </select>
+          <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value as StockFilter)} className={selectClass}>
+            <option value="all">Todo el stock</option>
+            <option value="in">Con stock</option>
+            <option value="out">Sin stock</option>
           </select>
           <div className="w-full lg:w-auto flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0.5">
             {(
