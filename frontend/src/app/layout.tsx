@@ -52,7 +52,7 @@ export default function RootLayout({
           <SWRProvider>
             <ServiceWorkerRegister />
             {children}
-            <Toaster position="top-right" richColors />
+            <Toaster position="bottom-right" richColors />
           </SWRProvider>
         </ThemeProvider>
       </body>
