@@ -22,9 +22,6 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob | n
   return new Promise((resolve) => canvas.toBlob(resolve, type, QUALITY));
 }
 
-/** Lado mayor de la foto de una nota de proveedor: más grande para que se pueda leer */
-export const RECEIPT_MAX_SIDE = 1400;
-
 /**
  * Reduce la foto en el navegador antes de subirla, para que el servidor no gaste CPU.
  * Devuelve WebP; si el navegador no sabe codificarlo (Safari), devuelve JPEG.

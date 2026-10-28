@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, FileX, Landmark, Loader2, RotateCcw, Truck } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import { getProductImageSrc } from '@/lib/productImages';
 import { formatMoney } from '../helpers';
 import { NumericKeypad, SimpleOverlay } from './SimpleOverlay';
@@ -15,13 +15,12 @@ export interface SimpleSupplier {
   pendingTickets: Array<{ id: string; amount: number; scheduledDate: string | null; notes: string | null }>;
 }
 
-/** Lo que se va armando en "Llegó el proveedor" antes de guardarlo */
+/** El pago de "Llegó el proveedor" que se guarda al elegir el monto */
 export interface SupplierPaymentDraft {
   supplier: SimpleSupplier;
   amount: number;
   /** Nota de preventa que se liquida con este pago */
   ticketId?: string;
-  photo?: File;
 }
 
 // Colores de respaldo para proveedores sin logo (siempre el mismo color para el mismo proveedor)
@@ -131,15 +130,18 @@ function SupplierHeader({ supplier, subtitle }: { supplier: SimpleSupplier; subt
 
 interface SupplierAmountStepProps {
   supplier: SimpleSupplier;
+  /** Guarda el pago de inmediato, sin pantalla de confirmación */
   onAmount: (amount: number, ticketId?: string) => void;
   onBack: () => void;
+  isSubmitting: boolean;
+  error: string | null;
 }
 
 /**
  * "¿Cuánto le pagó?": el teclado va directo porque con proveedores el monto casi siempre cambia.
- * Si hay nota pendiente o "lo de siempre", aparecen como atajos de un toque.
+ * Si hay nota pendiente o "lo de siempre", aparecen como atajos de un toque. Elegir el monto ya guarda el pago.
  */
-export function SupplierAmountStep({ supplier, onAmount, onBack }: SupplierAmountStepProps) {
+export function SupplierAmountStep({ supplier, onAmount, onBack, isSubmitting, error }: SupplierAmountStepProps) {
   const hasTickets = supplier.pendingTickets.length > 0;
   const showUsual = !hasTickets && supplier.expectedPayment > 0;
   const hasShortcuts = hasTickets || showUsual;
@@ -148,14 +150,21 @@ export function SupplierAmountStep({ supplier, onAmount, onBack }: SupplierAmoun
     <SimpleOverlay title="¿Cuánto le pagó?" onBack={onBack}>
       <div className={`mx-auto grid gap-5 items-start ${hasShortcuts ? 'max-w-6xl landscape:lg:grid-cols-2' : 'max-w-xl'}`}>
         <section className="flex flex-col gap-4">
-          <SupplierHeader supplier={supplier} />
+          <SupplierHeader supplier={supplier} subtitle="Sale de la caja grande" />
+
+          {error && (
+            <p className="rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-2xl font-bold p-4">
+              No se guardó el pago: {error}
+            </p>
+          )}
 
           {supplier.pendingTickets.map((ticket) => (
             <button
               key={ticket.id}
               type="button"
               onClick={() => onAmount(ticket.amount, ticket.id)}
-              className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+              disabled={isSubmitting}
+              className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center disabled:opacity-70 disabled:cursor-wait"
             >
               <span className="text-2xl font-bold">Lo de la nota{ticket.scheduledDate ? ` del ${ticket.scheduledDate}` : ''}</span>
               <span className="text-6xl font-black tabular-nums leading-none mt-1">{formatMoney(ticket.amount)}</span>
@@ -166,7 +175,8 @@ export function SupplierAmountStep({ supplier, onAmount, onBack }: SupplierAmoun
             <button
               type="button"
               onClick={() => onAmount(supplier.expectedPayment)}
-              className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
+              disabled={isSubmitting}
+              className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center disabled:opacity-70 disabled:cursor-wait"
             >
               <span className="text-2xl font-bold">Lo de siempre</span>
               <span className="text-6xl font-black tabular-nums leading-none mt-1">{formatMoney(supplier.expectedPayment)}</span>
@@ -182,185 +192,15 @@ export function SupplierAmountStep({ supplier, onAmount, onBack }: SupplierAmoun
         </section>
 
         <section className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-xs p-4">
-          <NumericKeypad hint="Sale de la caja grande" confirmLabel="Siguiente" onConfirm={(amount) => onAmount(amount)} />
-        </section>
-      </div>
-    </SimpleOverlay>
-  );
-}
-
-interface ReceiptPhotoStepProps {
-  draft: SupplierPaymentDraft;
-  onContinue: (photo?: File) => void;
-  onBack: () => void;
-}
-
-/** Foto de la nota: abre directo la cámara trasera. Si no traía nota, se sigue sin foto. */
-export function ReceiptPhotoStep({ draft, onContinue, onBack }: ReceiptPhotoStepProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [photo, setPhoto] = useState<File | undefined>(draft.photo);
-  const previewUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
-  useEffect(() => () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
-
-  const openCamera = () => inputRef.current?.click();
-
-  return (
-    <SimpleOverlay title="Foto de la nota" onBack={onBack}>
-      <div className="max-w-3xl mx-auto flex flex-col gap-4">
-        <SupplierHeader supplier={draft.supplier} subtitle={`Le pagó ${formatMoney(draft.amount)}`} />
-
-        {previewUrl ? (
-          <>
-            <div className="rounded-2xl bg-white border border-slate-200/60 dark:border-slate-800 shadow-xs overflow-hidden flex items-center justify-center max-h-[45vh]">
-              {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:) */}
-              <img src={previewUrl} alt="Nota del proveedor" className="max-h-[45vh] w-auto object-contain" />
+          {isSubmitting ? (
+            <div className="h-96 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-16 w-16 animate-spin text-emerald-600" />
+              <p className="text-2xl font-bold text-slate-500">Guardando el pago…</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={openCamera}
-                className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 text-2xl font-extrabold flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-              >
-                <RotateCcw className="h-7 w-7" /> Tomar otra
-              </button>
-              <button
-                type="button"
-                onClick={() => onContinue(photo)}
-                className="h-20 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-2xl font-black shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-              >
-                <CheckCircle2 className="h-7 w-7" /> Usar esta foto
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={openCamera}
-              className="h-48 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center gap-3"
-            >
-              <Camera className="h-16 w-16" />
-              <span className="text-3xl font-black">Tomarle foto a la nota</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onContinue(undefined)}
-              className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 text-2xl font-extrabold flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-            >
-              <FileX className="h-7 w-7" /> No traía nota
-            </button>
-          </>
-        )}
-
-        {/* capture="environment": en la tableta abre directo la cámara de atrás */}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) setPhoto(file);
-          }}
-        />
-      </div>
-    </SimpleOverlay>
-  );
-}
-
-interface SupplierConfirmStepProps {
-  draft: SupplierPaymentDraft;
-  isSubmitting: boolean;
-  error: string | null;
-  onConfirm: () => void;
-  onBack: () => void;
-}
-
-/** Resumen antes de guardar: el pago se registra hasta que toca "Ya le pagué" */
-export function SupplierConfirmStep({ draft, isSubmitting, error, onConfirm, onBack }: SupplierConfirmStepProps) {
-  const previewUrl = useMemo(() => (draft.photo ? URL.createObjectURL(draft.photo) : null), [draft.photo]);
-  useEffect(() => () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
-
-  return (
-    <SimpleOverlay title="Pago al proveedor" onBack={onBack} backLabel="Me equivoqué">
-      <div className="max-w-3xl mx-auto flex flex-col gap-4">
-        <SupplierHeader supplier={draft.supplier} />
-
-        <div className="rounded-2xl bg-slate-950 dark:bg-black/60 border border-slate-900 dark:border-slate-800 shadow-md py-5 text-center">
-          <p className="text-3xl font-bold text-slate-400">Le paga</p>
-          <p className="text-8xl font-black tabular-nums text-emerald-400">{formatMoney(draft.amount)}</p>
-          <p className="mt-2 flex items-center justify-center gap-2 text-xl font-bold text-slate-300">
-            <Landmark className="h-6 w-6" /> Sale de la caja grande
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-3">
-          {previewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:)
-            <img src={previewUrl} alt="Nota" className="h-20 w-20 rounded-xl object-cover border border-slate-100" />
           ) : (
-            <div className="h-20 w-20 rounded-xl bg-slate-100 flex items-center justify-center">
-              <FileX className="h-9 w-9 text-slate-400" />
-            </div>
+            <NumericKeypad confirmLabel="Ya le pagué" onConfirm={(amount) => onAmount(amount)} />
           )}
-          <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{previewUrl ? 'Con foto de la nota' : 'Sin foto de la nota'}</p>
-        </div>
-
-        {error && (
-          <p className="rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-2xl font-bold p-4">
-            No se guardó el pago: {error}
-          </p>
-        )}
-
-        <button
-          type="button"
-          disabled={isSubmitting}
-          onClick={onConfirm}
-          className="w-full h-24 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer text-4xl font-black uppercase tracking-wider flex items-center justify-center gap-4 disabled:opacity-70 disabled:cursor-wait"
-        >
-          {isSubmitting ? <Loader2 className="h-12 w-12 animate-spin" /> : <CheckCircle2 className="h-12 w-12" />}
-          Ya le pagué
-        </button>
-      </div>
-    </SimpleOverlay>
-  );
-}
-
-interface SupplierDoneStepProps {
-  draft: SupplierPaymentDraft;
-  photoFailed: boolean;
-  onDone: () => void;
-}
-
-export function SupplierDoneStep({ draft, photoFailed, onDone }: SupplierDoneStepProps) {
-  return (
-    <SimpleOverlay title="Listo" onBack={onDone} backLabel="Regresar">
-      <div className="max-w-3xl mx-auto flex flex-col items-center gap-5 text-center">
-        <div className="w-full rounded-2xl bg-white dark:bg-slate-950 border-2 border-emerald-500 shadow-md py-8 px-4 flex flex-col items-center gap-3">
-          <CheckCircle2 className="h-20 w-20 text-emerald-600 dark:text-emerald-400" />
-          <p className="text-4xl font-black text-slate-800 dark:text-slate-100">Se guardó el pago</p>
-          <p className="text-3xl font-bold text-slate-500">
-            {formatMoney(draft.amount)} a {draft.supplier.name}
-          </p>
-        </div>
-        {photoFailed && (
-          <p className="w-full rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400 text-xl font-bold p-4">
-            La foto de la nota no se pudo subir. Guarde la nota para el administrador.
-          </p>
-        )}
-        <button
-          type="button"
-          onClick={onDone}
-          className="w-full h-24 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md active:scale-95 transition-all cursor-pointer text-4xl font-black flex items-center justify-center gap-3"
-        >
-          <Truck className="h-10 w-10" /> Listo
-        </button>
+        </section>
       </div>
     </SimpleOverlay>
   );

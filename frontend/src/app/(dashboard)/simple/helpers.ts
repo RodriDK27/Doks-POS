@@ -161,6 +161,18 @@ export function itemTotal(item: SimpleItem): number {
   return roundMoney(item.price * item.quantity);
 }
 
+const KILO_FRACTIONS: Record<string, string> = { '0.25': '¼', '0.5': '½', '0.75': '¾' };
+
+/** Peso como se dice en la tienda: "¼ kg", "1½ kg", "106 g" o "1.250 kg" */
+export function formatWeight(kg: number): string {
+  const whole = Math.floor(kg);
+  const fraction = KILO_FRACTIONS[String(Math.round((kg - whole) * 1000) / 1000)];
+  if (Number.isInteger(kg)) return `${kg} kg`;
+  if (fraction) return `${whole > 0 ? whole : ''}${fraction} kg`;
+  if (kg < 1) return `${Math.round(kg * 1000)} g`;
+  return `${kg.toFixed(3)} kg`;
+}
+
 /** Monto mínimo que cubre el total, en centavos completos (para "Pagó justo") */
 export function roundUpToCents(amount: number): number {
   return Math.ceil(Math.round(amount * 10000) / 100) / 100;

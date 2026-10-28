@@ -1,12 +1,25 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { AlertTriangle, CheckCircle2, ImageIcon, Undo2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ImageIcon, Truck } from 'lucide-react';
 import { formatMoney } from '../helpers';
+import { ChangeNotice } from './Checkout';
 
 export type ScanFlashState =
   | { kind: 'added'; name: string; price: number; imageSrc: string | null }
-  | { kind: 'unknown'; code: string };
+  | { kind: 'unknown'; code: string }
+  // Venta ya guardada: solo queda dar el cambio
+  | { kind: 'sold'; change: number; isOffline: boolean }
+  | { kind: 'supplierPaid'; supplierName: string; amount: number };
+
+/** Cuánto dura cada aviso antes de quitarse solo ("no registrado" espera una decisión) */
+const FLASH_MS: Record<Exclude<ScanFlashState['kind'], 'unknown'>, number> = {
+  added: 1800,
+  supplierPaid: 2500,
+  sold: 2500,
+};
+// Con cambio se queda más tiempo para contar los billetes; un toque o el siguiente producto lo quitan antes
+const CHANGE_MS = 30000;
 
 interface ScanFlashProps {
   flash: ScanFlashState;
@@ -14,14 +27,46 @@ interface ScanFlashProps {
   onChargeUnknown: (code: string) => void;
 }
 
-/** Aviso grande después de escanear: la foto confirma el producto sin tener que leer */
+/**
+ * Aviso grande que se quita solo: producto escaneado (la foto lo confirma sin tener que leer),
+ * venta guardada con el cambio, o pago al proveedor guardado. Así no hay que acordarse de tocar "Listo".
+ */
 export function ScanFlash({ flash, onClose, onChargeUnknown }: ScanFlashProps) {
-  // El aviso de "agregado" se quita solo; el de "no registrado" espera una decisión
   useEffect(() => {
-    if (flash.kind !== 'added') return;
-    const timer = setTimeout(onClose, 1800);
+    if (flash.kind === 'unknown') return;
+    const ms = flash.kind === 'sold' && flash.change > 0 ? CHANGE_MS : FLASH_MS[flash.kind];
+    const timer = setTimeout(onClose, ms);
     return () => clearTimeout(timer);
   }, [flash, onClose]);
+
+  if (flash.kind === 'sold') {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 animate-in fade-in duration-100 p-4"
+        onClick={onClose}
+      >
+        <ChangeNotice change={flash.change} isOffline={flash.isOffline} />
+      </div>
+    );
+  }
+
+  if (flash.kind === 'supplierPaid') {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 animate-in fade-in duration-100"
+        onClick={onClose}
+      >
+        <div className="w-[min(90vw,560px)] rounded-3xl bg-white dark:bg-slate-900 border-2 border-emerald-500 shadow-2xl p-8 flex flex-col items-center gap-3 text-center">
+          <Truck className="h-20 w-20 text-emerald-600 dark:text-emerald-400" />
+          <p className="flex items-center gap-2 text-3xl font-black text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="h-9 w-9" /> Pago guardado
+          </p>
+          <p className="text-5xl font-black text-slate-900 dark:text-slate-100 tabular-nums">{formatMoney(flash.amount)}</p>
+          <p className="text-2xl font-bold text-slate-500">a {flash.supplierName}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (flash.kind === 'added') {
     return (
@@ -71,27 +116,6 @@ export function ScanFlash({ flash, onClose, onChargeUnknown }: ScanFlashProps) {
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-interface UndoBarProps {
-  message: string;
-  onUndo: () => void;
-}
-
-/** "Deshacer" en lugar de "¿Está seguro?": quitar algo es inmediato y se puede revertir */
-export function UndoBar({ message, onUndo }: UndoBarProps) {
-  return (
-    <div className="fixed bottom-6 left-6 z-30 flex items-center gap-4 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-2xl pl-6 pr-3 py-3 animate-in slide-in-from-bottom-4 duration-200 max-w-[calc(100vw-460px)] portrait:bottom-auto portrait:top-20 portrait:max-w-[calc(100vw-3rem)]">
-      <span className="text-2xl font-bold truncate">{message}</span>
-      <button
-        type="button"
-        onClick={onUndo}
-        className="h-16 px-6 rounded-2xl bg-amber-400 hover:bg-amber-500 text-slate-900 text-2xl font-black flex items-center gap-2 cursor-pointer shrink-0"
-      >
-        <Undo2 className="h-7 w-7 stroke-[3]" /> Deshacer
-      </button>
     </div>
   );
 }

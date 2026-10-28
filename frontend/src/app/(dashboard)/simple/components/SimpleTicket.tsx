@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ArrowRight, ImageIcon, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
-import { SimpleItem, formatMoney, itemTotal } from '../helpers';
+import { SimpleItem, formatMoney, formatWeight, itemTotal } from '../helpers';
 
 interface SimpleTicketProps {
   items: SimpleItem[];
@@ -71,7 +71,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
                   <div className="flex-1 min-w-0">
                     <p className="text-lg font-extrabold leading-tight line-clamp-2 text-slate-800 dark:text-slate-100">{item.name}</p>
                     <p className="text-sm font-bold text-slate-400 dark:text-slate-500 mt-0.5">
-                      {item.isWeight ? 'A granel' : `${formatMoney(item.price)} c/u`}
+                      {item.isWeight ? `${formatWeight(item.quantity)} · ${formatMoney(item.price)} el kilo` : `${formatMoney(item.price)} c/u`}
                     </p>
                   </div>
                   <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums shrink-0">
@@ -103,7 +103,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
                   ) : (
                     <div className="flex-1 portrait:flex-none portrait:w-52" />
                   )}
-                  {/* Quitar el renglón completo; con "Deshacer" por si fue un error */}
+                  {/* Quitar el renglón completo */}
                   <button
                     type="button"
                     onClick={() => onDecrement(item.key)}

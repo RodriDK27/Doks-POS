@@ -25,22 +25,15 @@ import {
 import { useSimpleSale } from './hooks/useSimpleSale';
 import { CatalogToolbar } from './components/CatalogToolbar';
 import { useSupplierPayment } from './hooks/useSupplierPayment';
-import {
-  ReceiptPhotoStep,
-  SimpleSupplier,
-  SupplierAmountStep,
-  SupplierConfirmStep,
-  SupplierDoneStep,
-  SupplierPaymentDraft,
-  SupplierPickStep,
-} from './components/SupplierPayment';
+import { SimpleSupplier, SupplierAmountStep, SupplierPaymentDraft, SupplierPickStep } from './components/SupplierPayment';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { BigKeypad } from './components/SimpleOverlay';
 import { CategoryGrid, FamilyGrid, UnsurePriceStep, VariantPicker } from './components/CatalogGrid';
 import { SimpleTicket } from './components/SimpleTicket';
-import { ChangeStep, PaymentStep } from './components/Checkout';
-import { ScanFlash, ScanFlashState, UndoBar } from './components/Feedback';
+import { PaymentStep } from './components/Checkout';
+import { ScanFlash, ScanFlashState } from './components/Feedback';
 import { ExitSimpleModeDialog } from './components/ExitSimpleModeDialog';
+import { WeightStep } from './components/WeightStep';
 
 /** Un solo paso a la vez: cada uno ocupa toda la pantalla */
 type Step =
@@ -49,16 +42,13 @@ type Step =
   | { kind: 'UNSURE'; family: SimpleFamily }
   | { kind: 'UNSURE_OTHER'; family: SimpleFamily }
   | { kind: 'WEIGHT'; product: Product }
+  | { kind: 'WEIGHT_AMOUNT'; product: Product }
   | { kind: 'GENERIC'; name: string; needsReview: boolean }
   | { kind: 'PAY' }
   | { kind: 'PAY_OTHER' }
-  | { kind: 'CHANGE'; amountPaid: number }
-  // "Llegó el proveedor": el pago sale de la caja grande
+  // "Llegó el proveedor": el pago sale de la caja grande y se guarda al elegir el monto
   | { kind: 'SUPPLIER_PICK' }
-  | { kind: 'SUPPLIER_AMOUNT'; supplier: SimpleSupplier }
-  | { kind: 'SUPPLIER_PHOTO'; draft: SupplierPaymentDraft }
-  | { kind: 'SUPPLIER_CONFIRM'; draft: SupplierPaymentDraft }
-  | { kind: 'SUPPLIER_DONE'; draft: SupplierPaymentDraft; photoFailed: boolean };
+  | { kind: 'SUPPLIER_AMOUNT'; supplier: SimpleSupplier };
 
 const HOME: Step = { kind: 'HOME' };
 
@@ -182,9 +172,33 @@ export default function SimpleModePage() {
 
   const closeFlash = useCallback(() => setFlash(null), []);
 
-  const handleConfirmSale = async (amountPaid: number) => {
+  /**
+   * Al tocar el billete la venta ya se guarda: el cambio aparece en un aviso que se quita solo,
+   * así no se queda una pantalla esperando "Listo".
+   */
+  const handlePaid = async (amountPaid: number) => {
+    if (sale.isSubmitting) return;
     setSaveError(null);
+    const total = sale.total;
     const error = await sale.submitSale(amountPaid);
+    if (error) {
+      playBeep('error');
+      setSaveError(error);
+      setStep({ kind: 'PAY' });
+      return;
+    }
+    playBeep('ok');
+    setStep(HOME);
+    // Venta nueva, cliente nuevo: de vuelta a los cuadros de categorías
+    setCategory(null);
+    setSearchQuery('');
+    setFlash({ kind: 'sold', change: Math.max(0, Math.round((amountPaid - total) * 100) / 100), isOffline: !sale.isOnline });
+  };
+
+  const handleSupplierPaid = async (draft: SupplierPaymentDraft) => {
+    if (supplierPayment.isSubmitting) return;
+    setSaveError(null);
+    const error = await supplierPayment.submitPayment(draft);
     if (error) {
       playBeep('error');
       setSaveError(error);
@@ -192,20 +206,7 @@ export default function SimpleModePage() {
     }
     playBeep('ok');
     setStep(HOME);
-    // Venta nueva, cliente nuevo: de vuelta a los cuadros de categorías
-    setCategory(null);
-  };
-
-  const handleConfirmSupplierPayment = async (draft: SupplierPaymentDraft) => {
-    setSaveError(null);
-    const result = await supplierPayment.submitPayment(draft);
-    if (result.error) {
-      playBeep('error');
-      setSaveError(result.error);
-      return;
-    }
-    playBeep('ok');
-    setStep({ kind: 'SUPPLIER_DONE', draft, photoFailed: result.photoFailed });
+    setFlash({ kind: 'supplierPaid', supplierName: draft.supplier.name, amount: draft.amount });
   };
 
   const handleUnlocked = () => {
@@ -248,11 +249,29 @@ export default function SimpleModePage() {
         );
       case 'WEIGHT':
         return (
+          <WeightStep
+            product={step.product}
+            onPickKilos={(kg) => {
+              sale.addWeight(step.product, kg);
+              playBeep('ok');
+              backToCatalog();
+            }}
+            onPickAmount={(amount) => {
+              sale.addWeightByAmount(step.product, amount);
+              playBeep('ok');
+              backToCatalog();
+            }}
+            onOtherAmount={() => setStep({ kind: 'WEIGHT_AMOUNT', product: step.product })}
+            onBack={goHome}
+          />
+        );
+      case 'WEIGHT_AMOUNT':
+        return (
           <BigKeypad
-            title={`¿Cuánto de ${step.product.name}?`}
+            title={`¿Cuánto dinero de ${step.product.name}?`}
             hint={`Ponga cuánto le va a cobrar · ${formatMoney(step.product.sellPrice)} el kilo`}
             confirmLabel="Agregar"
-            onBack={goHome}
+            onBack={() => setStep({ kind: 'WEIGHT', product: step.product })}
             onConfirm={(amount) => {
               sale.addWeightByAmount(step.product, amount);
               playBeep('ok');
@@ -281,11 +300,13 @@ export default function SimpleModePage() {
             itemCount={sale.pieceCount}
             exactAmount={roundUpToCents(sale.total)}
             onBack={goHome}
-            onOtherAmount={() => setStep({ kind: 'PAY_OTHER' })}
-            onPaid={(amountPaid) => {
+            onOtherAmount={() => {
               setSaveError(null);
-              setStep({ kind: 'CHANGE', amountPaid });
+              setStep({ kind: 'PAY_OTHER' });
             }}
+            onPaid={(amountPaid) => void handlePaid(amountPaid)}
+            isSubmitting={sale.isSubmitting}
+            error={saveError}
           />
         );
       case 'PAY_OTHER':
@@ -293,25 +314,10 @@ export default function SimpleModePage() {
           <BigKeypad
             title="¿Con cuánto le pagaron?"
             hint={`Son ${formatMoney(sale.total)}`}
-            confirmLabel="Siguiente"
+            confirmLabel="Cobrar"
             minAmount={roundUpToCents(sale.total)}
             onBack={() => setStep({ kind: 'PAY' })}
-            onConfirm={(amountPaid) => {
-              setSaveError(null);
-              setStep({ kind: 'CHANGE', amountPaid });
-            }}
-          />
-        );
-      case 'CHANGE':
-        return (
-          <ChangeStep
-            total={sale.total}
-            amountPaid={step.amountPaid}
-            isSubmitting={sale.isSubmitting}
-            isOnline={sale.isOnline}
-            error={saveError}
-            onBack={() => setStep({ kind: 'PAY' })}
-            onConfirm={() => void handleConfirmSale(step.amountPaid)}
+            onConfirm={(amountPaid) => void handlePaid(amountPaid)}
           />
         );
       case 'SUPPLIER_PICK':
@@ -326,33 +332,15 @@ export default function SimpleModePage() {
         return (
           <SupplierAmountStep
             supplier={step.supplier}
-            onAmount={(amount, ticketId) => setStep({ kind: 'SUPPLIER_PHOTO', draft: { supplier: step.supplier, amount, ticketId } })}
-            onBack={() => setStep({ kind: 'SUPPLIER_PICK' })}
-          />
-        );
-      case 'SUPPLIER_PHOTO':
-        return (
-          <ReceiptPhotoStep
-            draft={step.draft}
-            onContinue={(photo) => {
+            onAmount={(amount, ticketId) => void handleSupplierPaid({ supplier: step.supplier, amount, ticketId })}
+            onBack={() => {
               setSaveError(null);
-              setStep({ kind: 'SUPPLIER_CONFIRM', draft: { ...step.draft, photo } });
+              setStep({ kind: 'SUPPLIER_PICK' });
             }}
-            onBack={() => setStep({ kind: 'SUPPLIER_AMOUNT', supplier: step.draft.supplier })}
-          />
-        );
-      case 'SUPPLIER_CONFIRM':
-        return (
-          <SupplierConfirmStep
-            draft={step.draft}
             isSubmitting={supplierPayment.isSubmitting}
             error={saveError}
-            onConfirm={() => void handleConfirmSupplierPayment(step.draft)}
-            onBack={() => setStep({ kind: 'SUPPLIER_PHOTO', draft: step.draft })}
           />
         );
-      case 'SUPPLIER_DONE':
-        return <SupplierDoneStep draft={step.draft} photoFailed={step.photoFailed} onDone={goHome} />;
       default:
         return null;
     }
@@ -429,7 +417,7 @@ export default function SimpleModePage() {
                   )}
                   {isSearching && visibleFamilies.length === 0 && (
                     <p className="mb-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 p-4 text-lg font-bold text-amber-700 dark:text-amber-400">
-                      No encontré &quot;{searchQuery}&quot;. Intente otra vez, toque &quot;Ver todo&quot; o use &quot;Otro producto&quot;.
+                      No encontré &quot;{searchQuery}&quot;. Intente otra vez, toque &quot;Regresar&quot; o use &quot;Otro producto&quot;.
                     </p>
                   )}
                   {/* La búsqueda por voz busca en todo, sin importar la categoría */}
@@ -465,8 +453,6 @@ export default function SimpleModePage() {
       )}
 
       {renderStep()}
-
-      {sale.undo && step.kind === 'HOME' && <UndoBar message={sale.undo.message} onUndo={sale.applyUndo} />}
 
       {flash && (
         <ScanFlash

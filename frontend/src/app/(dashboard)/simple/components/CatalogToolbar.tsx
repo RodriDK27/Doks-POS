@@ -1,10 +1,9 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, LayoutGrid, Mic, Search, Truck, X } from 'lucide-react';
+import { ArrowLeft, Mic, Search, Truck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SimpleCategory } from '../helpers';
-import { CategoryImage } from './CatalogGrid';
 
 interface CatalogToolbarProps {
   /**
@@ -47,29 +46,16 @@ export function CatalogToolbar({
             <span className="text-xl font-black text-indigo-700 dark:text-indigo-300 truncate">&quot;{searchQuery}&quot;</span>
           </div>
         ) : activeCategory ? (
-          // Dentro de una categoría: regresar a los cuadros y, junto, cuál está viendo
-          <div className="flex-1 min-w-0 flex items-center gap-2">
+          // Dentro de una categoría: solo el botón para regresar a los cuadros, para que quepa en cualquier tableta
+          <div className="flex-1 min-w-0 flex items-center">
             <button
               type="button"
               onClick={onShowCategories}
-              className="h-14 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 text-lg font-extrabold flex items-center gap-2 cursor-pointer active:scale-95 transition-all shrink-0"
+              // Mismo botón amarillo de "Regresar" que en las demás pantallas
+              className="h-14 px-5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-900 shadow-md text-xl font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all shrink-0"
             >
-              <ArrowLeft className="h-6 w-6 stroke-[2.5]" /> Categorías
+              <ArrowLeft className="h-7 w-7 stroke-[3]" /> Regresar
             </button>
-            <div className="min-w-0 h-14 flex items-center gap-2.5 pl-1.5 pr-4 rounded-xl border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-950/40">
-              <div className="h-11 w-11 rounded-lg overflow-hidden bg-white shrink-0">
-                {activeCategory === 'all' ? (
-                  <div className="h-full w-full bg-indigo-600 text-white flex items-center justify-center">
-                    <LayoutGrid className="h-6 w-6" />
-                  </div>
-                ) : (
-                  <CategoryImage category={activeCategory} className="h-full w-full p-0!" />
-                )}
-              </div>
-              <span className="text-xl font-black uppercase text-indigo-700 dark:text-indigo-300 truncate">
-                {activeCategory === 'all' ? 'Todo' : activeCategory.name}
-              </span>
-            </div>
           </div>
         ) : (
           // Sin texto de ayuda: los botones se explican solos y así caben en cualquier tamaño de tableta
@@ -80,9 +66,9 @@ export function CatalogToolbar({
           <button
             type="button"
             onClick={onClearSearch}
-            className="h-14 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 text-lg font-extrabold flex items-center gap-2 cursor-pointer active:scale-95 transition-all shrink-0"
+            className="h-14 px-5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-900 shadow-md text-xl font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all shrink-0"
           >
-            <X className="h-6 w-6" /> Ver todo
+            <X className="h-7 w-7 stroke-[3]" /> Regresar
           </button>
         )}
 

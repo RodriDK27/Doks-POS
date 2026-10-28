@@ -19,9 +19,10 @@ export function SimpleOverlay({ title, onBack, backLabel = 'Regresar', children 
         <button
           type="button"
           onClick={onBack}
-          className="h-14 px-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 text-xl font-extrabold flex items-center gap-2 cursor-pointer active:scale-95 transition-all shrink-0"
+          // Amarillo y grande: es lo primero que se ve para salir de cualquier pantalla
+          className="h-16 px-6 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-900 shadow-md text-2xl font-black flex items-center gap-3 cursor-pointer active:scale-95 transition-all shrink-0"
         >
-          <ArrowLeft className="h-6 w-6 stroke-[2.5]" />
+          <ArrowLeft className="h-8 w-8 stroke-[3]" />
           {backLabel}
         </button>
         <h1 className="text-3xl font-black truncate">{title}</h1>

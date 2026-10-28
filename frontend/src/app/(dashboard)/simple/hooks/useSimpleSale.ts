@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import api from '@/lib/api';
 import dbHelper from '@/lib/indexedDb';
@@ -8,14 +8,6 @@ import { roundMoney, weightQuantityForAmount } from '@/lib/utils';
 import { useOfflineStore } from '@/store/useOfflineStore';
 import { Product } from '../../pos/types';
 import { SimpleFamily, SimpleItem, itemTotal } from '../helpers';
-
-/** Segundos que se ofrece "Deshacer" después de quitar algo del ticket */
-const UNDO_SECONDS = 10;
-
-export interface UndoState {
-  message: string;
-  previousItems: SimpleItem[];
-}
 
 export function useSimpleSale() {
   const { isOnline, updateSyncQueueCount } = useOfflineStore();
@@ -42,29 +34,6 @@ export function useSimpleSale() {
   // ─── Ticket ───
   // Sin tope por existencia: el inventario puede estar desfasado y la abuela nunca debe quedarse sin poder cobrar
   const [items, setItems] = useState<SimpleItem[]>([]);
-  const [undo, setUndo] = useState<UndoState | null>(null);
-  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const offerUndo = useCallback((message: string, previousItems: SimpleItem[]) => {
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setUndo({ message, previousItems });
-    undoTimerRef.current = setTimeout(() => setUndo(null), UNDO_SECONDS * 1000);
-  }, []);
-
-  const dismissUndo = useCallback(() => {
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setUndo(null);
-  }, []);
-
-  useEffect(() => () => {
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-  }, []);
-
-  const applyUndo = useCallback(() => {
-    if (!undo) return;
-    setItems(undo.previousItems);
-    dismissUndo();
-  }, [undo, dismissUndo]);
 
   /** Agrega una pieza; si ya estaba en el ticket, suma una más */
   const addPiece = useCallback((product: Product) => {
@@ -88,9 +57,8 @@ export function useSimpleSale() {
     });
   }, []);
 
-  /** Agrega un producto a granel por monto en pesos ("$20 de jamón") */
-  const addWeightByAmount = useCallback((product: Product, amount: number) => {
-    const quantity = weightQuantityForAmount(amount, product.sellPrice);
+  /** Agrega un producto a granel por kilos ("medio kilo de jamón") */
+  const addWeight = useCallback((product: Product, quantity: number) => {
     if (quantity <= 0) return;
     setItems((prev) => [
       ...prev,
@@ -105,6 +73,11 @@ export function useSimpleSale() {
       },
     ]);
   }, []);
+
+  /** Agrega un producto a granel por monto en pesos ("$20 de jamón") */
+  const addWeightByAmount = useCallback((product: Product, amount: number) => {
+    addWeight(product, weightQuantityForAmount(amount, product.sellPrice));
+  }, [addWeight]);
 
   /**
    * Artículo sin registrar: se cobra con el precio que diga la abuela.
@@ -151,23 +124,18 @@ export function useSimpleSale() {
     setItems((prev) => prev.map((i) => (i.key === key && !i.isWeight ? { ...i, quantity: i.quantity + 1 } : i)));
   }, []);
 
-  /** Resta una pieza; si era la última (o es granel / libre), quita el renglón y ofrece deshacer */
+  /** Resta una pieza; si era la última (o es granel / libre), quita el renglón */
   const decrement = useCallback((key: string) => {
-    const item = items.find((i) => i.key === key);
-    if (!item) return;
-    if (!item.isWeight && item.quantity > 1) {
-      setItems(items.map((i) => (i.key === key ? { ...i, quantity: i.quantity - 1 } : i)));
-      return;
-    }
-    setItems(items.filter((i) => i.key !== key));
-    offerUndo(`Se quitó ${item.name}`, items);
-  }, [items, offerUndo]);
+    setItems((prev) => {
+      const item = prev.find((i) => i.key === key);
+      if (item && !item.isWeight && item.quantity > 1) {
+        return prev.map((i) => (i.key === key ? { ...i, quantity: i.quantity - 1 } : i));
+      }
+      return prev.filter((i) => i.key !== key);
+    });
+  }, []);
 
-  const clearAll = useCallback(() => {
-    if (items.length === 0) return;
-    setItems([]);
-    offerUndo('Se borró la venta', items);
-  }, [items, offerUndo]);
+  const clearAll = useCallback(() => setItems([]), []);
 
   const total = useMemo(() => roundMoney(items.reduce((sum, i) => sum + itemTotal(i), 0)), [items]);
   const pieceCount = useMemo(() => items.reduce((sum, i) => sum + (i.isWeight ? 1 : i.quantity), 0), [items]);
@@ -205,14 +173,13 @@ export function useSimpleSale() {
         void mutate('/register/active');
       }
       setItems([]);
-      dismissUndo();
       return null;
     } catch (error) {
       return parseAxiosError(error, 'No se pudo guardar la venta.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [items, isOnline, updateSyncQueueCount, dismissUndo]);
+  }, [items, isOnline, updateSyncQueueCount]);
 
   return {
     isOnline,
@@ -222,15 +189,13 @@ export function useSimpleSale() {
     total,
     pieceCount,
     addPiece,
+    addWeight,
     addWeightByAmount,
     addGeneric,
     addUnsure,
     increment,
     decrement,
     clearAll,
-    undo,
-    applyUndo,
-    dismissUndo,
     isSubmitting,
     submitSale,
   };

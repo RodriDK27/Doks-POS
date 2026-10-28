@@ -50,20 +50,24 @@ interface PaymentStepProps {
   itemCount: number;
   /** Monto exacto que cubre el total (para "Le pagaron justo") */
   exactAmount: number;
+  /** Al tocar un billete la venta se guarda de inmediato */
   onPaid: (amount: number) => void;
   onOtherAmount: () => void;
   onBack: () => void;
+  isSubmitting: boolean;
+  error: string | null;
 }
 
 /** Botón con forma de billete: su color, "BILLETE", el valor en grande y el cambio que daría */
-function BillButton({ value, total, onClick }: { value: number; total: number; onClick: () => void }) {
+function BillButton({ value, total, disabled, onClick }: { value: number; total: number; disabled: boolean; onClick: () => void }) {
   const style = BILL_STYLES[value];
   const change = Math.round((value - total) * 100) / 100;
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className={`relative h-36 rounded-2xl border-2 bg-gradient-to-br ${style.card} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer overflow-hidden text-left px-5 py-3 flex flex-col justify-between`}
+      className={`relative h-36 rounded-2xl border-2 bg-gradient-to-br ${style.card} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer overflow-hidden text-left px-5 py-3 flex flex-col justify-between disabled:opacity-60 disabled:cursor-wait`}
     >
       {/* Marco interior como el de un billete */}
       <span className="pointer-events-none absolute inset-2 rounded-xl border border-white/70 dark:border-white/10" />
@@ -83,8 +87,8 @@ function BillButton({ value, total, onClick }: { value: number; total: number; o
   );
 }
 
-/** "¿Con cuánto le pagaron?": un toque en el billete y listo */
-export function PaymentStep({ total, itemCount, exactAmount, onPaid, onOtherAmount, onBack }: PaymentStepProps) {
+/** "¿Con cuánto le pagaron?": un toque en el billete y la venta queda guardada */
+export function PaymentStep({ total, itemCount, exactAmount, onPaid, onOtherAmount, onBack, isSubmitting, error }: PaymentStepProps) {
   const bills = BILLS.filter((value) => value >= total);
 
   return (
@@ -101,12 +105,19 @@ export function PaymentStep({ total, itemCount, exactAmount, onPaid, onOtherAmou
             </p>
           </div>
 
+          {error && (
+            <p className="rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-2xl font-bold p-4">
+              No se guardó la venta: {error} Toque otra vez con cuánto le pagaron.
+            </p>
+          )}
+
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => onPaid(exactAmount)}
-            className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-4 px-5"
+            className="h-32 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-4 px-5 disabled:opacity-70 disabled:cursor-wait"
           >
-            <CheckCircle2 className="h-14 w-14 shrink-0" />
+            {isSubmitting ? <Loader2 className="h-14 w-14 shrink-0 animate-spin" /> : <CheckCircle2 className="h-14 w-14 shrink-0" />}
             <span className="flex flex-col items-start leading-tight">
               <span className="text-4xl font-black">Le pagaron justo</span>
               <span className="text-xl font-bold opacity-90">{formatMoney(total)} · sin cambio</span>
@@ -118,10 +129,11 @@ export function PaymentStep({ total, itemCount, exactAmount, onPaid, onOtherAmou
           <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100">¿Con cuánto le pagaron?</h2>
           <div className="grid grid-cols-2 gap-4">
             {bills.map((value) => (
-              <BillButton key={value} value={value} total={total} onClick={() => onPaid(value)} />
+              <BillButton key={value} value={value} total={total} disabled={isSubmitting} onClick={() => onPaid(value)} />
             ))}
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onOtherAmount}
               className="h-36 rounded-2xl bg-white dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-white/15 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 shadow-xs active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center gap-2"
             >
@@ -170,85 +182,50 @@ function ChangePiece({ value, count, isBill }: { value: number; count: number; i
   );
 }
 
-interface ChangeStepProps {
-  total: number;
-  amountPaid: number;
-  isSubmitting: boolean;
-  isOnline: boolean;
-  error: string | null;
-  onConfirm: () => void;
-  onBack: () => void;
+interface ChangeNoticeProps {
+  change: number;
+  isOffline: boolean;
 }
 
 /**
- * Muestra el cambio en grande y cómo darlo en billetes y monedas. La venta se guarda al tocar
- * "Ya di el cambio": así, si se equivocó de billete, "Me equivoqué" regresa sin haber registrado nada.
+ * Lo que se muestra al guardar la venta: el cambio en grande y cómo darlo en billetes y monedas.
+ * La venta ya quedó guardada, así que no hay que tocar ningún botón para terminar.
  */
-export function ChangeStep({ total, amountPaid, isSubmitting, isOnline, error, onConfirm, onBack }: ChangeStepProps) {
-  const change = Math.max(0, Math.round((amountPaid - total) * 100) / 100);
+export function ChangeNotice({ change, isOffline }: ChangeNoticeProps) {
   const { pieces, cents } = changeBreakdown(change);
 
   return (
-    <SimpleOverlay title="Cambio" onBack={onBack} backLabel="Me equivoqué">
-      <div className="max-w-4xl mx-auto flex flex-col gap-5">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-xs px-5 py-4">
-            <p className="text-lg font-black uppercase tracking-wider text-slate-400">Le pagaron</p>
-            <p className="text-5xl font-black tabular-nums text-slate-800 dark:text-slate-100">{formatMoney(amountPaid)}</p>
-          </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-xs px-5 py-4">
-            <p className="text-lg font-black uppercase tracking-wider text-slate-400">Son</p>
-            <p className="text-5xl font-black tabular-nums text-slate-800 dark:text-slate-100">{formatMoney(total)}</p>
-          </div>
-        </div>
+    <div className="w-[min(94vw,56rem)] rounded-3xl bg-white dark:bg-slate-950 border-2 border-emerald-500 shadow-2xl px-6 py-6 text-center">
+      <p className="flex items-center justify-center gap-2 text-2xl font-black text-emerald-700 dark:text-emerald-400">
+        <CheckCircle2 className="h-8 w-8" /> Venta guardada
+      </p>
+      {change > 0 ? (
+        <>
+          <p className="mt-3 text-3xl font-black uppercase tracking-wider text-slate-500">Dé de cambio</p>
+          <p className="text-[8rem] leading-none font-black tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400 mt-2">
+            {formatMoney(change)}
+          </p>
 
-        {change > 0 ? (
-          <div className="rounded-2xl bg-white dark:bg-slate-950 border-2 border-emerald-500 shadow-md px-6 py-6 text-center">
-            <p className="text-3xl font-black uppercase tracking-wider text-slate-500">Dé de cambio</p>
-            <p className="text-[8rem] leading-none font-black tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400 mt-2">
-              {formatMoney(change)}
-            </p>
-
-            {/* Cómo darlo: evita hacer cuentas con los billetes en la mano */}
-            <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800">
-              <p className="text-xl font-bold text-slate-500 mb-3">Así lo puede dar:</p>
-              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
-                {pieces.map((piece) => (
-                  <ChangePiece key={piece.value} {...piece} />
-                ))}
-                {cents > 0 && <span className="text-2xl font-black text-slate-500">+ {formatMoney(cents)} en centavos</span>}
-              </div>
+          {/* Cómo darlo: evita hacer cuentas con los billetes en la mano */}
+          <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-xl font-bold text-slate-500 mb-3">Así lo puede dar:</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
+              {pieces.map((piece) => (
+                <ChangePiece key={piece.value} {...piece} />
+              ))}
+              {cents > 0 && <span className="text-2xl font-black text-slate-500">+ {formatMoney(cents)} en centavos</span>}
             </div>
           </div>
-        ) : (
-          <div className="rounded-2xl bg-white dark:bg-slate-950 border-2 border-emerald-500 shadow-md py-10 flex flex-col items-center gap-3">
-            <CheckCircle2 className="h-16 w-16 text-emerald-600 dark:text-emerald-400" />
-            <p className="text-6xl font-black text-emerald-600 dark:text-emerald-400">Sin cambio</p>
-          </div>
-        )}
+        </>
+      ) : (
+        <p className="mt-3 text-6xl font-black text-emerald-600 dark:text-emerald-400">Sin cambio</p>
+      )}
 
-        {!isOnline && (
-          <p className="flex items-center justify-center gap-2 text-2xl font-bold text-slate-600 dark:text-slate-400">
-            <WifiOff className="h-7 w-7" /> Sin internet: la venta se guarda en la tableta
-          </p>
-        )}
-
-        {error && (
-          <p className="rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-2xl font-bold p-4">
-            No se guardó la venta: {error} Toque el botón verde para intentar otra vez.
-          </p>
-        )}
-
-        <button
-          type="button"
-          disabled={isSubmitting}
-          onClick={onConfirm}
-          className="w-full h-24 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-95 transition-all cursor-pointer text-4xl font-black uppercase tracking-wider flex items-center justify-center gap-4 disabled:opacity-70 disabled:cursor-wait"
-        >
-          {isSubmitting ? <Loader2 className="h-12 w-12 animate-spin" /> : <CheckCircle2 className="h-12 w-12" />}
-          {change > 0 ? 'Ya di el cambio' : 'Listo'}
-        </button>
-      </div>
-    </SimpleOverlay>
+      {isOffline && (
+        <p className="mt-4 flex items-center justify-center gap-2 text-2xl font-bold text-slate-600 dark:text-slate-400">
+          <WifiOff className="h-7 w-7" /> Sin internet: la venta se guardó en la tableta
+        </p>
+      )}
+    </div>
   );
 }
