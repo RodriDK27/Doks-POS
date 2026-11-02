@@ -347,6 +347,7 @@ export default function POSPage() {
             onProceedToPayment={openCheckout}
             onSuspend={() => setIsSuspendModalOpen(true)}
             filteredCatalog={filteredCatalog}
+            catalogProducts={catalogProducts}
             frequentProducts={frequentProducts}
             onAddProduct={handleTouchAdd}
             lastTouchedId={lastTouchedId}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   Heart,
@@ -14,11 +14,13 @@ import {
   Percent,
   Pencil,
   User,
+  ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
 import { cn, formatQuantity } from '@/lib/utils';
+import { getProductImageSrc } from '@/lib/productImages';
 import { CartItem } from '@/store/useCartStore';
 import { Customer, Product } from '../types';
 
@@ -56,6 +58,8 @@ interface ExpressScannerMobileViewProps {
   onProceedToPayment: () => void;
   onSuspend: () => void;
   filteredCatalog: Product[];
+  /** Catálogo completo: de aquí sale la foto de cada renglón del ticket */
+  catalogProducts: Product[];
   /** Favoritos y más vendidos, para agregar con un toque con el ticket vacío */
   frequentProducts: Product[];
   onAddProduct: (product: Product) => void;
@@ -94,6 +98,7 @@ export function ExpressScannerMobileView({
   onProceedToPayment,
   onSuspend,
   filteredCatalog,
+  catalogProducts,
   frequentProducts,
   onAddProduct,
   lastTouchedId,
@@ -110,6 +115,8 @@ export function ExpressScannerMobileView({
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
   const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'PERCENT'>(discountPercent > 0 ? 'PERCENT' : 'AMOUNT');
   const ticketListRef = useRef<HTMLDivElement>(null);
+  // El carrito no guarda la foto (ni los tickets en espera): se toma del catálogo por ID
+  const imageById = useMemo(() => new Map(catalogProducts.map((p) => [p.id, p.imageUrl ?? null])), [catalogProducts]);
 
   if (prevSearchQuery !== searchQuery) {
     setPrevSearchQuery(searchQuery);
@@ -322,20 +329,23 @@ export function ExpressScannerMobileView({
       {/* TICKET EN VIVO */}
       <div
         ref={ticketListRef}
-        className="flex-1 overflow-y-auto scrollbar-none p-1 md:p-2 space-y-1.5 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800"
+        className="flex-1 overflow-y-auto scrollbar-none p-1.5 md:p-2 min-h-0 bg-slate-50/40 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800"
       >
         {ticketRows.length > 0 ? (
-          ticketRows.map((item) => (
-            <CartRow
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+          {ticketRows.map((item) => (
+            <CartCard
               key={item.id}
               item={item}
+              imageUrl={imageById.get(item.id) ?? null}
               isLastTouched={item.id === lastTouchedId}
               canEditPrice={canEditPrice}
               onQuantityChange={(qty) => updateQuantity(item.id, qty)}
               onPriceChange={(price) => updatePrice(item.id, price)}
               onRemove={() => removeFromCart(item.id)}
             />
-          ))
+          ))}
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 px-3 text-slate-400 space-y-3">
             <div className="flex flex-col items-center justify-center space-y-1">
@@ -349,7 +359,7 @@ export function ExpressScannerMobileView({
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
                   Favoritos y más vendidos
                 </span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
                   {frequentProducts.map((prod) => {
                     const isOutOfStock = prod.stock <= 0;
                     return (
@@ -358,33 +368,38 @@ export function ExpressScannerMobileView({
                         type="button"
                         onClick={() => onAddProduct(prod)}
                         className={cn(
-                          'p-2.5 rounded-xl text-left transition-all active:scale-95 shadow-2xs cursor-pointer flex flex-col justify-between h-20 border',
+                          'rounded-xl text-left transition-all active:scale-95 shadow-2xs cursor-pointer flex flex-col overflow-hidden border',
                           isOutOfStock
                             ? 'bg-rose-50/30 dark:bg-rose-950/20 border-rose-500/60 dark:border-rose-500/50 hover:border-rose-600'
                             : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 hover:border-indigo-500'
                         )}
                       >
-                        <div className="flex items-start justify-between gap-1 w-full">
+                        <div className="relative w-full">
+                          <ProductImage imageUrl={prod.imageUrl} className="aspect-[4/3] w-full" />
+                          {prod.isFavorite && (
+                            <Heart className="absolute top-1.5 right-1.5 h-3.5 w-3.5 fill-rose-500 text-rose-500 drop-shadow" />
+                          )}
+                        </div>
+                        <div className="p-2 flex flex-col gap-1 w-full">
                           <span className={cn(
-                            'font-extrabold text-xs line-clamp-2 leading-snug flex-1',
+                            'font-extrabold text-xs line-clamp-2 leading-snug min-h-[2lh]',
                             isOutOfStock ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'
                           )}>
                             {prod.name}
                           </span>
-                          {prod.isFavorite && <Heart className="h-3 w-3 fill-rose-500 text-rose-500 shrink-0 mt-0.5" />}
-                        </div>
-                        <div className="flex items-center justify-between mt-1 w-full">
-                          <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
-                            ${prod.sellPrice.toFixed(2)}
-                          </span>
-                          <span className={cn(
-                            'text-[10px] font-extrabold px-1.5 py-0.5 rounded',
-                            isOutOfStock
-                              ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-                              : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
-                          )}>
-                            {isOutOfStock ? 'Sin stock' : '+ Añadir'}
-                          </span>
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">
+                              ${prod.sellPrice.toFixed(2)}
+                            </span>
+                            <span className={cn(
+                              'text-[10px] font-extrabold px-1.5 py-0.5 rounded',
+                              isOutOfStock
+                                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
+                                : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                            )}>
+                              {isOutOfStock ? 'Sin stock' : '+ Añadir'}
+                            </span>
+                          </div>
                         </div>
                       </button>
                     );
@@ -541,7 +556,7 @@ function SearchResultRow({ product, isSelected, onAdd, onToggleFavorite }: Searc
     <div
       onClick={onAdd}
       className={cn(
-        'p-2.5 cursor-pointer flex justify-between items-center rounded-xl transition-all border my-0.5',
+        'p-2 cursor-pointer flex justify-between items-center gap-3 rounded-xl transition-all border my-0.5',
         isOutOfStock
           ? isSelected
             ? 'border-rose-500 bg-rose-500/15 dark:bg-rose-950/40 ring-2 ring-rose-500'
@@ -551,6 +566,7 @@ function SearchResultRow({ product, isSelected, onAdd, onToggleFavorite }: Searc
             : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/60'
       )}
     >
+      <ProductImage imageUrl={product.imageUrl} className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg border border-slate-100 dark:border-slate-800 shrink-0" />
       <div className="min-w-0 flex-1 pr-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={cn(
@@ -605,8 +621,40 @@ function SearchResultRow({ product, isSelected, onAdd, onToggleFavorite }: Searc
   );
 }
 
-interface CartRowProps {
+interface ProductImageProps {
+  imageUrl?: string | null;
+  className?: string;
+}
+
+/** Foto del producto, o un ícono si no tiene (o si no carga, ej. sin conexión) */
+function ProductImage({ imageUrl, className }: ProductImageProps) {
+  const src = getProductImageSrc(imageUrl);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showImage = src && failedSrc !== src;
+
+  return (
+    <div className={cn('bg-white dark:bg-slate-950/60 overflow-hidden flex items-center justify-center', className)}>
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          crossOrigin="anonymous"
+          draggable={false}
+          onError={() => setFailedSrc(src)}
+          className="h-full w-full object-contain"
+        />
+      ) : (
+        <ImageIcon className="h-1/3 w-1/3 max-h-8 max-w-8 text-slate-300 dark:text-slate-700" />
+      )}
+    </div>
+  );
+}
+
+interface CartCardProps {
   item: CartItem;
+  imageUrl: string | null;
   isLastTouched: boolean;
   canEditPrice: boolean;
   onQuantityChange: (quantity: number) => void;
@@ -614,7 +662,7 @@ interface CartRowProps {
   onRemove: () => void;
 }
 
-function CartRow({ item, isLastTouched, canEditPrice, onQuantityChange, onPriceChange, onRemove }: CartRowProps) {
+function CartCard({ item, imageUrl, isLastTouched, canEditPrice, onQuantityChange, onPriceChange, onRemove }: CartCardProps) {
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const priceChanged = item.originalPrice !== undefined;
 
@@ -622,89 +670,94 @@ function CartRow({ item, isLastTouched, canEditPrice, onQuantityChange, onPriceC
     <div
       data-cart-row={item.id}
       className={cn(
-        'flex justify-between items-center p-2.5 md:p-3 bg-white dark:bg-slate-900 rounded-2xl border shadow-2xs transition-all gap-2 md:gap-3',
+        'flex flex-col bg-white dark:bg-slate-900 rounded-2xl border shadow-2xs transition-all overflow-hidden',
         isLastTouched
           ? 'border-indigo-400 ring-2 ring-indigo-400/30 dark:border-indigo-500'
           : 'border-slate-150 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700'
       )}
     >
-      {/* Nombre + precio unitario (editable por administración) */}
-      <div className="min-w-0 flex-1">
-        <span className="block font-extrabold text-slate-800 dark:text-slate-100 text-sm md:text-base truncate" title={item.name}>
-          {item.name}
-        </span>
-        {isEditingPrice ? (
-          <DraftNumberInput
-            initialValue={item.sellPrice}
-            autoFocus
-            className="h-7 w-24 mt-0.5 text-xs"
-            onCommit={(price) => {
-              if (price !== null) onPriceChange(price);
-              setIsEditingPrice(false);
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            disabled={!canEditPrice}
-            onClick={() => setIsEditingPrice(true)}
-            title={canEditPrice ? 'Cambiar precio de este producto' : undefined}
-            className={cn(
-              'inline-flex items-center gap-1 text-xs font-bold',
-              canEditPrice ? 'cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400' : 'cursor-default',
-              priceChanged ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'
-            )}
-          >
-            {priceChanged && <span className="line-through text-slate-400">${item.originalPrice!.toFixed(2)}</span>}
-            ${item.sellPrice.toFixed(2)} c/u
-            {canEditPrice && <Pencil className="h-3 w-3 opacity-60" />}
-          </button>
-        )}
-      </div>
-
-      {/* Cantidad: botones o escribirla directo (ej. 24 piezas o 0.750 kg) */}
-      <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 h-9 md:h-10 select-none overflow-hidden shrink-0">
+      {/* Foto + quitar (en la esquina, lejos del + para no borrar sin querer) */}
+      <div className="relative">
+        <ProductImage imageUrl={imageUrl} className="aspect-[4/3] w-full border-b border-slate-100 dark:border-slate-800" />
         <button
           type="button"
-          className="h-full px-2 md:px-3 text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
-          onClick={() => onQuantityChange(item.quantity - 1)}
-          aria-label="Quitar uno"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <DraftNumberInput
-          // Si la cantidad cambia por fuera (botones, escáner) el campo se reinicia con el valor nuevo
-          key={item.quantity}
-          initialValue={item.quantity}
-          className="h-full w-12 md:w-14 border-0 rounded-none bg-transparent text-xs md:text-base"
-          onCommit={(qty) => {
-            if (qty !== null && qty !== item.quantity) onQuantityChange(qty);
-          }}
-        />
-        <button
-          type="button"
-          className="h-full px-2 md:px-3 text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
-          onClick={() => onQuantityChange(item.quantity + 1)}
-          aria-label="Agregar uno"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {/* Total del renglón y eliminar (pequeño y separado del + para no borrar sin querer) */}
-      <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-        <span className="font-black text-emerald-600 dark:text-emerald-400 text-base md:text-xl tracking-tight min-w-[64px] text-right">
-          ${item.total.toFixed(2)}
-        </span>
-        <button
-          type="button"
-          className="h-8 w-8 ml-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer flex items-center justify-center transition-colors"
+          className="absolute top-1.5 right-1.5 h-7 w-7 bg-white/90 dark:bg-slate-900/90 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg cursor-pointer flex items-center justify-center shadow-2xs transition-colors"
           onClick={onRemove}
           title="Quitar del ticket"
           aria-label={`Quitar ${item.name} del ticket`}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
+      </div>
+
+      <div className="p-2 flex flex-col gap-1.5 flex-1">
+        {/* Nombre + precio unitario (editable por administración) */}
+        <div className="min-w-0">
+          <span className="block font-extrabold text-slate-800 dark:text-slate-100 text-xs md:text-sm leading-snug line-clamp-2 min-h-[2lh]" title={item.name}>
+            {item.name}
+          </span>
+          {isEditingPrice ? (
+            <DraftNumberInput
+              initialValue={item.sellPrice}
+              autoFocus
+              className="h-7 w-24 mt-0.5 text-xs"
+              onCommit={(price) => {
+                if (price !== null) onPriceChange(price);
+                setIsEditingPrice(false);
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              disabled={!canEditPrice}
+              onClick={() => setIsEditingPrice(true)}
+              title={canEditPrice ? 'Cambiar precio de este producto' : undefined}
+              className={cn(
+                'inline-flex items-center gap-1 text-[11px] font-bold',
+                canEditPrice ? 'cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400' : 'cursor-default',
+                priceChanged ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'
+              )}
+            >
+              {priceChanged && <span className="line-through text-slate-400">${item.originalPrice!.toFixed(2)}</span>}
+              ${item.sellPrice.toFixed(2)} c/u
+              {canEditPrice && <Pencil className="h-3 w-3 opacity-60" />}
+            </button>
+          )}
+        </div>
+
+        {/* Total del renglón */}
+        <span className="font-black text-emerald-600 dark:text-emerald-400 text-lg md:text-xl tracking-tight leading-none mt-auto">
+          ${item.total.toFixed(2)}
+        </span>
+
+        {/* Cantidad: botones o escribirla directo (ej. 24 piezas o 0.750 kg) */}
+        <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 h-9 select-none overflow-hidden w-full">
+          <button
+            type="button"
+            className="h-full px-3 text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+            onClick={() => onQuantityChange(item.quantity - 1)}
+            aria-label="Quitar uno"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <DraftNumberInput
+            // Si la cantidad cambia por fuera (botones, escáner) el campo se reinicia con el valor nuevo
+            key={item.quantity}
+            initialValue={item.quantity}
+            className="h-full flex-1 min-w-0 border-0 rounded-none bg-transparent text-sm"
+            onCommit={(qty) => {
+              if (qty !== null && qty !== item.quantity) onQuantityChange(qty);
+            }}
+          />
+          <button
+            type="button"
+            className="h-full px-3 text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+            onClick={() => onQuantityChange(item.quantity + 1)}
+            aria-label="Agregar uno"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
