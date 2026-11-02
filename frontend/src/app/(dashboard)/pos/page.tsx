@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import useSWR from 'swr';
 import {
   WifiOff,
   RefreshCw,
@@ -34,6 +35,7 @@ import { PosMoreMenu } from './components/PosMoreMenu';
 import { LastSaleBar } from './components/LastSaleBar';
 import { TicketDetailsDialog } from '../tickets/components/TicketDetailsDialog';
 import type { Sale } from '../tickets/types';
+import type { Category } from '../inventory/types';
 
 export default function POSPage() {
   const [isOfflineSyncModalOpen, setIsOfflineSyncModalOpen] = useState(false);
@@ -123,6 +125,20 @@ export default function POSPage() {
     handleSearchSubmit,
     handleSearchQueryChange,
   } = usePOS();
+
+  // Foto de cada categoría: la que le puso el administrador o, si no tiene, la de su primer producto con foto
+  const { data: categoryRecords } = useSWR<Category[]>(isOnline ? '/categories' : null);
+  const categoryImages = useMemo(() => {
+    const images = new Map<string, string>();
+    for (const record of categoryRecords ?? []) {
+      if (record.imageUrl) images.set(record.name.trim().toLowerCase(), record.imageUrl);
+    }
+    for (const product of catalogProducts) {
+      const key = product.category?.trim().toLowerCase();
+      if (key && product.imageUrl && !images.has(key)) images.set(key, product.imageUrl);
+    }
+    return new Map(categories.map((cat) => [cat, images.get(cat.trim().toLowerCase()) ?? null]));
+  }, [categoryRecords, catalogProducts, categories]);
 
   const [isCheckoutDrawerOpen, setIsCheckoutDrawerOpen] = useState(false);
   const [lastSaleTicket, setLastSaleTicket] = useState<Sale | null>(null);
@@ -330,6 +346,7 @@ export default function POSPage() {
             activeCategory={activeCategory}
             onCategoryChange={setActiveCategory}
             categories={categories}
+            categoryImages={categoryImages}
             cartItems={cartItems}
             cartItemsCount={cartItemsCount}
             getTotal={getTotal}

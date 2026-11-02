@@ -14,13 +14,13 @@ import {
   Percent,
   Pencil,
   User,
-  ImageIcon,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/CustomSelect';
 import { cn, formatQuantity } from '@/lib/utils';
-import { getProductImageSrc } from '@/lib/productImages';
+import { ProductImage } from '@/components/ProductImage';
 import { CartItem } from '@/store/useCartStore';
 import { Customer, Product } from '../types';
 
@@ -40,6 +40,8 @@ interface ExpressScannerMobileViewProps {
   activeCategory: string;
   onCategoryChange: (cat: string) => void;
   categories: string[];
+  /** Foto de cada categoría (la suya o la de uno de sus productos), por nombre */
+  categoryImages: Map<string, string | null>;
   cartItems: CartItem[];
   cartItemsCount: number;
   getTotal: () => number;
@@ -82,6 +84,7 @@ export function ExpressScannerMobileView({
   activeCategory,
   onCategoryChange,
   categories,
+  categoryImages,
   cartItems,
   cartItemsCount,
   getTotal,
@@ -125,6 +128,8 @@ export function ExpressScannerMobileView({
 
   const isBrowsingCategory = activeCategory !== 'TODOS';
   const isResultsOpen = !!searchQuery.trim() || isBrowsingCategory;
+  // Explorar una categoría sin escribir es a toques: tarjetas con foto. Al escribir, lista para el teclado
+  const showResultsGrid = isBrowsingCategory && !searchQuery.trim();
   const visibleResults = filteredCatalog.slice(0, searchQuery.trim() ? MAX_SEARCH_RESULTS : MAX_CATEGORY_RESULTS);
   const hiddenResults = filteredCatalog.length - visibleResults.length;
   const hasDiscount = discountAmount > 0;
@@ -272,7 +277,19 @@ export function ExpressScannerMobileView({
                 </button>
               </div>
             )}
-            {visibleResults.length > 0 ? (
+            {visibleResults.length > 0 && showResultsGrid ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 p-1">
+                {visibleResults.map((prod, idx) => (
+                  <ProductCard
+                    key={prod.id}
+                    product={prod}
+                    isSelected={idx === selectedSearchIndex}
+                    onAdd={() => addFromResults(prod)}
+                    onToggleFavorite={() => onToggleFavorite(prod)}
+                  />
+                ))}
+              </div>
+            ) : visibleResults.length > 0 ? (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {visibleResults.map((prod, idx) => (
                   <SearchResultRow
@@ -302,9 +319,9 @@ export function ExpressScannerMobileView({
         )}
       </div>
 
-      {/* CATEGORÍAS DE UN TOQUE */}
+      {/* CATEGORÍAS DE UN TOQUE (CON SU FOTO) */}
       {categories.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0 -mt-0.5">
+        <div className="flex items-stretch gap-1.5 overflow-x-auto scrollbar-none shrink-0 -mt-0.5 pb-0.5">
           {['TODOS', ...categories].map((cat) => {
             const isSelected = activeCategory === cat;
             return (
@@ -312,14 +329,29 @@ export function ExpressScannerMobileView({
                 key={cat}
                 type="button"
                 onClick={() => onCategoryChange(isSelected && cat !== 'TODOS' ? 'TODOS' : cat)}
+                title={cat === 'TODOS' ? 'Todas las categorías' : cat}
                 className={cn(
-                  'px-3 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer whitespace-nowrap border shrink-0',
+                  'w-[68px] shrink-0 rounded-xl border overflow-hidden flex flex-col transition-all cursor-pointer active:scale-95',
                   isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'border-indigo-600 ring-2 ring-indigo-500/40 shadow-xs'
+                    : 'border-slate-200/80 dark:border-slate-800 hover:border-indigo-400'
                 )}
               >
-                {cat.toUpperCase()}
+                {cat === 'TODOS' ? (
+                  <div className="aspect-square w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950/60">
+                    <LayoutGrid className="h-5 w-5 text-slate-400" />
+                  </div>
+                ) : (
+                  <ProductImage imageUrl={categoryImages.get(cat)} className="aspect-square w-full" iconClassName="h-4 w-4" />
+                )}
+                <span
+                  className={cn(
+                    'px-1 py-0.5 text-[10px] font-black truncate text-center',
+                    isSelected ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
+                  )}
+                >
+                  {cat.toUpperCase()}
+                </span>
               </button>
             );
           })}
@@ -375,14 +407,14 @@ export function ExpressScannerMobileView({
                         )}
                       >
                         <div className="relative w-full">
-                          <ProductImage imageUrl={prod.imageUrl} className="aspect-[4/3] w-full" />
+                          <ProductImage imageUrl={prod.imageUrl} className="aspect-square w-full" />
                           {prod.isFavorite && (
                             <Heart className="absolute top-1.5 right-1.5 h-3.5 w-3.5 fill-rose-500 text-rose-500 drop-shadow" />
                           )}
                         </div>
                         <div className="p-2 flex flex-col gap-1 w-full">
                           <span className={cn(
-                            'font-extrabold text-xs line-clamp-2 leading-snug min-h-[2lh]',
+                            'font-extrabold text-xs line-clamp-2 leading-snug min-h-[2lh] [overflow-wrap:anywhere]',
                             isOutOfStock ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'
                           )}>
                             {prod.name}
@@ -543,6 +575,64 @@ export function ExpressScannerMobileView({
   );
 }
 
+interface ProductCardProps {
+  product: Product;
+  isSelected: boolean;
+  onAdd: () => void;
+  onToggleFavorite: () => void;
+}
+
+/** Tarjeta con foto para explorar una categoría a toques */
+function ProductCard({ product, isSelected, onAdd, onToggleFavorite }: ProductCardProps) {
+  const isOutOfStock = product.stock <= 0;
+  return (
+    <div
+      role="button"
+      tabIndex={-1}
+      onClick={onAdd}
+      className={cn(
+        'rounded-xl border overflow-hidden flex flex-col cursor-pointer transition-all active:scale-95 shadow-2xs',
+        isOutOfStock
+          ? 'border-rose-500/60 bg-rose-50/30 dark:bg-rose-950/20 hover:border-rose-600'
+          : 'border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 hover:border-indigo-500',
+        isSelected && (isOutOfStock ? 'ring-2 ring-rose-500' : 'ring-2 ring-indigo-500 border-indigo-500')
+      )}
+    >
+      <div className="relative">
+        <ProductImage imageUrl={product.imageUrl} className="aspect-square w-full" />
+        <button
+          type="button"
+          onClick={(e) => {
+            // Solo marca: no agrega el producto al ticket
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          title={product.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+          aria-label={product.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+          aria-pressed={!!product.isFavorite}
+          className="absolute top-1 right-1 h-7 w-7 rounded-full bg-white/90 dark:bg-slate-900/90 flex items-center justify-center shadow-2xs cursor-pointer active:scale-90 transition-all"
+        >
+          <Heart className={cn('h-3.5 w-3.5', product.isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-400')} />
+        </button>
+      </div>
+      <div className="p-1.5 flex flex-col gap-0.5">
+        <span className={cn(
+          'font-extrabold text-[11px] leading-snug line-clamp-2 min-h-[2lh] [overflow-wrap:anywhere]',
+          isOutOfStock ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'
+        )}>
+          {product.name}
+        </span>
+        <div className="flex items-center justify-between gap-1">
+          <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">${product.sellPrice.toFixed(2)}</span>
+          <span className={cn('text-[9px] font-extrabold truncate', isOutOfStock ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400')}>
+            {isOutOfStock ? 'Sin stock' : formatQuantity(product.stock)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface SearchResultRowProps {
   product: Product;
   isSelected: boolean;
@@ -621,37 +711,6 @@ function SearchResultRow({ product, isSelected, onAdd, onToggleFavorite }: Searc
   );
 }
 
-interface ProductImageProps {
-  imageUrl?: string | null;
-  className?: string;
-}
-
-/** Foto del producto, o un ícono si no tiene (o si no carga, ej. sin conexión) */
-function ProductImage({ imageUrl, className }: ProductImageProps) {
-  const src = getProductImageSrc(imageUrl);
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const showImage = src && failedSrc !== src;
-
-  return (
-    <div className={cn('bg-white dark:bg-slate-950/60 overflow-hidden flex items-center justify-center', className)}>
-      {showImage ? (
-        // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          crossOrigin="anonymous"
-          draggable={false}
-          onError={() => setFailedSrc(src)}
-          className="h-full w-full object-contain"
-        />
-      ) : (
-        <ImageIcon className="h-1/3 w-1/3 max-h-8 max-w-8 text-slate-300 dark:text-slate-700" />
-      )}
-    </div>
-  );
-}
-
 interface CartCardProps {
   item: CartItem;
   imageUrl: string | null;
@@ -676,31 +735,39 @@ function CartCard({ item, imageUrl, isLastTouched, canEditPrice, onQuantityChang
           : 'border-slate-150 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700'
       )}
     >
-      {/* Foto + quitar (en la esquina, lejos del + para no borrar sin querer) */}
+      {/* Foto + quitar: rojo sólido para que se vea sobre cualquier foto; en la esquina, lejos del + */}
       <div className="relative">
-        <ProductImage imageUrl={imageUrl} className="aspect-[4/3] w-full border-b border-slate-100 dark:border-slate-800" />
+        <ProductImage imageUrl={imageUrl} className="aspect-square w-full border-b border-slate-100 dark:border-slate-800" />
         <button
           type="button"
-          className="absolute top-1.5 right-1.5 h-7 w-7 bg-white/90 dark:bg-slate-900/90 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg cursor-pointer flex items-center justify-center shadow-2xs transition-colors"
+          className="absolute top-1.5 right-1.5 h-8 w-8 bg-rose-600 hover:bg-rose-700 text-white rounded-lg cursor-pointer flex items-center justify-center shadow-md ring-2 ring-white/80 dark:ring-slate-900/80 active:scale-90 transition-all"
           onClick={onRemove}
           title="Quitar del ticket"
           aria-label={`Quitar ${item.name} del ticket`}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
 
       <div className="p-2 flex flex-col gap-1.5 flex-1">
-        {/* Nombre + precio unitario (editable por administración) */}
-        <div className="min-w-0">
-          <span className="block font-extrabold text-slate-800 dark:text-slate-100 text-xs md:text-sm leading-snug line-clamp-2 min-h-[2lh]" title={item.name}>
-            {item.name}
+        {/* Nombre: hasta dos renglones y luego "…" (también si es una sola palabra muy larga) */}
+        <span
+          className="font-extrabold text-slate-800 dark:text-slate-100 text-xs md:text-sm leading-snug line-clamp-2 min-h-[2lh] [overflow-wrap:anywhere]"
+          title={item.name}
+        >
+          {item.name}
+        </span>
+
+        {/* Total del renglón + precio unitario (editable por administración) en la misma línea */}
+        <div className="flex items-end justify-between gap-1.5 mt-auto min-w-0">
+          <span className="font-black text-emerald-600 dark:text-emerald-400 text-lg md:text-xl tracking-tight leading-none shrink-0">
+            ${item.total.toFixed(2)}
           </span>
           {isEditingPrice ? (
             <DraftNumberInput
               initialValue={item.sellPrice}
               autoFocus
-              className="h-7 w-24 mt-0.5 text-xs"
+              className="h-7 w-20 text-xs"
               onCommit={(price) => {
                 if (price !== null) onPriceChange(price);
                 setIsEditingPrice(false);
@@ -713,22 +780,19 @@ function CartCard({ item, imageUrl, isLastTouched, canEditPrice, onQuantityChang
               onClick={() => setIsEditingPrice(true)}
               title={canEditPrice ? 'Cambiar precio de este producto' : undefined}
               className={cn(
-                'inline-flex items-center gap-1 text-[11px] font-bold',
+                'flex flex-col items-end min-w-0 text-[11px] font-bold leading-tight',
                 canEditPrice ? 'cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400' : 'cursor-default',
-                priceChanged ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'
+                priceChanged ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'
               )}
             >
-              {priceChanged && <span className="line-through text-slate-400">${item.originalPrice!.toFixed(2)}</span>}
-              ${item.sellPrice.toFixed(2)} c/u
-              {canEditPrice && <Pencil className="h-3 w-3 opacity-60" />}
+              {priceChanged && <span className="line-through text-slate-400 text-[10px]">${item.originalPrice!.toFixed(2)}</span>}
+              <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                ${item.sellPrice.toFixed(2)} c/u
+                {canEditPrice && <Pencil className="h-3 w-3 opacity-60" />}
+              </span>
             </button>
           )}
         </div>
-
-        {/* Total del renglón */}
-        <span className="font-black text-emerald-600 dark:text-emerald-400 text-lg md:text-xl tracking-tight leading-none mt-auto">
-          ${item.total.toFixed(2)}
-        </span>
 
         {/* Cantidad: botones o escribirla directo (ej. 24 piezas o 0.750 kg) */}
         <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 h-9 select-none overflow-hidden w-full">

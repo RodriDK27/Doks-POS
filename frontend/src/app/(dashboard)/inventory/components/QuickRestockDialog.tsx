@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { parseAxiosError } from '@/lib/errorMapper';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ProductImage } from '@/components/ProductImage';
 import { Category, Product } from '../types';
 import { ProductFormDialog, ProductFormValues } from './ProductFormDialog';
 
@@ -535,8 +536,13 @@ export function QuickRestockDialog({ open, onOpenChange, onRestocked, onProductC
                         <button
                           type="button"
                           onClick={() => addProduct(p)}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-indigo-50 dark:hover:bg-indigo-950/30 cursor-pointer"
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-indigo-50 dark:hover:bg-indigo-950/30 cursor-pointer"
                         >
+                          <ProductImage
+                            imageUrl={p.imageUrl}
+                            className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 dark:border-slate-800"
+                            iconClassName="h-4 w-4"
+                          />
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{p.name}</p>
                             <p className="text-[10px] font-semibold text-slate-400 truncate">
@@ -603,10 +609,15 @@ export function QuickRestockDialog({ open, onOpenChange, onRestocked, onProductC
                       <li
                         key={product.id}
                         className={cn(
-                          'flex items-center gap-2 px-3 py-2',
+                          'flex items-center gap-2.5 px-3 py-2',
                           product.id === lastAddedId && 'bg-emerald-50/70 dark:bg-emerald-950/20'
                         )}
                       >
+                        <ProductImage
+                          imageUrl={productById.get(product.id)?.imageUrl ?? product.imageUrl}
+                          className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 dark:border-slate-800"
+                          iconClassName="h-4 w-4"
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{product.name}</p>
                           <p className="text-[10px] font-semibold text-slate-400 tabular-nums">

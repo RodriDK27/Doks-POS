@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { Heart, ImageIcon, Loader2, Sparkles } from 'lucide-react';
+import { Heart, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/api';
 import { parseAxiosError } from '@/lib/errorMapper';
-import { getProductImageSrc } from '@/lib/productImages';
+import { ProductImage } from '@/components/ProductImage';
 import { cn, formatQuantity } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { FAVORITES_KEY_PREFIX } from '../hooks/useFavoriteToggle';
@@ -108,20 +108,16 @@ export function FavoritesDialog({ open, onOpenChange }: FavoritesDialogProps) {
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {data.map((p, i) => {
-                const src = getProductImageSrc(p.imageUrl);
                 const isOut = p.stock <= 0;
                 const isLow = !isOut && p.stock <= p.minStock;
                 return (
                   <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
                     <span className="w-5 shrink-0 text-center text-[11px] font-black text-slate-400 tabular-nums">{i + 1}</span>
-                    <div className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 dark:border-slate-800 bg-white overflow-hidden flex items-center justify-center">
-                      {src ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
-                        <img src={src} alt="" loading="lazy" crossOrigin="anonymous" className="h-full w-full object-contain" />
-                      ) : (
-                        <ImageIcon className="h-4 w-4 text-slate-300" />
-                      )}
-                    </div>
+                    <ProductImage
+                      imageUrl={p.imageUrl}
+                      className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 dark:border-slate-800"
+                      iconClassName="h-4 w-4"
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 min-w-0">
                         <span className="truncate">{p.name}</span>
