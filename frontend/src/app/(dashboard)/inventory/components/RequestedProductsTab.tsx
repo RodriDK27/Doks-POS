@@ -29,6 +29,7 @@ export function RequestedProductsTab() {
     handleCreate,
     handleUpdateStatus,
     handleDelete,
+    handleDeleteMany,
   } = useRequestedProducts();
 
   return (
@@ -65,8 +66,18 @@ export function RequestedProductsTab() {
           </div>
         </div>
 
-        {/* Lado derecho: botón de agregar pedido */}
-        <div className="shrink-0">
+        {/* Lado derecho: borrar lo listado y agregar pedido */}
+        <div className="shrink-0 flex flex-col sm:flex-row gap-2">
+          {products.length > 0 && (
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto h-10 rounded-xl px-4 text-xs font-extrabold text-rose-600 dark:text-rose-400 border-rose-200/70 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center gap-1.5 cursor-pointer"
+              onClick={() => handleDeleteMany(products.map((p) => p.id))}
+              title="Eliminar todos los artículos de la lista actual"
+            >
+              <Trash2 className="h-4 w-4" /> Eliminar todos ({products.length})
+            </Button>
+          )}
           <Button 
             className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs h-10 rounded-xl shadow px-5 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer border-none"
             onClick={() => setIsFormOpen(true)}

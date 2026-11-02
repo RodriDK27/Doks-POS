@@ -48,4 +48,11 @@ export class RequestedProductsService {
       where: { id },
     });
   }
+
+  async removeMany(ids: string[]) {
+    const { count } = await this.prisma.requestedProduct.deleteMany({
+      where: { id: { in: ids } },
+    });
+    return { deleted: count };
+  }
 }

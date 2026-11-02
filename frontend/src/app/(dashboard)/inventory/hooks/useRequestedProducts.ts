@@ -44,6 +44,22 @@ export function useRequestedProducts() {
     }
   };
 
+  /** Borra de una vez las solicitudes indicadas (las que se ven con el filtro actual) */
+  const handleDeleteMany = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    if (!window.confirm(`Se borrarán definitivamente ${ids.length} artículo(s) solicitado(s).
+
+¿Continuar?`)) return;
+    try {
+      const { data } = await api.post<{ deleted: number }>('/requested-products/bulk-delete', { ids });
+      toast.success(`${data.deleted} artículo(s) eliminado(s).`);
+    } catch (error) {
+      toast.error(parseAxiosError(error, 'Error al eliminar artículos.'));
+    } finally {
+      mutate();
+    }
+  };
+
   const filteredProducts = products.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.notes && p.notes.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -65,5 +81,6 @@ export function useRequestedProducts() {
     handleCreate,
     handleUpdateStatus,
     handleDelete,
+    handleDeleteMany,
   };
 }
