@@ -78,7 +78,7 @@ export function ScanFlash({ flash, onClose, onChargeUnknown }: ScanFlashProps) {
           <div className="h-56 w-56 rounded-3xl bg-white flex items-center justify-center overflow-hidden">
             {flash.imageSrc ? (
               // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
-              <img src={flash.imageSrc} alt="" crossOrigin="anonymous" className="h-full w-full object-contain" />
+              <img src={flash.imageSrc} alt="" crossOrigin="anonymous" className="h-full w-full object-cover" />
             ) : (
               <ImageIcon className="h-24 w-24 text-slate-300 dark:text-slate-600" />
             )}

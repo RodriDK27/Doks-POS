@@ -45,7 +45,7 @@ export function WeightStep({ product, onPickKilos, onPickAmount, onOtherAmount, 
           <div className="h-20 w-20 rounded-xl overflow-hidden bg-white border border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-center">
             {imageSrc ? (
               // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
-              <img src={imageSrc} alt="" crossOrigin="anonymous" className="h-full w-full object-contain" />
+              <img src={imageSrc} alt="" crossOrigin="anonymous" className="h-full w-full object-cover" />
             ) : (
               <ImageIcon className="h-9 w-9 text-slate-300" />
             )}

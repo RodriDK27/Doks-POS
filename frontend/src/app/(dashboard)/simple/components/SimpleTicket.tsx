@@ -63,7 +63,7 @@ export function SimpleTicket({ items, total, onIncrement, onDecrement, onClearAl
                   <div className="h-14 w-14 shrink-0 rounded-xl border border-slate-100 dark:border-slate-800 bg-white overflow-hidden flex items-center justify-center">
                     {item.imageSrc ? (
                       // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
-                      <img src={item.imageSrc} alt="" crossOrigin="anonymous" className="h-full w-full object-contain" />
+                      <img src={item.imageSrc} alt="" crossOrigin="anonymous" className="h-full w-full object-cover" />
                     ) : (
                       <ImageIcon className="h-7 w-7 text-slate-300" />
                     )}

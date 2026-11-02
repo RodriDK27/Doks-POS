@@ -3,6 +3,7 @@
 import React from 'react';
 import { HelpCircle, ImageIcon, LayoutGrid, PackagePlus, Plus, Scale } from 'lucide-react';
 import { getProductImageSrc } from '@/lib/productImages';
+import { cn } from '@/lib/utils';
 import { Product } from '../../pos/types';
 import { getCategoryColor } from '../../pos/helpers';
 import { SimpleCategory, SimpleFamily, familyPiecePrices, formatMoney } from '../helpers';
@@ -42,7 +43,7 @@ function BigProductCard({ name, category, imageSrc, price, isWeight, onClick }: 
       <div className="relative aspect-square w-full bg-white border-b border-slate-100 dark:border-slate-800/60 overflow-hidden flex items-center justify-center">
         {imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- la foto viene del backend en otro dominio, ya optimizada
-          <img src={imageSrc} alt={name} crossOrigin="anonymous" loading="lazy" className="h-full w-full object-contain p-1" />
+          <img src={imageSrc} alt={name} crossOrigin="anonymous" loading="lazy" className="h-full w-full object-cover" />
         ) : (
           <ImageIcon className="h-16 w-16 text-slate-300" />
         )}
@@ -138,11 +139,45 @@ export function FamilyGrid({ families, onSelectFamily, onOtherProduct }: FamilyG
   );
 }
 
+interface PriceFilterBarProps {
+  prices: number[];
+  /** Precio elegido; null = todos */
+  selected: number | null;
+  onSelect: (price: number | null) => void;
+}
+
+/** "¿De cuánto es?": deja ver solo lo de ese precio, para encontrar dulces sin saber su nombre */
+export function PriceFilterBar({ prices, selected, onSelect }: PriceFilterBarProps) {
+  const options: (number | null)[] = [null, ...prices];
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 mb-3">
+      {options.map((price) => {
+        const isSelected = price === selected;
+        return (
+          <button
+            key={price ?? 'all'}
+            type="button"
+            onClick={() => onSelect(isSelected ? null : price)}
+            className={cn(
+              'h-14 min-w-[5.5rem] px-4 shrink-0 rounded-xl border text-2xl font-black tabular-nums cursor-pointer active:scale-95 transition-all shadow-xs',
+              isSelected
+                ? 'bg-indigo-600 border-indigo-600 text-white'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-indigo-400'
+            )}
+          >
+            {price === null ? 'Todos' : formatMoney(price)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Miniatura de una categoría: su imagen, o un cuadro del color de la categoría con un ícono */
 export function CategoryImage({ category, className = 'h-full w-full' }: { category: SimpleCategory; className?: string }) {
   if (category.imageSrc) {
     // eslint-disable-next-line @next/next/no-img-element -- la imagen viene del backend en otro dominio, ya optimizada
-    return <img src={category.imageSrc} alt={category.name} crossOrigin="anonymous" loading="lazy" className={`${className} object-contain p-2`} />;
+    return <img src={category.imageSrc} alt={category.name} crossOrigin="anonymous" loading="lazy" className={`${className} object-cover`} />;
   }
   const colors = getCategoryColor(category.name);
   return (
@@ -160,7 +195,7 @@ function CategoryCard({ category, onPick }: { category: SimpleCategory; onPick: 
       onClick={onPick}
       className={`group flex flex-col text-left rounded-2xl border overflow-hidden bg-white dark:bg-slate-900 ${colors.border} shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97] transition-all cursor-pointer`}
     >
-      <div className="aspect-[4/3] w-full bg-white border-b border-slate-100 dark:border-slate-800/60 overflow-hidden">
+      <div className="aspect-square w-full bg-white border-b border-slate-100 dark:border-slate-800/60 overflow-hidden">
         <CategoryImage category={category} />
       </div>
       <div className="px-3 py-3">
@@ -201,7 +236,7 @@ export function CategoryGrid({ categories, totalCount, onPickCategory, onAllProd
           onClick={onAllProducts}
           className="group flex flex-col text-left rounded-2xl border border-indigo-200 dark:border-indigo-900/50 overflow-hidden bg-white dark:bg-slate-900 shadow-xs hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97] transition-all cursor-pointer"
         >
-          <div className="aspect-[4/3] w-full bg-indigo-600 flex items-center justify-center text-white">
+          <div className="aspect-square w-full bg-indigo-600 flex items-center justify-center text-white">
             <LayoutGrid className="h-1/3 w-1/3" />
           </div>
           <div className="px-3 py-3">

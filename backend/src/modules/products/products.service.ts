@@ -552,7 +552,8 @@ export class ProductsService {
       where: { productId: { not: null }, sale: { createdAt: { gte: since } } },
       _count: { _all: true },
       orderBy: { _count: { productId: 'desc' } },
-      take: Math.min(Math.max(1, limit), 50),
+      // Hasta 500: el modo sencillo pide el ranking completo para ordenar su catálogo por ventas
+      take: Math.min(Math.max(1, limit), 500),
     });
     return grouped.map((g) => g.productId as string);
   }

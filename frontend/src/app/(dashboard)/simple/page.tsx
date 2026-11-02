@@ -16,11 +16,14 @@ import {
   buildCategories,
   buildFamilies,
   categoryKey,
+  filterByPrice,
   filterFamilies,
   findProductByBarcode,
   formatMoney,
+  piecePricesOf,
   playBeep,
   roundUpToCents,
+  sortFavoritesAndTopSellers,
 } from './helpers';
 import { useSimpleSale } from './hooks/useSimpleSale';
 import { CatalogToolbar } from './components/CatalogToolbar';
@@ -28,7 +31,7 @@ import { useSupplierPayment } from './hooks/useSupplierPayment';
 import { SimpleSupplier, SupplierAmountStep, SupplierPaymentDraft, SupplierPickStep } from './components/SupplierPayment';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { BigKeypad } from './components/SimpleOverlay';
-import { CategoryGrid, FamilyGrid, UnsurePriceStep, VariantPicker } from './components/CatalogGrid';
+import { CategoryGrid, FamilyGrid, PriceFilterBar, UnsurePriceStep, VariantPicker } from './components/CatalogGrid';
 import { SimpleTicket } from './components/SimpleTicket';
 import { PaymentStep } from './components/Checkout';
 import { ScanFlash, ScanFlashState } from './components/Feedback';
@@ -51,6 +54,9 @@ type Step =
   | { kind: 'SUPPLIER_AMOUNT'; supplier: SimpleSupplier };
 
 const HOME: Step = { kind: 'HOME' };
+
+/** Cuántos productos del ranking de ventas se piden: suficiente para ordenar todo el catálogo */
+const TOP_SELLERS_LIMIT = 500;
 
 export default function SimpleModePage() {
   const router = useRouter();
@@ -108,20 +114,37 @@ export default function SimpleModePage() {
     return images;
   }, [categoryRecords]);
   const categories = useMemo(() => buildCategories(families, categoryImages), [families, categoryImages]);
+  // Favoritos y lo más vendido del mes van primero en cada categoría y en la búsqueda (sin internet: solo favoritos)
+  const { data: topSellerIds } = useSWR<string[]>(
+    role !== 'NONE' && sale.isOnline ? `/products/top-sellers?days=30&limit=${TOP_SELLERS_LIMIT}` : null
+  );
+  const rankById = useMemo(() => new Map((topSellerIds ?? []).map((id, i) => [id, i])), [topSellerIds]);
   const visibleFamilies = useMemo(
-    () => filterFamilies(families, category ?? ALL_CATEGORIES, searchQuery),
-    [families, category, searchQuery]
+    () => sortFavoritesAndTopSellers(filterFamilies(families, category ?? ALL_CATEGORIES, searchQuery), rankById),
+    [families, category, searchQuery, rankById]
+  );
+
+  // Filtro de precio: vale solo para la categoría o búsqueda donde se eligió; al cambiar de vista se quita solo
+  const priceViewKey = `${category ?? ''}|${searchQuery}`;
+  const [priceFilter, setPriceFilter] = useState<{ viewKey: string; price: number } | null>(null);
+  const activePrice = priceFilter?.viewKey === priceViewKey ? priceFilter.price : null;
+  const priceOptions = useMemo(() => piecePricesOf(visibleFamilies), [visibleFamilies]);
+  // Con un solo precio no hay nada que filtrar
+  const showPriceFilter = priceOptions.length >= 2;
+  const shownFamilies = useMemo(
+    () => (activePrice !== null ? filterByPrice(visibleFamilies, activePrice) : visibleFamilies),
+    [visibleFamilies, activePrice]
   );
   const isSearching = searchQuery.trim().length > 0;
   const activeCategory = category === ALL_CATEGORIES ? 'all' : (categories.find((c) => c.name === category) ?? null);
 
   const goHome = useCallback(() => setStep(HOME), []);
 
-  /** Después de agregar algo: de vuelta al catálogo. La búsqueda se borra; la categoría se queda. */
-  const backToCatalog = useCallback(() => {
-    setStep(HOME);
-    setSearchQuery('');
-  }, []);
+  /**
+   * Después de agregar algo: de vuelta al catálogo tal como estaba. La búsqueda por voz y la categoría
+   * se quedan, para poder agregar otro igual o uno parecido; se quitan con "Regresar" o al cobrar.
+   */
+  const backToCatalog = useCallback(() => setStep(HOME), []);
 
   const pickProduct = useCallback((product: Product) => {
     if (product.unitType === 'WEIGHT') {
@@ -430,11 +453,20 @@ export default function SimpleModePage() {
                       onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
                     />
                   ) : (
-                    <FamilyGrid
-                      families={visibleFamilies}
-                      onSelectFamily={selectFamily}
-                      onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
-                    />
+                    <>
+                      {showPriceFilter && (
+                        <PriceFilterBar
+                          prices={priceOptions}
+                          selected={activePrice}
+                          onSelect={(price) => setPriceFilter(price === null ? null : { viewKey: priceViewKey, price })}
+                        />
+                      )}
+                      <FamilyGrid
+                        families={shownFamilies}
+                        onSelectFamily={selectFamily}
+                        onOtherProduct={() => setStep({ kind: 'GENERIC', name: 'Otro producto', needsReview: true })}
+                      />
+                    </>
                   )}
                 </>
               )}

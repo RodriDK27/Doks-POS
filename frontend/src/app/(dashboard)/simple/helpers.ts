@@ -138,6 +138,32 @@ export function familyPiecePrices(family: SimpleFamily): number[] {
   return [...new Set(prices)].sort((a, b) => a - b);
 }
 
+/**
+ * Primero los favoritos (con corazón), luego lo que más se vende: cada cuadro toma el lugar de su
+ * variante más vendida. Lo demás queda después, en el orden alfabético de siempre.
+ */
+export function sortFavoritesAndTopSellers(families: SimpleFamily[], rankById: Map<string, number>): SimpleFamily[] {
+  const NOT_SOLD = Number.MAX_SAFE_INTEGER;
+  return families
+    .map((family) => ({
+      family,
+      favorite: family.products.some((p) => p.isFavorite) ? 0 : 1,
+      rank: Math.min(...family.products.map((p) => rankById.get(p.id) ?? NOT_SOLD)),
+    }))
+    .sort((a, b) => a.favorite - b.favorite || a.rank - b.rank)
+    .map(({ family }) => family);
+}
+
+/** Precios de pieza de los cuadros a la vista, de menor a mayor (botones para filtrar por precio) */
+export function piecePricesOf(families: SimpleFamily[]): number[] {
+  return [...new Set(families.flatMap(familyPiecePrices))].sort((a, b) => a - b);
+}
+
+/** Solo los cuadros que tienen alguna pieza de ese precio */
+export function filterByPrice(families: SimpleFamily[], price: number): SimpleFamily[] {
+  return families.filter((family) => familyPiecePrices(family).includes(price));
+}
+
 /** Busca un producto por código de barras principal o secundario */
 export function findProductByBarcode(products: Product[], code: string): Product | undefined {
   const clean = code.trim().toLowerCase();
