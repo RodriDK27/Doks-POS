@@ -24,8 +24,8 @@ import { ProductImage } from '@/components/ProductImage';
 import { CartItem } from '@/store/useCartStore';
 import { Customer, Product } from '../types';
 
-/** Con texto en el buscador basta con unos cuantos resultados: si no está, se sigue escribiendo */
-const MAX_SEARCH_RESULTS = 10;
+/** Con texto en el buscador basta con unos cuantos resultados: si no está, se sigue escribiendo (12 = filas completas de 3, 4 o 6) */
+const MAX_SEARCH_RESULTS = 12;
 /** Al explorar una categoría sin escribir se muestran más, con scroll */
 const MAX_CATEGORY_RESULTS = 40;
 
@@ -118,6 +118,7 @@ export function ExpressScannerMobileView({
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
   const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'PERCENT'>(discountPercent > 0 ? 'PERCENT' : 'AMOUNT');
   const ticketListRef = useRef<HTMLDivElement>(null);
+  const resultsGridRef = useRef<HTMLDivElement>(null);
   // El carrito no guarda la foto (ni los tickets en espera): se toma del catálogo por ID
   const imageById = useMemo(() => new Map(catalogProducts.map((p) => [p.id, p.imageUrl ?? null])), [catalogProducts]);
 
@@ -128,8 +129,6 @@ export function ExpressScannerMobileView({
 
   const isBrowsingCategory = activeCategory !== 'TODOS';
   const isResultsOpen = !!searchQuery.trim() || isBrowsingCategory;
-  // Explorar una categoría sin escribir es a toques: tarjetas con foto. Al escribir, lista para el teclado
-  const showResultsGrid = isBrowsingCategory && !searchQuery.trim();
   const visibleResults = filteredCatalog.slice(0, searchQuery.trim() ? MAX_SEARCH_RESULTS : MAX_CATEGORY_RESULTS);
   const hiddenResults = filteredCatalog.length - visibleResults.length;
   const hasDiscount = discountAmount > 0;
@@ -144,6 +143,22 @@ export function ExpressScannerMobileView({
     const row = ticketListRef.current?.querySelector<HTMLElement>(`[data-cart-row="${CSS.escape(lastTouchedId)}"]`);
     row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [lastTouchedId, cartItems]);
+
+  // Al moverse con las flechas, la tarjeta elegida se mantiene a la vista
+  useEffect(() => {
+    resultsGridRef.current?.children[selectedSearchIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [selectedSearchIndex]);
+
+  /** Columnas que tiene la cuadrícula en esta pantalla, para que ↑↓ salten una fila completa */
+  const getGridColumns = () => {
+    const grid = resultsGridRef.current;
+    if (!grid) return 1;
+    return Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+  };
+
+  const moveSelection = (delta: number) => {
+    setSelectedSearchIndex((prev) => Math.min(visibleResults.length - 1, Math.max(0, prev + delta)));
+  };
 
   // Listener directo para F2 en la vista
   useEffect(() => {
@@ -196,12 +211,13 @@ export function ExpressScannerMobileView({
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'ArrowDown') {
+              // Con resultados abiertos las flechas mueven la tarjeta elegida: ←→ una, ↑↓ una fila
+              if (isResultsOpen && visibleResults.length > 0 && e.key.startsWith('Arrow')) {
                 e.preventDefault();
-                setSelectedSearchIndex((prev) => Math.min(visibleResults.length - 1, prev + 1));
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSelectedSearchIndex((prev) => Math.max(0, prev - 1));
+                if (e.key === 'ArrowRight') moveSelection(1);
+                else if (e.key === 'ArrowLeft') moveSelection(-1);
+                else if (e.key === 'ArrowDown') moveSelection(getGridColumns());
+                else if (e.key === 'ArrowUp') moveSelection(-getGridColumns());
               } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (searchQuery.includes('*') || visibleResults.length === 0) {
@@ -277,22 +293,10 @@ export function ExpressScannerMobileView({
                 </button>
               </div>
             )}
-            {visibleResults.length > 0 && showResultsGrid ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 p-1">
+            {visibleResults.length > 0 ? (
+              <div ref={resultsGridRef} className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 p-1">
                 {visibleResults.map((prod, idx) => (
                   <ProductCard
-                    key={prod.id}
-                    product={prod}
-                    isSelected={idx === selectedSearchIndex}
-                    onAdd={() => addFromResults(prod)}
-                    onToggleFavorite={() => onToggleFavorite(prod)}
-                  />
-                ))}
-              </div>
-            ) : visibleResults.length > 0 ? (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {visibleResults.map((prod, idx) => (
-                  <SearchResultRow
                     key={prod.id}
                     product={prod}
                     isSelected={idx === selectedSearchIndex}
@@ -582,7 +586,7 @@ interface ProductCardProps {
   onToggleFavorite: () => void;
 }
 
-/** Tarjeta con foto para explorar una categoría a toques */
+/** Tarjeta con foto de los resultados (búsqueda o categoría): se toca o se elige con flechas + Enter */
 function ProductCard({ product, isSelected, onAdd, onToggleFavorite }: ProductCardProps) {
   const isOutOfStock = product.stock <= 0;
   return (
@@ -600,6 +604,14 @@ function ProductCard({ product, isSelected, onAdd, onToggleFavorite }: ProductCa
     >
       <div className="relative">
         <ProductImage imageUrl={product.imageUrl} className="aspect-square w-full" />
+        {isSelected && (
+          <span className={cn(
+            'absolute bottom-1 left-1 text-[9.5px] text-white font-black px-1.5 py-0.5 rounded shadow-xs',
+            isOutOfStock ? 'bg-rose-600' : 'bg-indigo-600'
+          )}>
+            Enter ↵
+          </span>
+        )}
         <button
           type="button"
           onClick={(e) => {
@@ -629,84 +641,6 @@ function ProductCard({ product, isSelected, onAdd, onToggleFavorite }: ProductCa
           </span>
         </div>
       </div>
-    </div>
-  );
-}
-
-interface SearchResultRowProps {
-  product: Product;
-  isSelected: boolean;
-  onAdd: () => void;
-  onToggleFavorite: () => void;
-}
-
-function SearchResultRow({ product, isSelected, onAdd, onToggleFavorite }: SearchResultRowProps) {
-  const isOutOfStock = product.stock <= 0;
-  return (
-    <div
-      onClick={onAdd}
-      className={cn(
-        'p-2 cursor-pointer flex justify-between items-center gap-3 rounded-xl transition-all border my-0.5',
-        isOutOfStock
-          ? isSelected
-            ? 'border-rose-500 bg-rose-500/15 dark:bg-rose-950/40 ring-2 ring-rose-500'
-            : 'border-rose-500/50 bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-100/50 dark:hover:bg-rose-950/40'
-          : isSelected
-            ? 'border-indigo-500 bg-indigo-50 dark:bg-slate-800 ring-2 ring-indigo-500'
-            : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/60'
-      )}
-    >
-      <ProductImage imageUrl={product.imageUrl} className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg border border-slate-100 dark:border-slate-800 shrink-0" />
-      <div className="min-w-0 flex-1 pr-2">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={cn(
-            'font-extrabold text-xs sm:text-sm block truncate',
-            isOutOfStock ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'
-          )}>
-            {product.name}
-          </span>
-          {isSelected && (
-            <span className={cn('text-[9.5px] text-white font-black px-1.5 py-0.2 rounded', isOutOfStock ? 'bg-rose-600' : 'bg-indigo-600')}>
-              Enter ↵
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] font-bold mt-0.5">
-          <span className="text-slate-600 dark:text-slate-400 font-extrabold">${product.sellPrice.toFixed(2)}</span>
-          <span className="text-slate-300 dark:text-slate-700">•</span>
-          {isOutOfStock ? (
-            <span className="text-rose-600 dark:text-rose-400 font-extrabold">Sin stock</span>
-          ) : (
-            <span className="text-slate-500">Stock: {formatQuantity(product.stock)}</span>
-          )}
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={(e) => {
-          // Solo marca: no agrega el producto al ticket
-          e.stopPropagation();
-          onToggleFavorite();
-        }}
-        title={product.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-        aria-label={product.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-        aria-pressed={!!product.isFavorite}
-        className="h-8 w-8 mr-1 shrink-0 rounded-full flex items-center justify-center cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/40 active:scale-90 transition-all"
-      >
-        <Heart className={cn('h-4 w-4', product.isFavorite ? 'fill-rose-500 text-rose-500' : 'text-slate-300 dark:text-slate-600')} />
-      </button>
-      <span
-        className={cn(
-          'h-7 px-2.5 inline-flex items-center font-extrabold text-xs rounded-lg shrink-0',
-          isOutOfStock
-            ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-            : isSelected
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-        )}
-      >
-        {isOutOfStock ? 'Sin stock' : '+ Añadir'}
-      </span>
     </div>
   );
 }
